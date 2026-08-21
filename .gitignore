@@ -7,8 +7,8 @@ dist/
 .claude/*
 !.claude/skills/
 .claude/skills/*
-!.claude/skills/launch-multi-ai-chat/
-!.claude/skills/launch-multi-ai-chat/SKILL.md
+!.claude/skills/launch-ai-consultant/
+!.claude/skills/launch-ai-consultant/SKILL.md
 .agent-runtime/
 agent-tools/
 src-tauri/gen

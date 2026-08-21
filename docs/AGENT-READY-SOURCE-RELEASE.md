@@ -25,8 +25,8 @@ Opening the repository never launches the app. The source Skill is explicit-only
 |---|---|
 | `agent-release.json` | Versioned requirements, permissions, side effects, runtime states, entrypoints, and privacy promises |
 | `agent-release.schema.json` | Strict JSON Schema for the manifest |
-| `.agents/skills/launch-multi-ai-chat/` | Explicit Codex Skill and UI metadata |
-| `.claude/skills/launch-multi-ai-chat/` | Explicit Claude Code Skill |
+| `.agents/skills/launch-ai-consultant/` | Explicit Codex Skill and UI metadata |
+| `.claude/skills/launch-ai-consultant/` | Explicit Claude Code Skill |
 | `scripts/agent/*.mjs` | Deterministic lifecycle commands |
 | `scripts/agent/tests/*.test.mjs` | Contract, drift, dry-run, identity, and runtime-state tests |
 | `.agent-runtime/` | Ignored local state, log, launch receipt, and audit receipts |
@@ -159,7 +159,7 @@ Projects adopting an “agent-ready source release” pattern should provide all
 ## 繁體中文操作摘要
 
 1. 一般使用者請下載正式 Release；Agent Skill 是需要本機開發環境的原始碼通道。
-2. 打開 repo 不會自動執行。只有使用者明確呼叫 `$launch-multi-ai-chat` 或 `/launch-multi-ai-chat` 才能開始。
+2. 打開 repo 不會自動執行。只有使用者明確呼叫 `$launch-ai-consultant` 或 `/launch-ai-consultant` 才能開始。
 3. Skill 會先寫入 before audit、執行 doctor、啟動並等待 React control pane 的 READY 訊號，再寫 after audit。
 4. `accepted`／`building` 不等於 ready；舊 log 的 READY 也不能算新一次啟動成功。
 5. Skill 可以安裝此 repo 的 locked JavaScript dependencies，但不會安裝／移除系統工具、全域套件、PATH 或安全設定。

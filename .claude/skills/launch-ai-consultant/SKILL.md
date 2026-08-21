@@ -1,6 +1,7 @@
 ---
-name: launch-multi-ai-chat
-description: Audit, launch, verify, inspect, or stop the local Multi-AI Chat Tauri source app. Use only when the user explicitly asks to run this checked-out repository on their local graphical computer.
+name: launch-ai-consultant
+description: Audit, launch, verify, inspect, or stop the local AI Consultant Tauri source app. Use only when the user explicitly asks to run this checked-out repository on their local graphical computer.
+disable-model-invocation: true
 ---
 
 Operate the source-development lane defined by `agent-release.json`. It is not an installer, release build, container, or remote GUI.

@@ -142,9 +142,9 @@
   },
   "skills": {
     "version": "2.0.0",
-    "codex": ".agents/skills/launch-multi-ai-chat/SKILL.md",
-    "codexMetadata": ".agents/skills/launch-multi-ai-chat/agents/openai.yaml",
-    "claude": ".claude/skills/launch-multi-ai-chat/SKILL.md",
+    "codex": ".agents/skills/launch-ai-consultant/SKILL.md",
+    "codexMetadata": ".agents/skills/launch-ai-consultant/agents/openai.yaml",
+    "claude": ".claude/skills/launch-ai-consultant/SKILL.md",
     "implicitInvocation": false
   },
   "privacy": {

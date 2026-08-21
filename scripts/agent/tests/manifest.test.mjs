@@ -42,7 +42,7 @@ test('Codex and Claude skills share one maintained instruction body', () => {
   const codexMetadata = readFileSync(path.join(root, manifest.skills.codexMetadata), 'utf8');
 
   assert.equal(codexSkill.body, claudeSkill.body);
-  assert.match(codexSkill.frontmatter, /name:\s*launch-multi-ai-chat/);
+  assert.match(codexSkill.frontmatter, /name:\s*launch-ai-consultant/);
   assert.doesNotMatch(codexSkill.frontmatter, /disable-model-invocation/);
   assert.match(claudeSkill.frontmatter, /disable-model-invocation:\s*true/);
   assert.match(codexMetadata, /allow_implicit_invocation:\s*false/);

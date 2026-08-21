@@ -1,5 +1,5 @@
 interface:
-  display_name: "Launch Multi-AI Chat"
+  display_name: "Launch AI Consultant"
   short_description: "Audit and run the local Tauri source app"
   default_prompt: "Audit the declared effects, check prerequisites, launch this repository's Tauri source app, and verify that its control pane becomes ready."
 policy:

@@ -28,7 +28,7 @@ node scripts/agent/status.mjs --json --lines 80   # 查狀態，state: "ready" �
 node scripts/agent/stop.mjs --json       # 停止
 ```
 
-在 Claude Code 中可直接執行 `/launch-multi-ai-chat`，等同上述流程加上前後稽核。
+在 Claude Code 中可直接執行 `/launch-ai-consultant`，等同上述流程加上前後稽核。
 
 ### 方法三：自己建一支來用
 
