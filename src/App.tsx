@@ -1994,14 +1994,17 @@ export default function App() {
           />
           <div className="flex min-h-0 min-w-0 flex-1 flex-col">
             {/* 放大檢視時暫時收起選單區讓 webview 吃滿高度；流程跑起來之後選單是唯讀的，
-                縮到剩一小條把高度讓給流程追蹤與對話。checkpoint 是 inline 渲染在這個區塊內，
-                而且要輸入與按鈕，所以它在的時候兩種收合都不套用。 */}
+                縮到只剩一列模式項目，其餘高度讓給流程追蹤與對話。
+                notes: 4.5rem＝本區塊的 p-3（上下共 1.5rem）＋ PresetCatalog compact 項目的
+                       min-h-12（3rem）。PresetCatalog 改了那個高度，這裡要跟著改。
+                checkpoint 是 inline 渲染在這個區塊內，而且要輸入與按鈕，
+                所以它在的時候兩種收合都不套用。 */}
             <section
               id="workflow-control-shelf"
               aria-label={translate('preset.catalog.aria')}
               className={`shrink-0 overflow-auto border-b border-zinc-200 bg-zinc-50/80 p-3 dark:border-zinc-800 dark:bg-zinc-900/70 ${
                 stageExpanded && !checkpoint ? 'hidden' : ''
-              } ${isProcessing && !checkpoint ? 'max-h-[14vh]' : 'max-h-[42vh]'}`}
+              } ${isProcessing && !checkpoint ? 'max-h-[4.5rem]' : 'max-h-[42vh]'}`}
             >
               <PresetCatalog
                 mode={mode}
