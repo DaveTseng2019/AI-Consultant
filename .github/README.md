@@ -49,8 +49,7 @@ pnpm tauri dev        # 第一次 Rust 編譯較久
 
 ## 現況
 
-已發佈的版本在 [Releases](https://github.com/DaveTseng2019/AI-Consultant/releases)——每一版的異動寫在
-該版的說明裡。repo 裡的版號永遠是 `0.0.0`，真正的版號由 CI 從 tag 注入。app 可以檢查有沒有新版，
+repo 裡的版號永遠是 `0.0.0`，真正的版號由 CI 從 tag 注入。app 可以檢查有沒有新版，
 但不會自己下載或安裝。
 
 Windows x64 是實機驗證過的平台；macOS Apple Silicon 只有部分驗證（ad-hoc 簽章，Grok 曾卡在
@@ -58,6 +57,16 @@ Cloudflare 驗證）；Linux 目前只有 CI 建置，沒有實機回報。詳�
 [`docs/COMPATIBILITY.md`](../docs/COMPATIBILITY.md)。
 
 回報漏洞請走 GitHub Security 的私人表單，不要開公開 issue：[`SECURITY.md`](../SECURITY.md)。
+
+## 版本異動
+
+| 版本 | 日期 | 異動 |
+|---|---|---|
+| [v0.0.2](https://github.com/DaveTseng2019/AI-Consultant/releases/tag/v0.0.2) | 2026-08-21 | 在 provider 自己的畫面打的問題會進逐字稿；設定新增等寬字型 |
+| [v0.0.1](https://github.com/DaveTseng2019/AI-Consultant/releases/tag/v0.0.1) | 2026-08-21 | 首次發佈 |
+
+完整內容看各版的 release 說明。
+
 
 ## 文件
 
