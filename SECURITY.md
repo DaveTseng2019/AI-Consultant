@@ -14,7 +14,7 @@ Security fixes are maintained on the latest `main` branch and the latest publish
 
 Do not open a public issue for a vulnerability or include cookies, account data, conversation text, provider-page HTML, access tokens, or local profile files in a report.
 
-Use GitHub's private **Report a vulnerability** form under the repository Security tab. That form is the only reporting channel; do not open a public issue.
+Use GitHub's private **Report a vulnerability** form under the repository Security tab when available. Otherwise email [dave@micasa.tw](mailto:dave@micasa.tw) with the subject `[security] ai-consultant`.
 
 Please include:
 
@@ -39,6 +39,6 @@ Provider account security, provider service availability, provider terms, browse
 
 ## 繁體中文摘要
 
-請勿用公開 Issue 回報漏洞，也不要附上 cookie、帳號資料、對話文字、token、provider HTML 或本機 profile。請使用 GitHub Security 頁面的私人 **Report a vulnerability**，那是唯一的回報管道。
+請勿用公開 Issue 回報漏洞，也不要附上 cookie、帳號資料、對話文字、token、provider HTML 或本機 profile。優先使用 GitHub Security 頁面的私人 **Report a vulnerability**；若該功能不可用，請寄信至 [dave@micasa.tw](mailto:dave@micasa.tw)，主旨使用 `[security] ai-consultant`。
 
 遠端 provider webview 沒有 Tauri 權限；只有本機 `main` 控制介面可呼叫 app command。遠端 adapter 只能更新受限 JSON，不能新增或放寬 provider／登入／SSO 網域範圍。
