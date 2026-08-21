@@ -39,6 +39,7 @@ interface MacEngineState {
   bootId: string;
   adapterVersion: number;
   stop?: () => void;
+  finish?: () => void;
 }
 
 type InputStrategy = (el: Element, text: string, assertCanMutate: ChallengeMutationGuard) => void | Promise<void>;
@@ -191,6 +192,9 @@ class InactiveSendOperationError extends Error {
     bootId: bridge.bootId,
     adapterVersion: 0,
     stop,
+    // The user can see a finished answer that the detectors have not confirmed yet. finish()
+    // ends the wait by reading the response exactly as the normal completion path does.
+    finish: () => finishResponse(),
   };
 
   (window as unknown as { __MAC_REPORT__?: unknown }).__MAC_REPORT__ = {

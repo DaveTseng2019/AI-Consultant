@@ -208,6 +208,7 @@ export const ja: Record<I18nKey, string> = {
   'workflowRole.roundtable.phase4': '核心への収束',
   'workflowRole.roundtable.phase5': '最終統合',
   'stepTimeout.waiting': '{provider}を待っています：{seconds}秒',
+  'stepTimeout.takeAnswer': '回答は完了',
   'stepTimeout.title': 'ステップがタイムアウトしました',
   'stepTimeout.description': '{provider}はこのワークフローステップを完了しませんでした。',
   'stepTimeout.retry': '再試行',

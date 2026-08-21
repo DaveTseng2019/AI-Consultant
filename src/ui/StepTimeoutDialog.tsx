@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import type { Locale } from '../i18n/resolve';
 import { formatI18n, t } from '../i18n/t';
 import type { StepTimeoutAction } from '../workflow/stepTimeout';
-import { chooseTimeoutDialogAction } from './timeoutActions';
+import { chooseTimeoutDialogAction, takeVisibleAnswer } from './timeoutActions';
 import { ModalDialog } from './ModalDialog';
 
 export interface StepTimeoutDialogState {
@@ -34,8 +34,15 @@ export function StepTimeoutDialog({
 
   if (!event.timedOut) {
     return (
-      <div className="mt-2 border border-amber-300 dark:border-amber-900 bg-amber-50 dark:bg-amber-950 px-3 py-2 text-xs text-amber-800 dark:text-amber-200">
-        {formatI18n(t('stepTimeout.waiting', locale), { provider: event.provider, seconds: Math.ceil(remainingMs / 1000) })}
+      <div className="mt-2 flex items-center justify-between gap-3 border border-amber-300 dark:border-amber-900 bg-amber-50 dark:bg-amber-950 px-3 py-2 text-xs text-amber-800 dark:text-amber-200">
+        <span>{formatI18n(t('stepTimeout.waiting', locale), { provider: event.provider, seconds: Math.ceil(remainingMs / 1000) })}</span>
+        <button
+          type="button"
+          className="shrink-0 border border-amber-400 dark:border-amber-700 px-2 py-1 hover:bg-amber-100 dark:hover:bg-amber-900"
+          onClick={() => takeVisibleAnswer(event.provider)}
+        >
+          {t('stepTimeout.takeAnswer', locale)}
+        </button>
       </div>
     );
   }

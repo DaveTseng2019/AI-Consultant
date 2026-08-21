@@ -43,3 +43,11 @@ export async function stopProvider(provider: AIProvider): Promise<void> {
     "window.__MAC_ENGINE__ && typeof window.__MAC_ENGINE__.stop === 'function' && window.__MAC_ENGINE__.stop();",
   ).catch(() => undefined);
 }
+
+/** Take the answer the user can already see, instead of waiting for the detectors to confirm it. */
+export async function finishProviderResponse(provider: AIProvider): Promise<void> {
+  await host.provider.eval(
+    provider,
+    "window.__MAC_ENGINE__ && typeof window.__MAC_ENGINE__.finish === 'function' && window.__MAC_ENGINE__.finish();",
+  ).catch(() => undefined);
+}

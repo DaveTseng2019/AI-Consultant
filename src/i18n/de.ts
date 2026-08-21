@@ -208,6 +208,7 @@ export const de: Record<I18nKey, string> = {
   'workflowRole.roundtable.phase4': 'Kernkonvergenz',
   'workflowRole.roundtable.phase5': 'Abschlusssynthese',
   'stepTimeout.waiting': 'Warten auf {provider}: {seconds} s',
+  'stepTimeout.takeAnswer': 'Antwort ist fertig',
   'stepTimeout.title': 'Zeitüberschreitung im Schritt',
   'stepTimeout.description': '{provider} hat diesen Workflow-Schritt nicht abgeschlossen.',
   'stepTimeout.retry': 'Erneut versuchen',

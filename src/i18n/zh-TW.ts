@@ -196,6 +196,7 @@ export const zhTW: Record<I18nKey, string> = {
   'workflowRole.roundtable.phase4': '核心收斂',
   'workflowRole.roundtable.phase5': '真理浮現',
   'stepTimeout.waiting': '等待 {provider}：{seconds} 秒',
+  'stepTimeout.takeAnswer': '已完成回答',
   'stepTimeout.title': '步驟逾時',
   'stepTimeout.description': '{provider} 未完成這個 workflow 步驟。',
   'stepTimeout.retry': '重試',
