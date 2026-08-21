@@ -221,6 +221,15 @@ export function eventFromBridgeMessage(message: BridgeMessage): EventLogInput | 
       detail: { transport: message.transport ?? null },
     };
   }
+  if (message.action === 'NATIVE_PROMPT') {
+    const provider = safeProvider(message.provider);
+    return {
+      provider,
+      kind: 'response',
+      summary: `${provider ? providerName(provider) : 'Provider'} adopted a question typed in its own screen`,
+      detail: { action: message.action, length: typeof message.payload === 'string' ? message.payload.length : 0 },
+    };
+  }
   if (message.action === 'SEND_MESSAGE') return sendMessageEvent(message);
   if (message.action === 'REPORT_BROKEN') {
     const provider = safeProvider(message.provider);

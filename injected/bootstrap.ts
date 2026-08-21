@@ -315,7 +315,12 @@ interface MacBridge {
     bootId,
     emit(message: unknown) {
       const maybe = message as Partial<BridgeMessage>;
-      if (maybe.action === 'RESPONSE_CHUNK' || maybe.action === 'RESPONSE_DONE' || maybe.action === 'REPORT_BROKEN') {
+      if (
+        maybe.action === 'RESPONSE_CHUNK' ||
+        maybe.action === 'RESPONSE_DONE' ||
+        maybe.action === 'NATIVE_PROMPT' ||
+        maybe.action === 'REPORT_BROKEN'
+      ) {
         enqueueBulk({ action: maybe.action, payload: maybe.payload });
         return;
       }

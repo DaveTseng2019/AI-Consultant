@@ -90,6 +90,7 @@ export type MessageAction =
   | 'PUBLISH_HACKMD'
   | 'ADAPTER_UPDATE'
   | 'FILL_DRAFT'
+  | 'NATIVE_PROMPT'
   | 'REPORT_BROKEN';
 
 export interface BridgeMessage {

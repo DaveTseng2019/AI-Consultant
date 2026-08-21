@@ -780,6 +780,101 @@ describe('injected engine input hardening', () => {
     expect(env.emitted).toContainEqual({ v: 1, action: 'RESPONSE_DONE', provider: 'grok', payload: 'native answer' });
   });
 
+  it('adopts a question typed in the provider UI and reports the question and the answer', async () => {
+    vi.useFakeTimers();
+    const env = createEnv({ inputKind: 'textarea' });
+    const handler = await installEngine(env);
+    dispatchAdapter(handler, {
+      thinkingDetectors: ['.thinking'],
+      timing: { doneDelayMs: 10, chunkDebounceMs: 0, statusIntervalMs: 1_000_000, backupPollMs: 10 },
+    });
+
+    flushMutations();
+
+    env.input.setVisibleText('原生輸入的問題');
+    flushMutations();
+    env.input.setVisibleText('');
+    env.thinking = true;
+    flushMutations();
+    await flushMicrotasks();
+
+    expect(env.emitted).toContainEqual({
+      v: 1,
+      action: 'NATIVE_PROMPT',
+      provider: 'grok',
+      payload: '原生輸入的問題',
+    });
+
+    env.responses = [new FakeElement(env.document, 'div', '原生畫面的回答')];
+    env.thinking = false;
+    await vi.advanceTimersByTimeAsync(10);
+    await vi.advanceTimersByTimeAsync(10);
+
+    expect(env.emitted).toContainEqual({
+      v: 1,
+      action: 'RESPONSE_DONE',
+      provider: 'grok',
+      payload: '原生畫面的回答',
+    });
+  });
+
+  it('adopts a native turn when only a fresh answer element marks the send', async () => {
+    vi.useFakeTimers();
+    const env = createEnv({ inputKind: 'textarea' });
+    const handler = await installEngine(env);
+    dispatchAdapter(handler, {
+      thinkingDetectors: ['.thinking'],
+      timing: { doneDelayMs: 10, chunkDebounceMs: 0, statusIntervalMs: 1_000_000, backupPollMs: 10 },
+    });
+
+    env.input.setVisibleText('偵測不到 thinking 的問題');
+    flushMutations();
+    env.input.setVisibleText('');
+    flushMutations();
+    await flushMicrotasks();
+
+    env.responses = [new FakeElement(env.document, 'div', '仍然要收到的回答')];
+    await vi.advanceTimersByTimeAsync(400);
+
+    expect(env.emitted).toContainEqual({
+      v: 1,
+      action: 'NATIVE_PROMPT',
+      provider: 'grok',
+      payload: '偵測不到 thinking 的問題',
+    });
+
+    await vi.advanceTimersByTimeAsync(10);
+    await vi.advanceTimersByTimeAsync(10);
+    expect(env.emitted).toContainEqual({
+      v: 1,
+      action: 'RESPONSE_DONE',
+      provider: 'grok',
+      payload: '仍然要收到的回答',
+    });
+  });
+
+  it('does not adopt a draft the user cleared without the provider generating', async () => {
+    vi.useFakeTimers();
+    const env = createEnv({ inputKind: 'textarea' });
+    const handler = await installEngine(env);
+    dispatchAdapter(handler, {
+      thinkingDetectors: ['.thinking'],
+      timing: { doneDelayMs: 10, chunkDebounceMs: 0, statusIntervalMs: 1_000_000, backupPollMs: 10 },
+    });
+
+    flushMutations();
+
+    env.input.setVisibleText('打到一半又刪掉的問題');
+    flushMutations();
+    env.input.setVisibleText('');
+    flushMutations();
+    await vi.advanceTimersByTimeAsync(8000);
+    await flushMicrotasks();
+
+    expect(env.emitted.some((message) => message.action === 'NATIVE_PROMPT')).toBe(false);
+    expect(env.emitted.some((message) => message.action === 'RESPONSE_DONE')).toBe(false);
+  });
+
   it('ignores a newly rendered user prompt until the provider answer starts', async () => {
     vi.useFakeTimers();
     const env = createEnv({ inputKind: 'textarea' });
@@ -1481,6 +1576,7 @@ function installEngineGlobals(env: FakeDomEnv) {
   vi.stubGlobal('InputEvent', FakeInputEvent);
   vi.stubGlobal('ClipboardEvent', FakeClipboardEvent);
   vi.stubGlobal('DataTransfer', FakeDataTransfer);
+  mutationCallbacks.length = 0;
   vi.stubGlobal('MutationObserver', FakeMutationObserver);
 }
 
@@ -1543,9 +1639,15 @@ class FakeDataTransfer {
   }
 }
 
+const mutationCallbacks: MutationCallback[] = [];
+
+function flushMutations(): void {
+  for (const callback of [...mutationCallbacks]) callback([], undefined as unknown as MutationObserver);
+}
+
 class FakeMutationObserver {
-  constructor(_callback: MutationCallback) {
-    // no-op
+  constructor(callback: MutationCallback) {
+    mutationCallbacks.push(callback);
   }
 
   observe(_target: Node, _options?: MutationObserverInit) {

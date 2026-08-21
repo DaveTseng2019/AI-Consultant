@@ -88,6 +88,9 @@ const TURN_COMPLETION_SIGNALS: Partial<Record<AIProvider, { turn: string; comple
 // partial answer, while fresh response text or the ordinary thinking detectors keep the wait alive.
 const TURN_COMPLETION_CONFIRM_TIMEOUT_MS = 600_000;
 
+const NATIVE_TURN_POLL_MS = 400;
+const NATIVE_TURN_CONFIRM_TIMEOUT_MS = 8000;
+
 export function isLikelyPromptEcho(responseText: string, promptText: string): boolean {
   const trimmedResponse = responseText.trim();
   const trimmedPrompt = promptText.trim();
@@ -186,6 +189,8 @@ class InactiveSendOperationError extends Error {
   let lastResponseText = '';
   let lastCompletionActivityAt = 0;
   let pendingPromptText = '';
+  let nativeDraftText = '';
+  let nativeAdoptPending = false;
   let lastChunkTime = 0;
 
   window.__MAC_ENGINE__ = {
@@ -427,16 +432,7 @@ class InactiveSendOperationError extends Error {
       return undefined;
     }
 
-    const existingResponses = document.querySelectorAll(activeAdapter.responseSelectors.join(', '));
-    lastSeenResponseEl = existingResponses.length > 0 ? existingResponses[existingResponses.length - 1] : null;
-    responseBaselineEls = new Set(existingResponses);
-    responseGeneration += 1;
-    activeResponseGeneration = responseGeneration;
-    waitingForResponse = true;
-    lastResponseText = '';
-    lastCompletionActivityAt = Date.now();
-    pendingPromptText = text;
-    startResponsePolling();
+    armResponseWatch(activeAdapter, text);
 
     const injectionStartedAt = Date.now();
     const operation = challengeErrorAsDone ? 'send' : 'fill';
@@ -498,6 +494,73 @@ class InactiveSendOperationError extends Error {
         }, SEND_RETRY_DELAY_MS);
       })();
     }, preSendDelayMs);
+  }
+
+  function queryResponses(activeAdapter: AdapterConfig): Element[] {
+    return Array.from(document.querySelectorAll(activeAdapter.responseSelectors.join(', ')));
+  }
+
+  function armResponseWatch(activeAdapter: AdapterConfig, text: string, baseline?: Element[]) {
+    const existingResponses = baseline ?? queryResponses(activeAdapter);
+    lastSeenResponseEl = existingResponses.length > 0 ? existingResponses[existingResponses.length - 1] : null;
+    responseBaselineEls = new Set(existingResponses);
+    responseGeneration += 1;
+    activeResponseGeneration = responseGeneration;
+    waitingForResponse = true;
+    lastResponseText = '';
+    lastCompletionActivityAt = Date.now();
+    pendingPromptText = text;
+    startResponsePolling();
+  }
+
+  // A question typed straight into the provider's own composer never passes through SEND_MESSAGE
+  // or FILL_DRAFT, so nothing arms the response watch and the app records neither the question nor
+  // the answer. Watch the composer instead of the rendered user message: inputSelectors are the
+  // one prompt-side anchor every adapter already keeps current, while the rendered user bubble has
+  // no shared shape across providers. A composer that empties out is the same signal sendStarted()
+  // already trusts to tell that a send landed.
+  function watchNativeTurn() {
+    if (!adapter || waitingForResponse || draftStaging || nativeAdoptPending || activeSendOperation !== undefined) return;
+    const prompt = composerPromptText(queryFirst(adapter.inputSelectors));
+    if (prompt) {
+      nativeDraftText = prompt;
+      return;
+    }
+    const emptied = nativeDraftText;
+    if (!emptied) return;
+    nativeDraftText = '';
+    nativeAdoptPending = true;
+    void adoptNativeTurn(emptied).finally(() => {
+      nativeAdoptPending = false;
+    });
+  }
+
+  function composerPromptText(input: Element | null): string {
+    if (!input) return '';
+    if (input instanceof HTMLTextAreaElement) return input.value.trim();
+    // Not getInputText: textContent runs the paragraphs of a rich composer together, and the
+    // question is reported to the app as the user wrote it.
+    return serializeResponseText(input).trim();
+  }
+
+  async function adoptNativeTurn(prompt: string) {
+    const activeAdapter = adapter;
+    if (!activeAdapter) return;
+    // An emptied composer is not proof of a send: the user can also clear a draft by hand. Wait for
+    // the provider to answer for it. A fresh answer element counts alongside the thinking
+    // detectors, so a provider whose thinking markup drifted still gets its turn captured -- and
+    // the baseline is taken here, before that element exists, or the wait would skip it.
+    const baseline = queryResponses(activeAdapter);
+    const baselineEls = new Set(baseline);
+    const started = await retryLookup(
+      () => (isThinking() || queryResponses(activeAdapter).some((el) => !baselineEls.has(el)) ? true : null),
+      { intervalMs: NATIVE_TURN_POLL_MS, timeoutMs: NATIVE_TURN_CONFIRM_TIMEOUT_MS },
+    );
+    if (!started) return;
+    if (adapter !== activeAdapter || waitingForResponse || draftStaging || activeSendOperation !== undefined) return;
+    armResponseWatch(activeAdapter, prompt, baseline);
+    logEngine(`${activeAdapter.provider} adopted a native turn typed in the provider UI`);
+    bridge.emit({ v: 1, action: 'NATIVE_PROMPT', provider: activeAdapter.provider, payload: prompt });
   }
 
   async function fillDraft(text: string, providerHint?: AIProvider) {
@@ -922,6 +985,9 @@ class InactiveSendOperationError extends Error {
 
   function cancelResponseWait() {
     waitingForResponse = false;
+    // The composer was watched before this turn, not during it. Drop what it held so the empty
+    // composer this turn leaves behind cannot read as a second, native send.
+    nativeDraftText = '';
     clearTimersForResponse();
     responseBaselineEls.clear();
     pendingPromptText = '';
@@ -951,6 +1017,7 @@ class InactiveSendOperationError extends Error {
       return;
     }
     const observer = new MutationObserver(() => {
+      watchNativeTurn();
       if (!waitingForResponse) return;
       if (isThinking()) return;
       const currentText = getLatestResponseText();
@@ -972,6 +1039,7 @@ class InactiveSendOperationError extends Error {
       );
     });
     observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+    document.addEventListener('input', watchNativeTurn, true);
     observerInstalled = true;
   }
 

@@ -747,6 +747,15 @@ export default function App() {
         }
         return;
       }
+      if (message.action === 'NATIVE_PROMPT') {
+        const prompt = typeof message.payload === 'string' ? message.payload.trim() : '';
+        if (!prompt || !message.provider) return;
+        setMessages((current) => [
+          ...current,
+          { id: createConversationMessageId('user'), role: 'user', provider: message.provider, content: prompt, final: true },
+        ]);
+        return;
+      }
       if (!isRenderableResponseMessage(message) || !message.provider) return;
       setProcessTrace((current) => (current ? reduceProcessTraceEvent(current, message, localeRef.current) : current));
       let active = activeResponses.current.get(message.provider);
