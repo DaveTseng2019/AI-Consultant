@@ -71,7 +71,6 @@ Cloudflare 驗證）；Linux 目前只有 CI 建置，沒有實機回報。詳�
 ## 來源與授權
 
 由 [teddashh/multi-ai-chat-desktop](https://github.com/teddashh/multi-ai-chat-desktop) 衍生的
-獨立專案，不是它的 fork，也不再對它送 PR。程式碼在 2026-08-20 從上游的狀態分出來，之後各走各的：
-改動不必先想「上游會不會收」，也不必遷就上游的檔案結構與命名慣例。
+獨立專案。程式碼在 2026-08-20 從上游的狀態分出來。
 
 MIT，與來源專案相同。原始著作權屬 teddashh，歸屬說明見 [`NOTICE.md`](../NOTICE.md)。
