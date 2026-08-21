@@ -2226,8 +2226,13 @@ export default function App() {
               {adapterNoticeText(adapterNotice)}
             </div>
           ) : null}
+          {/* The drawer takes over this column: leaving the transcript and the composer under it
+              gives the user two scrollers and a text box that has nothing to do with what they
+              opened. Hidden rather than unmounted, so the transcript keeps its scroll position and
+              transcriptRef stays attached. */}
           <div
             ref={transcriptRef}
+            hidden={replayDrawerOpen}
             className="mt-3 min-h-0 flex-1 overflow-auto border-y border-zinc-200 dark:border-zinc-800 py-3"
             onScroll={(event) => {
               transcriptStickToEndRef.current = isTranscriptNearEnd(event.currentTarget);
@@ -2236,7 +2241,7 @@ export default function App() {
           >
             <ChatArea messages={messages} locale={locale} states={states} />
           </div>
-          <div className="shrink-0 border-t border-zinc-200 pt-2 dark:border-zinc-800">
+          <div hidden={replayDrawerOpen} className="shrink-0 border-t border-zinc-200 pt-2 dark:border-zinc-800">
             <InputBar
               onSend={send}
               onCancel={cancelWorkflow}
