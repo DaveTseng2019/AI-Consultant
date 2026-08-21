@@ -1,87 +1,136 @@
-# Compatibility and Smoke-Test Matrix / 相容性與人工測試矩陣
+# 相容性與人工測試矩陣
 
-> Last reviewed: 2026-07-31 for the v1.8.4 release candidate. This document records evidence, not a guarantee. Provider DOM and login flows can change without notice.
+> 最後檢視：2026-08-21，對應 `v0.0.2`。
+>
+> 這份文件記錄的是**實際觀察到的證據**，不是保證。provider 的 DOM 與登入流程隨時可能改變，
+> 而且下面每一筆實機證據都只來自維護者這一台機器。
 
-## Status legend
+## 狀態說明
 
-- **Verified** — exercised manually on the named platform or validated by a focused automated test.
-- **Partially verified** — real-device evidence exists, but at least one named path remains unverified or blocked.
-- **CI-only** — compiles/packages in GitHub Actions, but no maintainer end-user launch report is available.
-- **Pending** — needs a repeatable manual check before claiming support for that behavior.
+- **已驗證** — 在指名的平台上實際跑過，或有針對性的自動化測試覆蓋。
+- **僅 CI** — GitHub Actions 建得出產物，但沒有任何實機啟動回報。
+- **待驗** — 要有可重複的人工檢查，才能宣稱支援。
 
-## Desktop platforms
+## 桌面平台
 
-| Platform | Packaging evidence | End-user launch | Status |
+| 平台 | 打包證據 | 實機啟動 | 狀態 |
 |---|---|---|---|
-| Windows x64 | NSIS and portable builds; local development and packaged builds | Maintainer/user runs available | **Verified** |
-| macOS Apple Silicon | DMG builds in CI; embedded app is verified as ad-hoc signed | A `v1.0.1` user opened the app and logged into ChatGPT, Claude, and Gemini; Grok looped on Cloudflare verification | **Partially verified** |
-| Linux x86_64 | AppImage builds in CI with WebKitGTK dependencies | No maintainer desktop report yet | **CI-only** |
+| Windows x64 | NSIS 安裝檔與可攜版；本機開發版與打包版都建得出來 | 見下方 v0.0.2 紀錄 | **已驗證** |
+| macOS Apple Silicon | CI 建得出 `.dmg`，並掛載驗證內嵌 `.app` 的 ad-hoc 簽章 | 無 | **僅 CI** |
+| Linux x86_64 | CI 用 WebKitGTK 相依建得出 `.AppImage` | 無 | **僅 CI** |
 
-macOS remains ad-hoc signed, not Developer ID signed or notarized. The Apple Silicon report confirms that the documented first-launch exception works, but does not make the build warning-free. Current source leaves provider permission APIs untouched, permits Cloudflare's required `about:blank` / `about:srcdoc` documents, defers the automation bridge on any detected Cloudflare or hCaptcha security-check page, and never monkey-patches Grok's History API. A native Tauri title observer marks known Grok challenge titles as blocked, and a bounded read-only host probe covers embedded Turnstile widgets whose top-level title remains unchanged. Neither path starts the injected bridge or changes the challenge page. Automated tests cover this policy, but a live Apple Silicon retest is still required.
+macOS 只有 ad-hoc 簽章，不是 Developer ID 簽章、也沒有公證；Windows 產物完全沒有簽章。
+兩者都是[凍結的發佈政策](./RELEASE.md)，不是待辦。
 
-## Agent-ready source lane
+### v0.0.2 Windows 實測（2026-08-21）
 
-| Evidence | Windows | macOS / Linux | Status |
+環境：Windows 11 專業版 `10.0.26200`、WebView2 Runtime `151.0.4129.93`。測的是 CI 產出的
+**可攜版**，不是本機建置，也不是 dev。
+
+| 項目 | 結果 |
+|---|---|
+| 可攜版 zip 結構 | `ai-consultant.exe` ＋ `PORTABLE` 標記檔 ＋ `README-portable.txt` |
+| 版號注入 | 兩支 exe 的 FileVersion／ProductVersion 都是 `0.0.2`（repo 釘 `0.0.0`，由 CI 從 tag 注入） |
+| Authenticode 簽章 | `NotSigned`，與政策相符 |
+| 啟動 | 成功，WebView2 正常載入 |
+| 四家 provider 登入 | 全部就緒 |
+| 等寬字型設定 | 正常 |
+| 原生畫面問答擷取 | 正常 |
+
+尚未驗：NSIS 安裝檔沒有實際安裝過；影像生成、匯出、更新檢查等下方清單的其他項目在這一版
+沒有逐項重跑。
+
+**可攜版不會隔離資料。** `PORTABLE` 標記只讓 app 隱藏更新檢查介面（`src-tauri/src/settings.rs`
+的 `portable_marker_exists`），設定與登入狀態仍走 `app_data_dir()`，跟安裝版共用同一份。
+換一台電腦不會帶著登入狀態走，也會在原本那台留下痕跡。
+
+## Agent 原始碼啟動通道
+
+| 證據 | Windows | macOS / Linux | 狀態 |
 |---|---|---|---|
-| Manifest/schema and Skill drift tests | 22 focused tests pass locally | The same 22 tests pass in Windows, macOS, and Linux CI jobs | **Verified** as a source contract; GUI launch remains separate |
-| Doctor/audit/dry-run JSON | Exercised locally; dry-run preserves runtime state | Node contract paths pass on all three CI operating systems | Windows **Verified**; others **CI-only** |
-| App-level READY wait | Three live source-launch smokes reached the same-run, identity-verified control-pane READY marker on 2026-07-12; stale/replacement/missing-state tests also pass | No real-device source-launch report | Windows **Verified**; others **Pending** |
-| Launch/stop race safety | Live smokes released the fail-closed launch mutex; audit probes detected generated/target/runtime changes; stop re-verified before kill and before same-run state deletion; foreign/EPERM tests pass | Same code path, not manually exercised | Windows **Verified**; others **Pending** |
-| Corrupt state recovery | Default stop refused malformed state and preserved it; explicit `--clear-invalid-state` removed only the state file, then a normal launch/stop completed | Not manually exercised | Windows **Verified**; others **Pending** |
+| manifest／schema 與 Skill 漂移測試 | `pnpm agent:verify` 21 項本機通過 | 同一組測試在三個 CI 作業系統上通過 | 原始碼契約**已驗證**；GUI 啟動另計 |
+| doctor／audit／dry-run JSON | 本機跑過，dry-run 不寫入任何執行期狀態 | Node 契約路徑在三個 CI 作業系統上通過 | Windows **已驗證**；其餘**僅 CI** |
+| app 層級的 READY 等待 | 本機多次 `agent:launch --wait` 取得同一次執行、身分已驗證的 READY 標記 | 無實機回報 | Windows **已驗證**；其餘**待驗** |
+| 啟動／停止的競態安全 | 實測釋放了 fail-closed 的啟動 mutex；stop 在 kill 與刪除同執行狀態前重新驗證身分；foreign／EPERM 測試通過 | 同一段程式碼，未實際操作 | Windows **已驗證**；其餘**待驗** |
+| 損毀狀態的復原 | 預設的 stop 拒絕格式錯誤的狀態檔並保留它；`--clear-invalid-state` 只刪狀態檔，之後正常啟停 | 未實際操作 | Windows **已驗證**；其餘**待驗** |
 
-The Agent contract does not claim that CI displayed a window. It also does not install host prerequisites, inventory the full OS, sandbox checked-out code, upload receipts, or roll back host changes. See [`AGENT-READY-SOURCE-RELEASE.md`](./AGENT-READY-SOURCE-RELEASE.md).
+Agent 契約不宣稱 CI 顯示過視窗。它也不安裝宿主前置、不盤點作業系統、不沙箱化 checkout 的程式碼、
+不上傳收據、不回滾宿主變更。見 [`AGENT-READY-SOURCE-RELEASE.md`](./AGENT-READY-SOURCE-RELEASE.md)。
 
-The v2.0.0 source contract supports Node.js `^22.13.0 || >=24.0.0`, matching the locked pnpm and lint toolchain. `agent:doctor` rejects unsupported Node versions and stops instead of presenting an invalid source launch as ready. This requirement applies only to source development; packaged desktop users do not need Node.js.
+v2.0.0 的原始碼契約支援 Node.js `^22.13.0 || >=24.0.0`，對應鎖定的 pnpm 與 lint 工具鏈。
+`agent:doctor` 會擋掉不支援的 Node 版本並停下來，而不是把無效的啟動當成就緒。
+這個需求只影響原始碼開發，打包版使用者不需要 Node.js。
 
-## Provider adapters
+## Provider adapter
 
-| Provider | Bundled adapter | Windows text workflow evidence | Image-only completion |
+| Provider | 內建 adapter | 自動化覆蓋 | 實機證據 |
 |---|---:|---|---|
-| ChatGPT | v6 | v4 text workflow **Verified**; v5 mismatch recovery and v6 logged-out precedence have automated coverage and await live retest | Partial manual coverage; recheck after provider UI changes |
-| Claude | v4 | v3 text workflow **Verified**; v4 login-page detection and explicit Google SSO scope have automated coverage and await live retest | Not a compatibility claim |
-| Gemini | v2 | Base text workflow **Verified**; bounded Google `/sorry` navigation, blocked status, and passive bridge behavior have automated coverage and await live retest | Not a compatibility claim |
-| Grok | v7 | Base text workflow **Verified**; a Windows 11 / WebView2 150 fresh-profile prototype completed Turnstile and embedded login; challenge-first delayed handoff, watchdog recovery, mutation refusal, and same-document auth-popup reload coordination have automated coverage and await a live retest | Not a compatibility claim |
+| ChatGPT | v6 | 結構、logged-out 優先序、完成標記 | v0.0.2 打包版登入就緒 |
+| Claude | v4 | 結構、登入頁偵測、明確的 Google SSO 範圍 | v0.0.2 打包版登入就緒 |
+| Gemini | v2 | 結構、Google `/sorry` 的有界導航與 blocked 狀態 | v0.0.2 打包版登入就緒，原生畫面問答擷取正常 |
+| Grok | v7 | 結構、challenge 優先的延後接手、watchdog 復原、challenge 期間拒絕變更 DOM | v0.0.2 打包版登入就緒 |
 
-Automated tests validate adapter structure, schema v1/v2 parser compatibility, typed detector rejection, logged-out precedence, approved strategies, HTTPS URL parsing, and navigation boundaries. They do not log into live provider accounts. Remote adapter updates cannot expand the URL scopes bundled with the installed app.
+自動化測試驗證 adapter 結構、schema v1／v2 解析相容性、型別化 detector 的拒絕、logged-out 優先序、
+許可的策略、HTTPS URL 解析與導航邊界。它們**不會**登入真實帳號。遠端 adapter 更新無法擴張
+安裝版內建的 URL 範圍。
 
-Claude's current consumer web experience requires an authenticated account. Adapter v4 recognizes common email-login fields and keeps the official Anthropic and Google sign-in routes within the existing bounded SSO policy. The app does not bypass login, age, subscription, challenge, or other provider-side requirements; guided workflows that assign a Claude seat remain blocked until Claude reports a ready composer.
+app 不繞過登入、年齡、訂閱、challenge 或任何 provider 端的要求；指派了某家席次的引導式流程，
+會一直卡住直到那家回報輸入框就緒。
 
-macOS note: the `v1.0.1` report verified ChatGPT, Claude, and Gemini login, but Grok remained on Cloudflare's security-verification page. Current source omits the document-start bridge and permission shim for Grok while retaining the background-liveness settings required by hidden provider panes. A single atomic driver reads the shared Cloudflare/hCaptcha title, body, and marker signals before changing provider state or creating the bridge, then retries unresolved and blocked documents through page-load events and the host watchdog. Known challenge titles include the Traditional Chinese `安全驗證` variant, and an already-running engine refuses fill, send, and stop mutations while a challenge is active. Closing an allowlisted Grok authentication popup can reserve one same-document native reload; owner/epoch gates, close invalidation, rollback, and a bounded navigation-start lease prevent duplicate or permanently wedged recovery without evaluating the blocked document. A Windows 11 test with WebView2 Runtime `150.0.4078.99` completed the live challenge and embedded login using a broader prototype configuration; the final popup-close handoff and non-Windows behavior still require live confirmation. The app does not automate or bypass the challenge.
+Gemini 可能把內嵌 session 導去 `https://www.google.com/sorry/index?...`。目前的程式只允許
+Gemini 走 HTTPS 的 `www.google.com/sorry` 路徑族，把它回報為 blocked 而不是已登入，在那裡跳過
+permission shim，並延後 bridge 啟動直到 Google 導回 Gemini。兄弟路徑、相似網域、非 HTTPS 的
+URL 與跨 provider 使用一律拒絕。實際完成一次 challenge 仍待人工驗證。
 
-Gemini may redirect an embedded session to `https://www.google.com/sorry/index?...`. Current source allows only the HTTPS `www.google.com/sorry` path family for Gemini, reports it as blocked instead of logged in, skips the permission shim there, and defers bridge startup until Google returns to Gemini. Sibling paths, lookalike hosts, non-HTTPS URLs, and cross-provider use remain denied. A live challenge completion still requires manual verification.
+Grok 的 Cloudflare challenge：單一原子化的 driver 會在改變 provider 狀態或建立 bridge 之前，
+一次讀完共用的 Cloudflare／hCaptcha 標題、內文與標記訊號，再透過頁面載入事件與宿主 watchdog
+重試未解決與被擋下的文件。已知的 challenge 標題含正體中文的「安全驗證」。已經在跑的 engine
+會在 challenge 期間拒絕 fill、send 與 stop。關閉允許清單內的 Grok 登入彈窗可以保留一次同文件的
+原生重載；owner／epoch 閘門、關閉時失效、回滾與有界的導航起始租約，防止重複或永久卡死的復原，
+過程中不會對被擋下的文件求值。**app 不會自動化或繞過 challenge。**
 
-## Product behavior
+## 產品行為
 
-| Area | Automated evidence | Manual release check |
+下表的「自動化證據」全部來自本 repo 的測試套件（`pnpm test` 493 項、`pnpm agent:verify` 21 項、
+`cargo test` 87 項，2026-08-21 全綠）。「發佈前人工檢查」是清單，不是已完成的紀錄——
+v0.0.2 只跑了上面 Windows 實測那一節列出的項目。
+
+| 範圍 | 自動化證據 | 發佈前人工檢查 |
 |---|---|---|
-| Free mode | Four-provider fan-out tests | Send to all selected providers; verify each final response |
-| Debate / consultation / coding | Golden graph ordering, prompt threading, four-provider default assignment, unavailable-provider preflight, configurable roles, bounded retry, and terminal provider-error tests | Complete one default run; verify role labels and final summary |
-| Roundtable | Five-round, four-seat history, four-provider default coverage, configurable assignment, repeated-seat preflight, and unavailable-provider tests | Complete one run; verify prior same-session speeches remain available |
-| Brainstorm | Twelve rounds × four rotating seats, four-provider defaults, four distinct lenses, 48-step history threading, five phase prompts, preflight, localization, and snapshot tests | Allow 45–90 minutes; verify four contributions per round and a consolidated portfolio from the final speaker |
-| Long provider work | Thinking, pulled chunks, bulk-ready, and done-ready activity refresh a 10-minute inactivity window; ChatGPT completion-marker tests cover more than 10 minutes of active thinking and fail closed after true completion inactivity; tests also enforce a 60-minute bridge hard cap | Run one provider task beyond 10 minutes, then verify a truly stalled task still terminates |
-| Session isolation | Conversation persistence and latest-snapshot matching tests | Create two sessions; confirm no messages or export provenance cross over |
-| Restored-session continuity | Stable response-identity and bounded same-session replay tests | Reopen a session, ask a follow-up, and confirm old context is available without cross-session leakage |
-| Response fidelity | DOM-to-Markdown tests for paragraphs, nested lists, links, fenced code, direct/nested tables, image-only fallback, finish-time revisions/shortening, late render batches, and literal replacement patterns in code | Compare a slowly completed provider answer containing code and a table with the captured transcript; confirm the final provider DOM and transcript match |
-| Transcript scrolling | Near-bottom and user-scroll intent tests; scroll-linked provider focus, resize/reflow recalculation, pre-first-message boundary, binary lookup, and maximized-workspace tests | Stream a long answer, scroll upward, resize the window, maximize/restore the transcript, and confirm the provider chip and reading position remain stable |
-| Session quota recovery | Quota-only eviction, transient-failure preservation, and persisted-state result tests | Fill local history near quota and confirm only the oldest sessions are removed |
-| Snapshot / replay | Schema, redaction, version mismatch, replay, and app-version tests | Save/replay once when local snapshot persistence is enabled |
-| Markdown export | Formatting and provenance tests | Confirm UTC time, app version, latest matching workflow/snapshot, and adapter versions |
-| Adapter hot update | Rust validation, version gate, cache, and URL-scope tests | Use a higher-version test adapter on an allowed host scope |
-| Control-pane security | Capability and CSP configuration tests | Confirm Settings update check and export still work in a packaged build |
+| 自由模式 | 四家 fan-out 測試 | 送給所有選定的 provider，確認每一家的最終回應 |
+| 辯證／諮詢／coding | 標準流程圖順序、提示串接、四家預設指派、provider 不可用的 preflight、可設定的角色、有界重試、終端錯誤 | 跑完一次預設流程，確認角色標籤與最終總結 |
+| 道理辯證 | 五輪四席歷史、四家預設覆蓋、可設定指派、重複席次 preflight | 跑完一次，確認同一 session 稍早的發言仍可取用 |
+| Brainstorm | 12 輪 × 4 席輪轉、四家預設、四種視角、48 步歷史串接、五段階段提示、preflight、在地化、快照 | 預留 45～90 分鐘，確認每輪四則貢獻與最後一位的整合成果 |
+| 長時間作答 | thinking、pull 到的片段、bulk-ready、done-ready 都會刷新 10 分鐘無活動視窗；ChatGPT 完成標記測試涵蓋超過 10 分鐘的持續思考並在真正停止後 fail closed；另有 60 分鐘硬上限 | 跑一個超過 10 分鐘的任務，再確認真的卡住的任務仍會結束 |
+| Session 隔離 | 對話持久化與最新快照比對 | 建兩個 session，確認訊息與匯出出處不互相污染 |
+| 還原 session 的延續性 | 穩定的回應識別與有界的同 session 重播 | 重開一個 session 追問，確認舊脈絡可用且不跨 session 外洩 |
+| 回應保真度 | DOM 轉 Markdown：段落、巢狀清單、連結、圍籬程式碼、直接與巢狀表格、純圖片 fallback、完成時的修訂與縮短、延遲的渲染批次、程式碼裡的字面取代樣式 | 比對一則含程式碼與表格、慢慢完成的回答，確認最終 DOM 與逐字稿一致 |
+| 原生畫面問答擷取 | 輸入框清空視為送出、thinking 或新回答節點二擇一確認、手動清稿不採用 | 直接在 provider 自己的輸入框打字送出，確認問題與回答都進逐字稿 |
+| 逐字稿捲動 | 接近底部與使用者捲動意圖；捲動連動的 provider 焦點、resize／回流重算、首則訊息前的邊界、二分查找、最大化工作區 | 串流一則長回答，往上捲、改變視窗大小、最大化再還原，確認 provider chip 與閱讀位置穩定 |
+| Session 配額復原 | 只因配額驅逐、暫時性失敗保留、持久化狀態結果 | 把本機歷史填到接近配額，確認只有最舊的 session 被移除 |
+| 快照／重播 | schema、遮蔽、版本不符、重播、app 版號 | 啟用本機快照持久化後存檔並重播一次 |
+| Markdown 匯出 | 格式與出處 | 確認 UTC 時間、app 版號、最新的相符流程／快照與 adapter 版號 |
+| Adapter 熱更新 | Rust 驗證、版本閘門、快取、URL 範圍 | 在允許的 host 範圍內用一份版號更高的測試 adapter |
+| 控制台安全性 | capability 與 CSP 設定 | 確認打包版的「設定 → 檢查更新」與匯出仍能運作 |
 
-## Release smoke checklist
+## 發佈前的人工冒煙清單
 
-1. Install or launch the platform artifact on a clean profile.
-2. Open and authenticate each provider using a non-sensitive test account where possible. Claude requires its official Google or email login flow; do not call Claude ready until the composer appears.
-   On Windows, close Grok's in-app authentication popup after completing login and confirm the blocked pane reloads once and becomes Ready without a manual reload.
-   On macOS, explicitly confirm that Grok exits the Cloudflare verification page before calling the release verified.
-3. Verify prompt insertion, automatic send, thinking state, text completion, and new-session reset.
-4. Run Free mode and one serial mode; cancel one in-progress run.
-5. Generate an image on a supporting provider and confirm the workflow reaches completion without relying on text-only output.
-6. Export Markdown and inspect provenance; create a new app session and verify history isolation.
-7. In the installed build, open Settings, check for updates, switch themes and interface languages, and review the author/sponsor links. In the portable build, confirm update controls are hidden and `README-PORTABLE.txt` links to the latest GitHub Release. With Response language set to Auto, verify an English question receives English text and a Traditional Chinese question receives Traditional Chinese text regardless of the interface language; then verify a fixed response-language choice. In particular, confirm Grok answers the request instead of reproducing the internal `<response-language-policy>` block.
-8. Export a sanitized debug bundle only if a failure occurs; never attach secrets or raw provider-page content.
+1. 在乾淨的環境安裝或啟動該平台的產物。
+2. 盡量用非敏感的測試帳號登入每一家。Claude 走它官方的 Google 或 email 流程；輸入框沒出現之前
+   不要當它就緒。Windows 上完成 Grok 登入後關掉它的內嵌彈窗，確認被擋下的面板會自己重載一次
+   並轉為就緒，不需要手動重載。macOS 上要明確確認 Grok 離開 Cloudflare 驗證頁，才能說這一版驗過。
+3. 確認提示插入、自動送出、thinking 狀態、文字完成與新 session 重置。
+4. 跑一次自由模式與一個串行模式，並取消一次進行中的執行。
+5. 在支援的 provider 上生成一張圖，確認流程不靠純文字輸出也能走完。
+6. 匯出 Markdown 檢查出處；開一個新的 app session，確認歷史彼此隔離。
+7. 安裝版：開設定、檢查更新、切換主題與介面語言、看作者／贊助連結。可攜版：確認更新介面隱藏，
+   且 `README-portable.txt` 連到最新的 GitHub Release。回應語言設為 Auto 時，確認英文問題得到
+   英文、正體中文問題得到正體中文，與介面語言無關；再驗一次固定語言的選擇。特別確認 Grok 是
+   回答問題，而不是把內部的 `<response-language-policy>` 區塊照抄出來。
+8. 只有在失敗時才匯出經過清理的 debug bundle；絕不附上機密或原始的 provider 頁面內容。
 
 ## 回報方式
 
-若你有 macOS 或 Linux 實機，最有價值的回報是：OS/CPU、app 版本、安裝方式、是否能第一次開啟、四家 provider 的登入／自動送出／完成偵測，以及不含私人內容的 debug bundle。Adapter 問題請使用 GitHub 的 **Adapter broken** 表單；安全問題請依 [`SECURITY.md`](../SECURITY.md) 私下回報。
+若你有 macOS 或 Linux 實機，最有價值的回報是：OS/CPU、app 版本、安裝方式、是否能第一次開啟、
+四家 provider 的登入／自動送出／完成偵測，以及不含私人內容的 debug bundle。Adapter 問題請使用
+GitHub 的 **Adapter broken** 表單；安全問題請依 [`SECURITY.md`](../SECURITY.md) 私下回報。
