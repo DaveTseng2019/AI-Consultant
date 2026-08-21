@@ -311,6 +311,7 @@ export const zhTW: Record<I18nKey, string> = {
   'replay.loadingStoredSnapshots': '載入已儲存 snapshots...',
   'replay.noStoredSnapshots': '沒有已儲存 snapshots。請在設定中開啟 durable snapshots，重啟後才會保留重播紀錄。',
   'replay.unknownGraph': '未知 graph',
+  'replay.questionNotKept': '未保留原始問題',
   'replay.createdTimeUnknown': '建立時間未知',
   'replay.replay': '重播',
   'replay.delete': '刪除',

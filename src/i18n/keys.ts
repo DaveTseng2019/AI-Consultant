@@ -302,6 +302,7 @@ export const I18N_KEYS = [
   'replay.loadingStoredSnapshots',
   'replay.noStoredSnapshots',
   'replay.unknownGraph',
+  'replay.questionNotKept',
   'replay.createdTimeUnknown',
   'replay.replay',
   'replay.delete',

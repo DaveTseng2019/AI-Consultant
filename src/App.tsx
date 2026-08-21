@@ -2129,6 +2129,11 @@ export default function App() {
                     <path d="M12 7v5l3 2" />
                   </svg>
                   <span>{translate('replay.historyToggle')}</span>
+                  {/* The sky tint alone reads as "selected", not "expanded" - people pressed it
+                      twice without seeing that the second press closed the drawer again. */}
+                  <svg viewBox="0 0 24 24" className={`h-3.5 w-3.5 transition-transform ${replayDrawerOpen ? 'rotate-180' : ''}`} aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="m6 9 6 6 6-6" />
+                  </svg>
                 </button>
                 <button
                   type="button"

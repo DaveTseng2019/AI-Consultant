@@ -108,7 +108,7 @@ describe('ReplayPanel', () => {
   it('renders stored snapshots newest first and wires replay and delete actions', async () => {
     vi.mocked(host.snapshot.list).mockResolvedValue([
       { id: 'snapshot-old', graphId: 'free', createdAt: '2026-07-05T00:00:00.000Z' },
-      { id: 'snapshot-new', graphId: 'debate', createdAt: '2026-07-06T00:00:00.000Z' },
+      { id: 'snapshot-new', graphId: 'debate', createdAt: '2026-07-06T00:00:00.000Z', question: 'why is the sky blue' },
     ]);
     const panel = new ReplayPanel({});
 
@@ -117,7 +117,10 @@ describe('ReplayPanel', () => {
     const html = renderToStaticMarkup(tree);
 
     expect(html.indexOf('snapshot-new')).toBe(-1);
-    expect(html.indexOf('debate')).toBeLessThan(html.indexOf('free'));
+    // A row is identified by what was asked. Ordering is checked through those titles: the newer
+    // snapshot kept its question, the older one was redacted and has to say so rather than fall
+    // back to an internal graph id nobody chose the mode by.
+    expect(html.indexOf('why is the sky blue')).toBeLessThan(html.indexOf(t('replay.questionNotKept', 'en')));
 
     propsOf(buttonWithText(tree, t('replay.replay', 'en'))).onClick?.();
     await vi.waitFor(() =>

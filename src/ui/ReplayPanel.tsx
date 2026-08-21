@@ -1,7 +1,8 @@
 import { Component, type ChangeEvent, type FormEvent } from 'react';
 import { AI_PROVIDERS } from '../../shared/constants';
-import type { AIProvider } from '../../shared/types';
+import type { AIProvider, ChatMode } from '../../shared/types';
 import type { I18nKey } from '../i18n/keys';
+import { MODE_NAME_KEYS, modeName } from '../i18n/modes';
 import type { Locale } from '../i18n/resolve';
 import { formatI18n, t } from '../i18n/t';
 import { host, type StoredSnapshotInfo } from '../host';
@@ -179,9 +180,18 @@ export class ReplayPanel extends Component<ReplayPanelProps, ReplayPanelState> {
             <div className="flex items-center justify-between gap-3">
               <div>
                 <h4 className="text-xs font-semibold uppercase text-zinc-700 dark:text-zinc-300">{this.t('replay.lastRun')}</h4>
-                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-500">
-                  {lastSnapshot ? `${lastSnapshot.graphId} - ${localTime(lastSnapshot.createdAt, this.locale())}` : this.t('replay.noInMemorySnapshot')}
-                </p>
+                {lastSnapshot ? (
+                  <>
+                    <p className="mt-1 truncate text-xs font-medium text-zinc-900 dark:text-zinc-100" title={lastSnapshot.userQuestion.text}>
+                      {lastSnapshot.userQuestion.text || this.t('replay.questionNotKept')}
+                    </p>
+                    <p className="text-xs text-zinc-500 dark:text-zinc-500">
+                      {graphLabel(lastSnapshot.graphId, this.locale())} · {localTime(lastSnapshot.createdAt, this.locale())}
+                    </p>
+                  </>
+                ) : (
+                  <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-500">{this.t('replay.noInMemorySnapshot')}</p>
+                )}
               </div>
               {lastSnapshot ? (
                 <button
@@ -227,8 +237,12 @@ export class ReplayPanel extends Component<ReplayPanelProps, ReplayPanelState> {
                   return (
                     <div key={snapshot.id} className="grid gap-2 p-2 text-xs sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
                       <div className="min-w-0">
-                        <div className="truncate font-medium text-zinc-900 dark:text-zinc-100">{snapshot.graphId ?? this.t('replay.unknownGraph')}</div>
-                        <div className="truncate text-zinc-500 dark:text-zinc-500">{localTime(snapshot.createdAt, this.locale()) ?? this.t('replay.createdTimeUnknown')}</div>
+                        <div className="truncate font-medium text-zinc-900 dark:text-zinc-100" title={snapshot.question}>
+                          {snapshot.question || this.t('replay.questionNotKept')}
+                        </div>
+                        <div className="truncate text-zinc-500 dark:text-zinc-500">
+                          {graphLabel(snapshot.graphId, this.locale())} · {localTime(snapshot.createdAt, this.locale()) ?? this.t('replay.createdTimeUnknown')}
+                        </div>
                       </div>
                       <div className="flex gap-2">
                         <button
@@ -434,6 +448,13 @@ function localTime(value: string | undefined, locale: Locale): string | undefine
   const parsed = Date.parse(value ?? '');
   if (!Number.isFinite(parsed)) return value;
   return new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'medium' }).format(parsed);
+}
+
+// The stored graphId is an internal id ('debate', 'consult'). Show the name the user picked the
+// mode by, and fall back to the raw id for a graph this build no longer knows.
+function graphLabel(graphId: string | undefined, locale: Locale): string {
+  if (!graphId) return t('replay.unknownGraph', locale);
+  return graphId in MODE_NAME_KEYS ? modeName(graphId as ChatMode, locale) : graphId;
 }
 
 function snapshotTime(snapshot: StoredSnapshotInfo): number {

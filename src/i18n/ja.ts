@@ -324,6 +324,7 @@ export const ja: Record<I18nKey, string> = {
   'replay.loadingStoredSnapshots': '保存済みスナップショットを読み込み中...',
   'replay.noStoredSnapshots': '保存済みスナップショットはありません。再起動後も記録を残すには、設定で永続スナップショットを有効にしてください。',
   'replay.unknownGraph': '不明なグラフ',
+  'replay.questionNotKept': '元の質問は保存されていません',
   'replay.createdTimeUnknown': '作成日時不明',
   'replay.replay': '再実行',
   'replay.delete': '削除',

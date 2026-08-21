@@ -16,6 +16,10 @@ pub struct SnapshotListEntry {
     pub created_at: Option<String>,
     #[serde(rename = "completedAt", skip_serializing_if = "Option::is_none")]
     pub completed_at: Option<String>,
+    /// Only present at the full-local retention tier, where the question is kept verbatim.
+    /// Every other tier stores a hash or nothing, and the list shows the mode name instead.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub question: Option<String>,
 }
 
 #[derive(Debug)]
@@ -216,6 +220,7 @@ fn snapshot_list_entry(id: String, snapshot_json: &str) -> SnapshotListEntry {
         graph_id: string_field(parsed.as_ref(), "graphId"),
         created_at: string_field(parsed.as_ref(), "createdAt"),
         completed_at: string_field(parsed.as_ref(), "completedAt"),
+        question: string_field(parsed.as_ref().and_then(|value| value.get("userQuestion")), "text"),
     }
 }
 
@@ -244,6 +249,27 @@ mod tests {
     }
 
     #[test]
+    fn a_redacted_question_leaves_the_list_entry_without_one() {
+        let dir = unique_dir("redacted-question");
+        // Only the full-local tier keeps the text. A hashed question must not reach the list as
+        // some placeholder string, or the panel would show a hash where a question belongs.
+        let body = json!({
+            "snapshotId": "snap-h",
+            "graphId": "debate",
+            "userQuestion": { "tier": "hashed", "kind": "hash", "sha256": "abc123" },
+        })
+        .to_string();
+
+        save_snapshot_to_dir(&dir, "snap-h", &body, SNAPSHOT_RETENTION).expect("save snapshot");
+        let listed = list_snapshots_in_dir(&dir).expect("list snapshots");
+
+        assert_eq!(listed.len(), 1);
+        assert_eq!(listed[0].question, None);
+
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
     fn save_load_list_and_delete_round_trip() {
         let dir = unique_dir("roundtrip");
         let body = json!({
@@ -251,6 +277,7 @@ mod tests {
             "graphId": "debate",
             "createdAt": "2026-07-06T01:00:00.000Z",
             "completedAt": "2026-07-06T01:01:00.000Z",
+            "userQuestion": { "tier": "full-local", "kind": "inline", "text": "why is the sky blue" },
         })
         .to_string();
 
@@ -267,6 +294,7 @@ mod tests {
                 graph_id: Some("debate".to_string()),
                 created_at: Some("2026-07-06T01:00:00.000Z".to_string()),
                 completed_at: Some("2026-07-06T01:01:00.000Z".to_string()),
+                question: Some("why is the sky blue".to_string()),
             }]
         );
 

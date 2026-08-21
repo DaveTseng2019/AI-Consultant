@@ -324,6 +324,7 @@ export const de: Record<I18nKey, string> = {
   'replay.loadingStoredSnapshots': 'Gespeicherte Snapshots werden geladen...',
   'replay.noStoredSnapshots': 'Keine gespeicherten Snapshots. Aktiviere dauerhafte Snapshots in den Einstellungen, um Wiederholungsdaten nach einem Neustart zu behalten.',
   'replay.unknownGraph': 'unbekannter Graph',
+  'replay.questionNotKept': 'Ursprüngliche Frage nicht gespeichert',
   'replay.createdTimeUnknown': 'Erstellungszeit unbekannt',
   'replay.replay': 'Wiederholen',
   'replay.delete': 'Löschen',

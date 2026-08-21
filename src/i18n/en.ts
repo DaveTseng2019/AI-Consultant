@@ -322,6 +322,7 @@ export const en: Record<I18nKey, string> = {
   'replay.loadingStoredSnapshots': 'Loading stored snapshots...',
   'replay.noStoredSnapshots': 'No stored snapshots. Turn on durable snapshots in Settings to keep replay records after restart.',
   'replay.unknownGraph': 'unknown graph',
+  'replay.questionNotKept': 'Original question not kept',
   'replay.createdTimeUnknown': 'created time unknown',
   'replay.replay': 'Replay',
   'replay.delete': 'Delete',

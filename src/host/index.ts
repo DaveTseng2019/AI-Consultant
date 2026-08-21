@@ -10,6 +10,8 @@ export interface StoredSnapshotInfo {
   graphId?: string;
   createdAt?: string;
   completedAt?: string;
+  /** Kept verbatim only at the full-local retention tier; absent for every other tier. */
+  question?: string;
 }
 
 export interface NavBlockedPayload {
