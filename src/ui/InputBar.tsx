@@ -178,7 +178,9 @@ export function InputBar({
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
-      <div className="flex gap-2">
+      {/* items-end: the buttons are flex children, so by default they stretched to the
+          textarea's height - and it grows to 120px as you type, taking them with it. */}
+      <div className="flex items-end gap-2">
         <textarea
           ref={textareaRef}
           className="min-h-12 flex-1 resize-none border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 p-2 text-sm outline-none focus:border-emerald-500 disabled:opacity-50"
@@ -205,20 +207,20 @@ export function InputBar({
         />
         <button
           type="button"
-          className="border border-zinc-300 dark:border-zinc-700 px-3 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50"
+          className="h-9 shrink-0 border border-zinc-300 dark:border-zinc-700 px-3 text-xs hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50"
           onClick={() => fileInputRef.current?.click()}
           disabled={insertDisabled}
         >
           {isReadingFile ? t('input.reading', locale) : t('input.insertFile', locale)}
         </button>
         {isProcessing ? (
-          <button type="button" className="border border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-950 px-3 text-sm text-red-800 dark:text-red-100 hover:bg-red-100 dark:hover:bg-red-900" onClick={onCancel}>
+          <button type="button" className="h-9 shrink-0 border border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-950 px-3 text-xs text-red-800 dark:text-red-100 hover:bg-red-100 dark:hover:bg-red-900" onClick={onCancel}>
             {t('input.stop', locale)}
           </button>
         ) : null}
         <button
           type="button"
-          className="border border-emerald-300 dark:border-emerald-700 bg-emerald-600 text-white dark:bg-emerald-900 dark:text-zinc-100 px-4 text-sm hover:bg-emerald-700 dark:hover:bg-emerald-800 disabled:border-zinc-300 dark:disabled:border-zinc-700 disabled:bg-zinc-100 dark:disabled:bg-zinc-900 disabled:text-zinc-400 dark:disabled:text-zinc-600"
+          className="h-9 shrink-0 border border-emerald-300 dark:border-emerald-700 bg-emerald-600 text-white dark:bg-emerald-900 dark:text-zinc-100 px-3 text-xs hover:bg-emerald-700 dark:hover:bg-emerald-800 disabled:border-zinc-300 dark:disabled:border-zinc-700 disabled:bg-zinc-100 dark:disabled:bg-zinc-900 disabled:text-zinc-400 dark:disabled:text-zinc-600"
           onClick={() => void submit()}
           disabled={sendDisabled}
         >
