@@ -500,6 +500,10 @@ export default function App() {
   }, [appSettings.fontSize]);
 
   useEffect(() => {
+    document.documentElement.classList.toggle('app-mono', appSettings.monospaceFont);
+  }, [appSettings.monospaceFont]);
+
+  useEffect(() => {
     localeRef.current = locale;
   }, [locale]);
 

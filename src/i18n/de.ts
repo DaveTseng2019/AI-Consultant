@@ -265,6 +265,8 @@ export const de: Record<I18nKey, string> = {
   'settings.themeLight': 'Hell',
   'settings.themeDark': 'Dunkel',
   'settings.fontSize': 'Schriftgröße',
+  'settings.monospaceFont': 'Dicktengleiche Schrift',
+  'settings.monospaceFontDescription': 'Zeigt die ganze App in fester Zeichenbreite, damit Code und Tabellen bündig stehen.',
   'settings.autoNewConversationOnStart': 'Beim Start automatisch neue Unterhaltung öffnen',
   'settings.autoNewConversationOnStartDescription': 'Bei Aktivierung wird bei jedem Start eine neue Unterhaltung angelegt. Frühere Unterhaltungen bleiben im Verlauf erhalten.',
   'settings.adapterBaseUrl': 'Adapter-Basis-URL',

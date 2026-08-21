@@ -244,6 +244,8 @@ export const I18N_KEYS = [
   'settings.themeLight',
   'settings.themeDark',
   'settings.fontSize',
+  'settings.monospaceFont',
+  'settings.monospaceFontDescription',
   'settings.autoNewConversationOnStart',
   'settings.autoNewConversationOnStartDescription',
   'settings.adapterBaseUrl',

@@ -263,6 +263,8 @@ export const en: Record<I18nKey, string> = {
   'settings.themeLight': 'Light',
   'settings.themeDark': 'Dark',
   'settings.fontSize': 'Font size',
+  'settings.monospaceFont': 'Monospace font',
+  'settings.monospaceFontDescription': 'Show the whole app in a fixed-width font, so code and tables line up.',
   'settings.autoNewConversationOnStart': 'Start a new conversation automatically',
   'settings.autoNewConversationOnStartDescription': 'When enabled, a fresh conversation opens every time the app starts. Earlier conversations stay in history.',
   'settings.adapterBaseUrl': 'Adapter base URL',

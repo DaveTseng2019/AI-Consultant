@@ -29,6 +29,8 @@ export interface AppSettings {
   responseLanguage: ResponseLanguageSetting;
   theme: 'light' | 'dark';
   fontSize: number;
+  /** Render the whole app in a monospace stack. Code and tabular answers line up; prose does not. */
+  monospaceFont: boolean;
   autoNewConversationOnStart: boolean;
   layoutMode: 'focus';
   focusPaneWidth: number;
@@ -63,6 +65,7 @@ export function defaultSettings(): AppSettings {
     responseLanguage: 'auto',
     theme: 'light',
     fontSize: DEFAULT_FONT_SIZE,
+    monospaceFont: false,
     autoNewConversationOnStart: false,
     layoutMode: 'focus',
     focusPaneWidth: DEFAULT_FOCUS_PANE_WIDTH,
@@ -154,6 +157,7 @@ export function normalizeSettings(value: unknown): AppSettings {
     responseLanguage: normalizeResponseLanguageSetting(input.responseLanguage),
     theme: theme(input.theme, defaults.theme),
     fontSize: fontSize(input.fontSize),
+    monospaceFont: input.monospaceFont === true,
     autoNewConversationOnStart: input.autoNewConversationOnStart === true,
     layoutMode: 'focus',
     focusPaneWidth: focusPaneWidth(input.focusPaneWidth, input.columnWidths, defaults.focusPaneWidth),

@@ -253,6 +253,8 @@ export const zhTW: Record<I18nKey, string> = {
   'settings.themeLight': '淺色',
   'settings.themeDark': '深色',
   'settings.fontSize': '字體大小',
+  'settings.monospaceFont': '等寬字型',
+  'settings.monospaceFontDescription': '整個介面改用等寬字型，程式碼與表格會對齊。',
   'settings.autoNewConversationOnStart': '啟動時自動開啟新對話',
   'settings.autoNewConversationOnStartDescription': '開啟後，程式一啟動就會建立新對話，之前的對話仍保留在歷史紀錄中。',
   'settings.adapterBaseUrl': 'Adapter base URL',
