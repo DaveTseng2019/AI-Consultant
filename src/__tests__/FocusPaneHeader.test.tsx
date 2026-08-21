@@ -45,6 +45,7 @@ function renderFocusPane({
     <I18nProvider language="en">
       <FocusPane
         centeredProvider={centeredProvider ?? undefined}
+        onStepTimeoutClose={() => undefined}
         scrollFocusedProvider={scrollFocusedProvider}
         states={states(stateOverrides)}
         presentation={presentation}

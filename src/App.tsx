@@ -2039,9 +2039,6 @@ export default function App() {
                   </div>
                 </details>
               ) : null}
-              {stepTimeout && !stepTimeout.timedOut ? (
-                <StepTimeoutDialog event={stepTimeout} onClose={() => setStepTimeout(undefined)} locale={locale} />
-              ) : null}
             </section>
             <FocusPane
               centeredProvider={centeredProvider}
@@ -2065,6 +2062,8 @@ export default function App() {
               reportProvider={reportProvider}
               reportBusy={reportBusy}
               processTrace={processTrace}
+              stepTimeout={stepTimeout}
+              onStepTimeoutClose={() => setStepTimeout(undefined)}
               onTraceDetailOpenChange={setProcessTraceDetailOpen}
               onChipClick={(provider) => {
                 const container = transcriptRef.current;

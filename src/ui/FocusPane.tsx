@@ -11,6 +11,7 @@ import type { PresentationByProvider, WebviewPresentationState } from './present
 import { chipState, isStuckProvider } from './providerChipState';
 import { ProcessTrace } from './ProcessTrace';
 import type { ProcessTraceState } from './processTraceModel';
+import { StepTimeoutDialog, type StepTimeoutDialogState } from './StepTimeoutDialog';
 
 export type CenterSurface = 'text' | 'native';
 const PROVIDERS = Object.keys(AI_PROVIDERS) as AIProvider[];
@@ -41,6 +42,8 @@ export function FocusPane({
   reportProvider,
   reportBusy,
   processTrace,
+  stepTimeout,
+  onStepTimeoutClose,
   onTraceDetailOpenChange,
   onChipClick,
   stageExpanded = false,
@@ -67,6 +70,8 @@ export function FocusPane({
   reportProvider: (provider: AIProvider) => Promise<void>;
   reportBusy: boolean;
   processTrace?: ProcessTraceState;
+  stepTimeout?: StepTimeoutDialogState;
+  onStepTimeoutClose: () => void;
   onTraceDetailOpenChange?: (open: boolean) => void;
   onChipClick?: (provider: AIProvider) => void;
   stageExpanded?: boolean;
@@ -136,6 +141,12 @@ export function FocusPane({
             {t('provider.retry')}
           </button>
         </div>
+      ) : null}
+
+      {/* Above the trace, and never given up to an expanded stage: this is the one notice the
+          user has to act on, and in the settings column the native webviews cover it. */}
+      {stepTimeout && !stepTimeout.timedOut ? (
+        <StepTimeoutDialog event={stepTimeout} onClose={onStepTimeoutClose} locale={locale} />
       ) : null}
 
       {processTrace && !effectiveStageExpanded ? <ProcessTrace trace={processTrace} locale={locale} onDetailOpenChange={onTraceDetailOpenChange} /> : null}
