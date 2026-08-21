@@ -250,6 +250,6 @@ describe('debug bundle builder', () => {
     expect(chatgpt?.adapterVersion).toBe(7);
     expect(parsed.providers.map((provider) => provider.provider)).toEqual(providers);
     expect(parsed.eventLog).toContain('ChatGPT adapter update v7');
-    expect(debugBundleFilename(new Date('2026-07-05T01:02:03Z'))).toBe('multi-ai-chat-debug-2026-07-05-01-02-03.txt');
+    expect(debugBundleFilename(new Date('2026-07-05T01:02:03Z'))).toBe('ai-consultant-debug-2026-07-05-01-02-03.txt');
   });
 });

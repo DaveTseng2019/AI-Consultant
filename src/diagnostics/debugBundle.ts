@@ -82,7 +82,7 @@ export function buildDebugBundle(input: DebugBundleInput): string {
 
 export function debugBundleFilename(date: Date): string {
   const stamp = date.toISOString().replace(/\.\d{3}Z$/, '').replace(/[:T]/g, '-');
-  return `multi-ai-chat-debug-${stamp}.txt`;
+  return `ai-consultant-debug-${stamp}.txt`;
 }
 
 export function pickDebugSettings(settings: unknown): DebugBundleSettings {

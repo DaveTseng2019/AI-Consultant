@@ -59,7 +59,7 @@ describe('M4c share export helpers', () => {
 
     expect(title).toBe('AI Consultant — ✨ Brainstorm');
     expect(content.split('\n')[0]).toBe('# AI Consultant — ✨ Brainstorm');
-    expect(exportFilename('free', fixedDate, preset.id)).toBe('multi-ai-chat-brainstorm-2026-07-04-13-45-07.md');
+    expect(exportFilename('free', fixedDate, preset.id)).toBe('ai-consultant-brainstorm-2026-07-04-13-45-07.md');
   });
 
   it('renders app, workflow, snapshot, timing, and adapter provenance', () => {
@@ -95,7 +95,7 @@ describe('M4c share export helpers', () => {
   });
 
   it('builds deterministic markdown filenames from ISO timestamps', () => {
-    expect(exportFilename('debate', fixedDate)).toBe('multi-ai-chat-debate-2026-07-04-13-45-07.md');
+    expect(exportFilename('debate', fixedDate)).toBe('ai-consultant-debate-2026-07-04-13-45-07.md');
   });
 });
 

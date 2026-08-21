@@ -76,8 +76,8 @@ function appendSnapshotProvenance(lines: string[], snapshot: ExecutionSnapshot):
   if (adapterVersions.length > 0) lines.push(`> Adapter versions: ${adapterVersions.join(', ')}`);
 }
 
-/** `multi-ai-chat-<mode>-YYYY-MM-DD-HH-mm-ss.md` */
+/** `ai-consultant-<mode>-YYYY-MM-DD-HH-mm-ss.md` */
 export function exportFilename(mode: ChatMode, exportedAt: Date, presetId?: string): string {
   const ts = exportedAt.toISOString().slice(0, 19).replace(/[T:]/g, '-');
-  return `multi-ai-chat-${presetId ?? mode}-${ts}.md`;
+  return `ai-consultant-${presetId ?? mode}-${ts}.md`;
 }
