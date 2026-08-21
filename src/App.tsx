@@ -1993,14 +1993,15 @@ export default function App() {
             onDeleteSession={deleteConversationSession}
           />
           <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-            {/* 放大檢視時暫時收起選單區讓 webview 吃滿高度；checkpoint / 逾時對話框
-                是 inline 渲染在這個區塊內，出現時必須讓區塊重新顯示，否則使用者按不到。 */}
+            {/* 放大檢視時暫時收起選單區讓 webview 吃滿高度；流程跑起來之後選單是唯讀的，
+                縮到剩一小條把高度讓給流程追蹤與對話。checkpoint 是 inline 渲染在這個區塊內，
+                而且要輸入與按鈕，所以它在的時候兩種收合都不套用。 */}
             <section
               id="workflow-control-shelf"
               aria-label={translate('preset.catalog.aria')}
-              className={`max-h-[42vh] shrink-0 overflow-auto border-b border-zinc-200 bg-zinc-50/80 p-3 dark:border-zinc-800 dark:bg-zinc-900/70 ${
-                stageExpanded && !checkpoint && !(stepTimeout && !stepTimeout.timedOut) ? 'hidden' : ''
-              }`}
+              className={`shrink-0 overflow-auto border-b border-zinc-200 bg-zinc-50/80 p-3 dark:border-zinc-800 dark:bg-zinc-900/70 ${
+                stageExpanded && !checkpoint ? 'hidden' : ''
+              } ${isProcessing && !checkpoint ? 'max-h-[14vh]' : 'max-h-[42vh]'}`}
             >
               <PresetCatalog
                 mode={mode}
