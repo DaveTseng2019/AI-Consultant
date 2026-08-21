@@ -427,10 +427,11 @@ pub async fn run_archive_script(
         }
     }
 
-    let output = tauri::async_runtime::spawn_blocking(move || run_in_powershell(&script, &snapshot_id))
-        .await
-        .map_err(|error| error.to_string())?
-        .map_err(|error| error.to_string())?;
+    let output =
+        tauri::async_runtime::spawn_blocking(move || run_in_powershell(&script, &snapshot_id))
+            .await
+            .map_err(|error| error.to_string())?
+            .map_err(|error| error.to_string())?;
 
     // The script's own last words, not a generic "failed" -- when an unattended-looking button goes
     // wrong the reason has to reach the user, and stderr is where PowerShell puts it.
@@ -453,8 +454,15 @@ pub async fn run_archive_script(
         Ok(Some(tail(&output.stdout)))
     } else {
         let reason = tail(&output.stderr);
-        let reason = if reason.is_empty() { tail(&output.stdout) } else { reason };
-        Err(format!("exit {}: {reason}", output.status.code().unwrap_or(-1)))
+        let reason = if reason.is_empty() {
+            tail(&output.stdout)
+        } else {
+            reason
+        };
+        Err(format!(
+            "exit {}: {reason}",
+            output.status.code().unwrap_or(-1)
+        ))
     }
 }
 

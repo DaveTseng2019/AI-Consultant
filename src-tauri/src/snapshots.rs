@@ -220,7 +220,10 @@ fn snapshot_list_entry(id: String, snapshot_json: &str) -> SnapshotListEntry {
         graph_id: string_field(parsed.as_ref(), "graphId"),
         created_at: string_field(parsed.as_ref(), "createdAt"),
         completed_at: string_field(parsed.as_ref(), "completedAt"),
-        question: string_field(parsed.as_ref().and_then(|value| value.get("userQuestion")), "text"),
+        question: string_field(
+            parsed.as_ref().and_then(|value| value.get("userQuestion")),
+            "text",
+        ),
     }
 }
 
