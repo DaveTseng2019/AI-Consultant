@@ -57,6 +57,17 @@ git push origin v0.1.0
 
 沒問題就按 **Publish release**。
 
+### 6. 重建本機的那一支
+
+```sh
+pnpm build:local
+```
+
+CI 發佈**不會**動到 `src-tauri/target/release/ai-consultant.exe`，也就是本機桌面捷徑指的那一支。
+不重建的話，你日常在用的還是發佈前的舊執行檔。`build:local` 會把 commit 寫進旁邊的
+`build-info.json`，之後才查得出手上這支是哪一版。app 開著會鎖住 exe 讓連結失敗，
+加 `--close` 讓它自己關掉。
+
 ### 作廢一次建置
 
 刪掉 draft release，再刪掉 tag：
