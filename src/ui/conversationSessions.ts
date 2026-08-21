@@ -1,7 +1,10 @@
 import type { ChatMode, WorkflowPresetId } from '../../shared/types';
 import { createUniqueSuffix } from './uniqueId';
 
-export const CONVERSATION_SESSIONS_STORAGE_KEY = 'multi-ai-chat:conversation-sessions:v1';
+export const CONVERSATION_SESSIONS_STORAGE_KEY = 'ai-consultant:conversation-sessions:v1';
+// notes: read-only fallback to the key this app used before it was renamed, so an
+//        existing install keeps its conversations. Drop it once no install predates the rename.
+const LEGACY_CONVERSATION_SESSIONS_STORAGE_KEY = 'multi-ai-chat:conversation-sessions:v1';
 export const MAX_CONVERSATION_SESSIONS = 30;
 export const MAX_CONVERSATION_SESSION_TITLE_LENGTH = 48;
 export const DEFAULT_CONVERSATION_SESSION_TITLE = 'New conversation';
@@ -264,7 +267,9 @@ export function loadConversationSessions(storage?: ConversationSessionStorage): 
   if (!target) return [];
 
   try {
-    const stored = target.getItem(CONVERSATION_SESSIONS_STORAGE_KEY);
+    const stored =
+      target.getItem(CONVERSATION_SESSIONS_STORAGE_KEY) ??
+      target.getItem(LEGACY_CONVERSATION_SESSIONS_STORAGE_KEY);
     return stored === null ? [] : normalizeConversationSessions(JSON.parse(stored) as unknown);
   } catch {
     return [];

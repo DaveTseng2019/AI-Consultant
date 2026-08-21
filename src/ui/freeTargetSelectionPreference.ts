@@ -1,6 +1,8 @@
 import type { AIProvider } from '../../shared/types';
 
-export const FREE_TARGET_SELECTION_STORAGE_KEY = 'multi-ai-chat:free-target-selection:v1';
+export const FREE_TARGET_SELECTION_STORAGE_KEY = 'ai-consultant:free-target-selection:v1';
+// notes: see conversationSessions.ts - read-only fallback to the pre-rename key.
+const LEGACY_FREE_TARGET_SELECTION_STORAGE_KEY = 'multi-ai-chat:free-target-selection:v1';
 
 export interface FreeTargetSelectionStorage {
   getItem(key: string): string | null;
@@ -18,7 +20,9 @@ export function loadFreeTargetSelection(
 ): StoredFreeTargetSelection | undefined {
   if (!storage) return undefined;
   try {
-    const raw = storage.getItem(FREE_TARGET_SELECTION_STORAGE_KEY);
+    const raw =
+      storage.getItem(FREE_TARGET_SELECTION_STORAGE_KEY) ??
+      storage.getItem(LEGACY_FREE_TARGET_SELECTION_STORAGE_KEY);
     if (!raw) return undefined;
     const parsed = JSON.parse(raw);
     if (!parsed || typeof parsed !== 'object' || !Array.isArray(parsed.targets)) return undefined;

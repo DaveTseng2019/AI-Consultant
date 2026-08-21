@@ -45,4 +45,13 @@ describe('session sidebar preference', () => {
     expect(loadSessionSidebarCollapsed(throwingStorage)).toBe(false);
     expect(saveSessionSidebarCollapsed(true, throwingStorage)).toBe(false);
   });
+  it('still reads the key the app used before it was renamed', () => {
+    const legacy = new Map([['multi-ai-chat:session-sidebar-collapsed:v1', '1']]);
+    const storage = {
+      getItem: (key: string) => legacy.get(key) ?? null,
+      setItem: (key: string, value: string) => void legacy.set(key, value),
+    };
+
+    expect(loadSessionSidebarCollapsed(storage)).toBe(true);
+  });
 });

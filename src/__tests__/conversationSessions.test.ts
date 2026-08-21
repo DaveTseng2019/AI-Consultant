@@ -311,4 +311,14 @@ describe('conversation sessions', () => {
     expect(loadConversationSessions(throwingRead)).toEqual([]);
     expect(saveConversationSessions([], throwingWrite)).toBe(false);
   });
+  it('still reads the key the app used before it was renamed', () => {
+    const session = createConversationSession({ id: 'kept', messages: [] });
+    const legacy = new Map([['multi-ai-chat:conversation-sessions:v1', JSON.stringify([session])]]);
+    const storage = {
+      getItem: (key: string) => legacy.get(key) ?? null,
+      setItem: (key: string, value: string) => void legacy.set(key, value),
+    };
+
+    expect(loadConversationSessions(storage).map((entry) => entry.id)).toEqual(['kept']);
+  });
 });

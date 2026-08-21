@@ -1,4 +1,6 @@
-export const SESSION_SIDEBAR_COLLAPSED_STORAGE_KEY = 'multi-ai-chat:session-sidebar-collapsed:v1';
+export const SESSION_SIDEBAR_COLLAPSED_STORAGE_KEY = 'ai-consultant:session-sidebar-collapsed:v1';
+// notes: see conversationSessions.ts - read-only fallback to the pre-rename key.
+const LEGACY_SESSION_SIDEBAR_COLLAPSED_STORAGE_KEY = 'multi-ai-chat:session-sidebar-collapsed:v1';
 
 export interface SessionSidebarPreferenceStorage {
   getItem(key: string): string | null;
@@ -8,7 +10,10 @@ export interface SessionSidebarPreferenceStorage {
 export function loadSessionSidebarCollapsed(storage: SessionSidebarPreferenceStorage | undefined = defaultStorage()): boolean {
   if (!storage) return false;
   try {
-    return storage.getItem(SESSION_SIDEBAR_COLLAPSED_STORAGE_KEY) === '1';
+    return (
+      storage.getItem(SESSION_SIDEBAR_COLLAPSED_STORAGE_KEY) ??
+      storage.getItem(LEGACY_SESSION_SIDEBAR_COLLAPSED_STORAGE_KEY)
+    ) === '1';
   } catch {
     return false;
   }

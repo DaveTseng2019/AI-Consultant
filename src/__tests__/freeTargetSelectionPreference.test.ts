@@ -59,4 +59,15 @@ describe('free target selection preference', () => {
     expect(loadFreeTargetSelection([...PROVIDERS], throwingStorage)).toBeUndefined();
     expect(() => saveFreeTargetSelection({ targets: ['claude'], userTouched: true }, throwingStorage)).not.toThrow();
   });
+  it('still reads the key the app used before it was renamed', () => {
+    const legacy = new Map([
+      ['multi-ai-chat:free-target-selection:v1', JSON.stringify({ targets: ['claude'], userTouched: true })],
+    ]);
+    const storage = {
+      getItem: (key: string) => legacy.get(key) ?? null,
+      setItem: (key: string, value: string) => void legacy.set(key, value),
+    };
+
+    expect(loadFreeTargetSelection([...PROVIDERS], storage)).toEqual({ targets: ['claude'], userTouched: true });
+  });
 });
