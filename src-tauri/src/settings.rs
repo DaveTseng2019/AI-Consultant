@@ -539,7 +539,7 @@ mod tests {
 
     fn unique_path(name: &str) -> PathBuf {
         std::env::temp_dir().join(format!(
-            "multi-ai-chat-settings-{}-{}-{}.json",
+            "ai-consultant-settings-{}-{}-{}.json",
             std::process::id(),
             NEXT_ID.fetch_add(1, Ordering::SeqCst),
             name

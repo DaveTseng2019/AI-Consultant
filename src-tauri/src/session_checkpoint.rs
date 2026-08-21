@@ -73,7 +73,7 @@ mod tests {
 
     fn unique_dir(name: &str) -> PathBuf {
         std::env::temp_dir().join(format!(
-            "multi-ai-chat-session-checkpoint-{}-{}-{}",
+            "ai-consultant-session-checkpoint-{}-{}-{}",
             std::process::id(),
             NEXT_ID.fetch_add(1, Ordering::SeqCst),
             name
