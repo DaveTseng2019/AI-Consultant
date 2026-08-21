@@ -49,7 +49,10 @@ pnpm tauri dev        # 第一次 Rust 編譯較久
 
 ## 現況
 
-版號 `0.0.0`，**沒有發佈過 release**，也沒有 in-app 自動更新。
+已發佈的版本在 [Releases](https://github.com/DaveTseng2019/AI-Consultant/releases)——每一版的異動寫在
+該版的說明裡。repo 裡的版號永遠是 `0.0.0`，真正的版號由 CI 從 tag 注入。app 可以檢查有沒有新版，
+但不會自己下載或安裝。
+
 Windows x64 是實機驗證過的平台；macOS Apple Silicon 只有部分驗證（ad-hoc 簽章，Grok 曾卡在
 Cloudflare 驗證）；Linux 目前只有 CI 建置，沒有實機回報。詳見
 [`docs/COMPATIBILITY.md`](../docs/COMPATIBILITY.md)。
