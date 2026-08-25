@@ -10,6 +10,15 @@ Portions of this project adapt MIT-licensed ideas or implementation patterns fro
 
 The repository history and study notes retain more detailed provenance where applicable.
 
+## Provider logos
+
+`src/assets/providers/*.png` are the marks of ChatGPT (OpenAI), Claude (Anthropic), Gemini
+(Google) and Grok (xAI). They are bundled only to identify which service each row of the UI
+connects to; the trademarks belong to their owners and this project is not affiliated with,
+endorsed by, or a product of any of them. Redistribution terms for the individual files have NOT
+been confirmed. If any owner objects, delete the file and its import in `src/ui/ProviderLogo.tsx`;
+the provider name is always rendered beside the mark, so nothing else depends on it.
+
 ## Application icon
 
 The AI Consultant application icon (`src/assets/app-icon.svg` and the generated files in

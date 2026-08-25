@@ -10,6 +10,7 @@ import { MarkdownText } from './MarkdownText';
 import type { PresentationByProvider, WebviewPresentationState } from './presentation';
 import { chipState, isStuckProvider } from './providerChipState';
 import { ProcessTrace } from './ProcessTrace';
+import { ProviderLogo } from './ProviderLogo';
 import type { ProcessTraceState } from './processTraceModel';
 import { StepTimeoutDialog, type StepTimeoutDialogState } from './StepTimeoutDialog';
 
@@ -573,6 +574,7 @@ function StatusStripItem({
         <span className="absolute right-0.5 top-0.5 h-1.5 w-1.5 rounded-full bg-sky-600 dark:bg-sky-400" aria-hidden="true" />
       ) : null}
       <span className="flex min-w-0 items-center gap-2">
+        <ProviderLogo provider={provider} className="h-5 w-5" />
         <span className="min-w-0 flex-1">
           <span className="block truncate text-xs font-medium text-zinc-900 dark:text-zinc-100">{AI_PROVIDERS[provider].name}</span>
           <span className="mt-1 flex min-w-0 items-center gap-1">
