@@ -111,6 +111,7 @@ import {
   type FreeTargetSelection,
 } from './ui/targets';
 import { loadFreeTargetSelection, saveFreeTargetSelection } from './ui/freeTargetSelectionPreference';
+import { loadWorkflowPreset, saveWorkflowPreset } from './ui/workflowPresetPreference';
 import { useOverlayGuard } from './ui/useOverlayGuard';
 import { buildMarkdown, exportFilename, matchingSnapshotForConversation } from './ui/exportMarkdown';
 import { formatReportBody, type AdapterNotice, type ReportDigest } from './ui/reportBroken';
@@ -1676,6 +1677,12 @@ export default function App() {
     autoNewConversationAppliedRef.current = true;
     if (appSettings.autoNewConversationOnStart) {
       startNewConversation();
+      const restoredPreset = loadWorkflowPreset();
+      if (restoredPreset) {
+        const preset = presetForId(restoredPreset);
+        setMode(preset.graphId);
+        setPresetId(preset.id);
+      }
       const restored = loadFreeTargetSelection(PROVIDERS);
       if (restored?.userTouched && restored.targets.length > 0) {
         setTargetSelection({ targets: restored.targets, defaultsInitialized: true, userTouched: true });
@@ -1923,6 +1930,7 @@ export default function App() {
       const nextPreset = presetForId(nextPresetId);
       setMode(nextPreset.graphId);
       setPresetId(nextPreset.id);
+      saveWorkflowPreset(nextPreset.id);
       setPresetDetailsId((current) => (current === nextPreset.id ? undefined : nextPreset.id));
       if (nextPreset.id === 'brainstorm') {
         setTargetSelection({ targets: [...DEFAULT_FREE_TARGET_PROVIDERS], defaultsInitialized: true, userTouched: false });
