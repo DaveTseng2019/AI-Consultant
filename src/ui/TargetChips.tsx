@@ -37,12 +37,12 @@ export function TargetChips({
             }`}
           >
             <span className="flex items-center gap-1.5">
-              <ProviderLogo provider={provider} className="h-4 w-4" />
               {isCheckedOn ? (
                 <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M20 6 9 17l-5-5" />
                 </svg>
               ) : null}
+              <ProviderLogo provider={provider} className="h-4 w-4" />
               <span>{AI_PROVIDERS[provider].name}</span>
             </span>
           </button>
