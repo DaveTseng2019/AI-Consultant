@@ -501,6 +501,10 @@ export default function App() {
   }, [appSettings.fontSize]);
 
   useEffect(() => {
+    document.documentElement.style.setProperty('--reading-font-size', `${appSettings.readingFontSize}px`);
+  }, [appSettings.readingFontSize]);
+
+  useEffect(() => {
     document.documentElement.classList.toggle('app-mono', appSettings.monospaceFont);
   }, [appSettings.monospaceFont]);
 
@@ -2441,7 +2445,7 @@ export function ChatArea({
             {thinking ? (
               <div className="whitespace-pre-wrap text-sm italic text-zinc-500 dark:text-zinc-500">{translateKey('chat.thinking', locale)}</div>
             ) : (
-              <div className="text-sm">
+              <div className="reading-text">
                 <MarkdownText text={message.content} />
               </div>
             )}

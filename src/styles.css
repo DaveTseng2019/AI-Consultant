@@ -36,6 +36,16 @@ textarea,
   outline-offset: 2px;
 }
 
+/* Two independent sizes. The root font size is the interface: labels, buttons, every chrome class
+   Tailwind emits in rem. The reading size covers the surfaces an answer is actually read on -- the
+   transcript bubbles and the centre stage text view -- and is set here rather than on the root so
+   the interface does not move when it changes. Text inside these surfaces sizes itself in em (see
+   MarkdownText), because a rem class would jump straight back to the interface size. */
+.reading-text {
+  font-size: var(--reading-font-size, 1.375rem);
+  line-height: 1.55;
+}
+
 .transcript-provider-highlight {
   box-shadow: 0 0 0 2px var(--transcript-provider-highlight);
 }

@@ -32,9 +32,9 @@ const headingClasses = [
   'mb-3 mt-5 text-2xl font-bold first:mt-0',
   'mb-2 mt-4 text-xl font-bold first:mt-0',
   'mb-2 mt-4 text-lg font-semibold first:mt-0',
-  'mb-2 mt-3 text-base font-semibold first:mt-0',
-  'mb-1 mt-3 text-sm font-semibold first:mt-0',
-  'mb-1 mt-3 text-xs font-semibold uppercase tracking-wide first:mt-0',
+  'mb-2 mt-3 text-[1.15em] font-semibold first:mt-0',
+  'mb-1 mt-3 text-[1em] font-semibold first:mt-0',
+  'mb-1 mt-3 text-[0.85em] font-semibold uppercase tracking-wide first:mt-0',
 ] as const;
 
 function safeHttpUrl(value: string): string | null {
@@ -430,7 +430,7 @@ function renderBlocks(text: string): ReactNode[] {
       blocks.push(
         <pre
           key={key}
-          className="my-3 overflow-x-auto whitespace-pre rounded-md bg-zinc-100 p-3 text-sm leading-relaxed dark:bg-zinc-900"
+          className="my-3 overflow-x-auto whitespace-pre rounded-md bg-zinc-100 p-3 text-[0.95em] leading-relaxed dark:bg-zinc-900"
         >
           <code className="font-mono">{codeLines.join('\n')}</code>
         </pre>,
@@ -457,7 +457,7 @@ function renderBlocks(text: string): ReactNode[] {
       const key = nextKey('table');
       blocks.push(
         <div key={key} className="my-3 overflow-x-auto rounded-md border border-zinc-200 dark:border-zinc-800">
-          <table className="min-w-full border-collapse text-left text-sm">
+          <table className="min-w-full border-collapse text-left text-[0.95em]">
             <thead className="bg-zinc-100 dark:bg-zinc-900">
               <tr>
                 {table.header.map((cell, index) => (

@@ -462,7 +462,7 @@ export function TextCenterView({
   if (centerText) {
     return (
       <div className="flex-1 overflow-auto p-3 text-zinc-900 dark:text-zinc-100">
-        <div className="text-sm">
+        <div className="reading-text">
           <MarkdownText text={centerText} />
         </div>
       </div>

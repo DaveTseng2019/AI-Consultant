@@ -28,7 +28,10 @@ export interface AppSettings {
   language: LanguageSetting;
   responseLanguage: ResponseLanguageSetting;
   theme: 'light' | 'dark';
+  /** Interface text: everything outside the transcript and the centre stage, via the root font size. */
   fontSize: number;
+  /** The reading size, for the transcript bubbles and the centre stage text view only. */
+  readingFontSize: number;
   /** Render the whole app in a monospace stack. Code and tabular answers line up; prose does not. */
   monospaceFont: boolean;
   autoNewConversationOnStart: boolean;
@@ -65,6 +68,7 @@ export function defaultSettings(): AppSettings {
     responseLanguage: 'auto',
     theme: 'light',
     fontSize: DEFAULT_FONT_SIZE,
+    readingFontSize: DEFAULT_READING_FONT_SIZE,
     monospaceFont: false,
     autoNewConversationOnStart: false,
     layoutMode: 'focus',
@@ -108,12 +112,14 @@ function theme(value: unknown, fallback: AppSettings['theme']): AppSettings['the
   return value === 'light' || value === 'dark' ? value : fallback;
 }
 
-export const DEFAULT_FONT_SIZE = 16;
+export const DEFAULT_FONT_SIZE = 20;
+// 讀的字比操作的字大一級：主版面是拿來看完整回答的，介面只是標籤與按鈕。
+export const DEFAULT_READING_FONT_SIZE = 22;
 // 下限 10px，避免 UI 縮到無法操作；依需求不限制上限。
 export const MIN_FONT_SIZE = 10;
 
-function fontSize(value: unknown): number {
-  return typeof value === 'number' && Number.isFinite(value) && value >= MIN_FONT_SIZE ? value : DEFAULT_FONT_SIZE;
+function fontSize(value: unknown, fallback: number): number {
+  return typeof value === 'number' && Number.isFinite(value) && value >= MIN_FONT_SIZE ? value : fallback;
 }
 
 function columnWidths(value: unknown, fallback: ColumnWidths): ColumnWidths {
@@ -156,7 +162,8 @@ export function normalizeSettings(value: unknown): AppSettings {
     language: normalizeLanguageSetting(input.language),
     responseLanguage: normalizeResponseLanguageSetting(input.responseLanguage),
     theme: theme(input.theme, defaults.theme),
-    fontSize: fontSize(input.fontSize),
+    fontSize: fontSize(input.fontSize, DEFAULT_FONT_SIZE),
+    readingFontSize: fontSize(input.readingFontSize, DEFAULT_READING_FONT_SIZE),
     monospaceFont: input.monospaceFont === true,
     autoNewConversationOnStart: input.autoNewConversationOnStart === true,
     layoutMode: 'focus',

@@ -6,7 +6,13 @@ import { AdapterAccessPanel } from './FocusPane';
 import { useI18n } from '../i18n/context';
 import { formatI18n } from '../i18n/t';
 import type { PresentationByProvider } from './presentation';
-import { type AppSettings, DEFAULT_FONT_SIZE, MIN_FONT_SIZE, normalizeSettings } from './settingsModel';
+import {
+  type AppSettings,
+  DEFAULT_FONT_SIZE,
+  DEFAULT_READING_FONT_SIZE,
+  MIN_FONT_SIZE,
+  normalizeSettings,
+} from './settingsModel';
 import {
   MODE_ROLE_FIELDS,
   MODE_ROLE_LABEL_KEYS,
@@ -45,8 +51,10 @@ interface SettingsError {
   detail?: string;
 }
 
+type FontSizeField = 'fontSize' | 'readingFontSize';
+type FontSizePatch = Partial<Record<FontSizeField, number>>;
+
 interface PendingFontSizeUpdate {
-  fontSize: number;
   updateSeq: number;
 }
 
@@ -75,7 +83,7 @@ export function SettingsModal({
     ? [activeModeRoleSettings, ...roleModes.filter((roleMode) => roleMode !== activeModeRoleSettings)]
     : roleModes;
   const [draft, setDraft] = useState<AppSettings | undefined>();
-  const [fontSizeText, setFontSizeText] = useState<string | undefined>();
+  const [fontSizeText, setFontSizeText] = useState<Partial<Record<FontSizeField, string>>>({});
   const [expandedRoleModes, setExpandedRoleModes] = useState<(keyof ModeRoleAssignments)[]>([]);
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -84,6 +92,7 @@ export function SettingsModal({
   const closeTimerRef = useRef<number | undefined>();
   const settingsPersistenceRef = useRef(createSettingsPersistence(host.settings));
   const fontSizeDebounceRef = useRef<TrailingDebounce<PendingFontSizeUpdate> | undefined>(undefined);
+  const pendingFontSizePatchRef = useRef<FontSizePatch>({});
   const modalSessionRef = useRef(0);
   const updateCheckSeqRef = useRef(0);
   const draftUpdateSeqRef = useRef(0);
@@ -108,7 +117,8 @@ export function SettingsModal({
     let disposed = false;
     setDraft(undefined);
     fontSizeDebounceRef.current?.cancel();
-    setFontSizeText(undefined);
+    pendingFontSizePatchRef.current = {};
+    setFontSizeText({});
     setSaved(false);
     setSaving(false);
     setError(undefined);
@@ -228,16 +238,24 @@ export function SettingsModal({
     }
   };
 
-  const persistFontSize = async ({ fontSize, updateSeq }: PendingFontSizeUpdate) => {
+  const persistFontSize = async ({ updateSeq }: PendingFontSizeUpdate) => {
     const modalSession = modalSessionRef.current;
+    const patch = pendingFontSizePatchRef.current;
+    pendingFontSizePatchRef.current = {};
     try {
-      const next = await persistSettingsPatch({ fontSize });
+      const next = await persistSettingsPatch(patch);
       onSaved(next);
       if (modalSession === modalSessionRef.current) setError(undefined);
     } catch (reason) {
       if (updateSeq === fontSizeUpdateSeqRef.current && modalSession === modalSessionRef.current) {
-        updateDraft({ fontSize: settingsPersistenceRef.current.current()?.fontSize ?? DEFAULT_FONT_SIZE });
-        setFontSizeText(undefined);
+        const persisted = settingsPersistenceRef.current.current();
+        const reverted: FontSizePatch = {};
+        if (patch.fontSize !== undefined) reverted.fontSize = persisted?.fontSize ?? DEFAULT_FONT_SIZE;
+        if (patch.readingFontSize !== undefined) {
+          reverted.readingFontSize = persisted?.readingFontSize ?? DEFAULT_READING_FONT_SIZE;
+        }
+        updateDraft(reverted);
+        setFontSizeText({});
         setError({ messageKey: 'settings.saveFailed', detail: errorDetail(reason) });
       }
       throw reason;
@@ -248,11 +266,12 @@ export function SettingsModal({
     fontSizeDebounceRef.current = createTrailingDebounce((update) => persistFontSize(update), 250);
   }
 
-  const scheduleFontSizeUpdate = (fontSize: number) => {
+  const scheduleFontSizeUpdate = (patch: FontSizePatch) => {
     const updateSeq = ++fontSizeUpdateSeqRef.current;
     setError(undefined);
-    updateDraft({ fontSize });
-    fontSizeDebounceRef.current?.schedule({ fontSize, updateSeq });
+    updateDraft(patch);
+    pendingFontSizePatchRef.current = { ...pendingFontSizePatchRef.current, ...patch };
+    fontSizeDebounceRef.current?.schedule({ updateSeq });
   };
 
   const closeSettings = async () => {
@@ -272,6 +291,7 @@ export function SettingsModal({
     const languageUpdateSeq = ++languageUpdateSeqRef.current;
     fontSizeUpdateSeqRef.current += 1;
     fontSizeDebounceRef.current?.cancel();
+    pendingFontSizePatchRef.current = {};
     setSaving(true);
     setError(undefined);
     try {
@@ -396,24 +416,23 @@ export function SettingsModal({
               </label>
             </section>
 
-            <section>
-              <label className="block text-xs text-zinc-600 dark:text-zinc-400">
-                <span className="mb-1 block font-medium text-zinc-700 dark:text-zinc-300">{t('settings.fontSize')}</span>
-                <input
-                  type="number"
-                  min={MIN_FONT_SIZE}
-                  step={1}
-                  value={fontSizeText ?? String(draft.fontSize)}
-                  onChange={(event) => {
-                    const text = event.target.value;
-                    setFontSizeText(text);
-                    const value = Number(text);
-                    if (Number.isFinite(value) && value >= MIN_FONT_SIZE) scheduleFontSizeUpdate(value);
-                  }}
-                  onBlur={() => setFontSizeText(undefined)}
-                  className="w-full border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 px-2 py-1.5 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-sky-500 dark:focus:border-sky-600"
-                />
-              </label>
+            <section className="grid grid-cols-2 gap-2">
+              <FontSizeField
+                label={t('settings.fontSize')}
+                field="fontSize"
+                value={draft.fontSize}
+                text={fontSizeText.fontSize}
+                onText={(text) => setFontSizeText((current) => ({ ...current, fontSize: text }))}
+                onCommit={(value) => scheduleFontSizeUpdate({ fontSize: value })}
+              />
+              <FontSizeField
+                label={t('settings.readingFontSize')}
+                field="readingFontSize"
+                value={draft.readingFontSize}
+                text={fontSizeText.readingFontSize}
+                onText={(text) => setFontSizeText((current) => ({ ...current, readingFontSize: text }))}
+                onCommit={(value) => scheduleFontSizeUpdate({ readingFontSize: value })}
+              />
             </section>
 
             <section>
@@ -918,3 +937,43 @@ function EventLogRow({ event, now }: { event: EventLogEvent; now: number }) {
 function errorDetail(reason: unknown): string {
   return reason instanceof Error ? reason.message : String(reason);
 }
+
+// Both size boxes behave the same: type freely, persist what parses, and let the box fall back to
+// the persisted value on blur so a half-typed number cannot stick.
+function FontSizeField({
+  label,
+  field,
+  value,
+  text,
+  onText,
+  onCommit,
+}: {
+  label: string;
+  field: FontSizeField;
+  value: number;
+  text?: string;
+  onText: (text: string | undefined) => void;
+  onCommit: (value: number) => void;
+}) {
+  return (
+    <label className="block text-xs text-zinc-600 dark:text-zinc-400">
+      <span className="mb-1 block font-medium text-zinc-700 dark:text-zinc-300">{label}</span>
+      <input
+        type="number"
+        name={field}
+        min={MIN_FONT_SIZE}
+        step={1}
+        value={text ?? String(value)}
+        onChange={(event) => {
+          const next = event.target.value;
+          onText(next);
+          const parsed = Number(next);
+          if (Number.isFinite(parsed) && parsed >= MIN_FONT_SIZE) onCommit(parsed);
+        }}
+        onBlur={() => onText(undefined)}
+        className="w-full border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 px-2 py-1.5 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-sky-500 dark:focus:border-sky-600"
+      />
+    </label>
+  );
+}
+

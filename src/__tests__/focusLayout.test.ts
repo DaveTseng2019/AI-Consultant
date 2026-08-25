@@ -9,7 +9,7 @@ import {
   throttleWithFrame,
 } from '../ui/focusLayout';
 import { applyPresentationTransitionCommand, waitForPresentationTargetBounds, type PresentationCommandHost } from '../ui/presentationCommands';
-import { DEFAULT_FONT_SIZE, MIN_FONT_SIZE, normalizeSettings } from '../ui/settingsModel';
+import { DEFAULT_FONT_SIZE, DEFAULT_READING_FONT_SIZE, MIN_FONT_SIZE, normalizeSettings } from '../ui/settingsModel';
 
 function rect(width: number, height: number): DOMRectReadOnly {
   return { x: 10, y: 20, width, height, top: 20, left: 10, right: 10 + width, bottom: 20 + height, toJSON: () => ({}) };
@@ -153,5 +153,16 @@ describe('focus layout helpers', () => {
     expect(normalizeSettings({ fontSize: MIN_FONT_SIZE - 1 }).fontSize).toBe(DEFAULT_FONT_SIZE);
     expect(normalizeSettings({ fontSize: '18' }).fontSize).toBe(DEFAULT_FONT_SIZE);
     expect(normalizeSettings({ fontSize: Number.NaN }).fontSize).toBe(DEFAULT_FONT_SIZE);
+  });
+
+  it('normalizes the reading size on its own, so one bad value cannot move the interface', () => {
+    expect(normalizeSettings({}).readingFontSize).toBe(DEFAULT_READING_FONT_SIZE);
+    expect(normalizeSettings({ readingFontSize: 28 }).readingFontSize).toBe(28);
+    expect(normalizeSettings({ readingFontSize: MIN_FONT_SIZE - 1 }).readingFontSize).toBe(DEFAULT_READING_FONT_SIZE);
+    // Settings written before the split carry no reading size; the interface size they do carry
+    // must stay where the user put it.
+    const legacy = normalizeSettings({ fontSize: 18 });
+    expect(legacy.fontSize).toBe(18);
+    expect(legacy.readingFontSize).toBe(DEFAULT_READING_FONT_SIZE);
   });
 });
