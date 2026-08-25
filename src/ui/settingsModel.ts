@@ -112,9 +112,9 @@ function theme(value: unknown, fallback: AppSettings['theme']): AppSettings['the
   return value === 'light' || value === 'dark' ? value : fallback;
 }
 
-export const DEFAULT_FONT_SIZE = 20;
+export const DEFAULT_FONT_SIZE = 18;
 // 讀的字比操作的字大一級：主版面是拿來看完整回答的，介面只是標籤與按鈕。
-export const DEFAULT_READING_FONT_SIZE = 22;
+export const DEFAULT_READING_FONT_SIZE = 20;
 // 下限 10px，避免 UI 縮到無法操作；依需求不限制上限。
 export const MIN_FONT_SIZE = 10;
 
