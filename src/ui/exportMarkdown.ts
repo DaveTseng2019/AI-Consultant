@@ -1,5 +1,6 @@
 import { AI_PROVIDERS, CHAT_MODES } from '../../shared/constants';
 import type { ChatMode } from '../../shared/types';
+import { formatLocalTimestamp, localFilenameStamp, localTimezoneLabel } from '../formatTime';
 import type { ExecutionSnapshot } from '../workflow/snapshot/types';
 
 /** Structural subset of App.tsx's Bubble that export needs. */
@@ -42,8 +43,7 @@ export function buildMarkdown(
   const title = `AI Consultant — ${modeInfo.icon} ${modeInfo.name}`;
   const lines: string[] = [
     `# ${title}`,
-    `> Exported: ${exportedAt.toLocaleString()}`,
-    `> Exported (UTC): ${exportedAt.toISOString()}`,
+    `> Exported: ${formatLocalTimestamp(exportedAt)} ${localTimezoneLabel(exportedAt)}`,
   ];
   if (provenance.appVersion) lines.push(`> App version: ${provenance.appVersion}`);
   if (provenance.snapshot) appendSnapshotProvenance(lines, provenance.snapshot);
@@ -69,15 +69,23 @@ function appendSnapshotProvenance(lines: string[], snapshot: ExecutionSnapshot):
   lines.push(`> Latest workflow: ${snapshot.graphId} v${snapshot.graphVersion}`);
   lines.push(`> Latest snapshot: ${snapshot.snapshotId}`);
   lines.push(`> Latest run app version: ${snapshot.appVersion}`);
-  lines.push(`> Latest run (UTC): ${snapshot.createdAt}${snapshot.completedAt ? ` → ${snapshot.completedAt}` : ''}`);
+  // The snapshot stores UTC ISO strings. Show them on the same local 24-hour clock as the rest of
+  // the export, and leave an unparseable value alone rather than printing "Invalid Date".
+  const runStart = snapshotTime(snapshot.createdAt);
+  const runEnd = snapshot.completedAt ? snapshotTime(snapshot.completedAt) : undefined;
+  lines.push(`> Latest run: ${runStart}${runEnd ? ` → ${runEnd}` : ''} (${localTimezoneLabel()})`);
   const adapterVersions = Object.entries(snapshot.adapterVersions)
     .filter((entry): entry is [keyof typeof AI_PROVIDERS, number] => entry[0] in AI_PROVIDERS && typeof entry[1] === 'number')
     .map(([provider, version]) => `${AI_PROVIDERS[provider].name} v${version}`);
   if (adapterVersions.length > 0) lines.push(`> Adapter versions: ${adapterVersions.join(', ')}`);
 }
 
+function snapshotTime(value: string): string {
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? formatLocalTimestamp(parsed) : value;
+}
+
 /** `ai-consultant-<mode>-YYYY-MM-DD-HH-mm-ss.md` */
 export function exportFilename(mode: ChatMode, exportedAt: Date, presetId?: string): string {
-  const ts = exportedAt.toISOString().slice(0, 19).replace(/[T:]/g, '-');
-  return `ai-consultant-${presetId ?? mode}-${ts}.md`;
+  return `ai-consultant-${presetId ?? mode}-${localFilenameStamp(exportedAt)}.md`;
 }

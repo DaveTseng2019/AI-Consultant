@@ -1,6 +1,7 @@
 import { Component, type ChangeEvent, type FormEvent } from 'react';
 import { AI_PROVIDERS } from '../../shared/constants';
 import type { AIProvider, ChatMode } from '../../shared/types';
+import { formatLocalTimestamp } from '../formatTime';
 import type { I18nKey } from '../i18n/keys';
 import { MODE_NAME_KEYS, modeName } from '../i18n/modes';
 import type { Locale } from '../i18n/resolve';
@@ -186,7 +187,7 @@ export class ReplayPanel extends Component<ReplayPanelProps, ReplayPanelState> {
                       {lastSnapshot.userQuestion.text || this.t('replay.questionNotKept')}
                     </p>
                     <p className="text-xs text-zinc-500 dark:text-zinc-500">
-                      {graphLabel(lastSnapshot.graphId, this.locale())} · {localTime(lastSnapshot.createdAt, this.locale())}
+                      {graphLabel(lastSnapshot.graphId, this.locale())} · {localTime(lastSnapshot.createdAt)}
                     </p>
                   </>
                 ) : (
@@ -241,7 +242,7 @@ export class ReplayPanel extends Component<ReplayPanelProps, ReplayPanelState> {
                           {snapshot.question || this.t('replay.questionNotKept')}
                         </div>
                         <div className="truncate text-zinc-500 dark:text-zinc-500">
-                          {graphLabel(snapshot.graphId, this.locale())} · {localTime(snapshot.createdAt, this.locale()) ?? this.t('replay.createdTimeUnknown')}
+                          {graphLabel(snapshot.graphId, this.locale())} · {localTime(snapshot.createdAt) ?? this.t('replay.createdTimeUnknown')}
                         </div>
                       </div>
                       <div className="flex gap-2">
@@ -444,10 +445,10 @@ function sourceLabel(source: ReplaySource, locale: Locale): string {
 
 // Snapshots are stored as UTC ISO strings; showing them raw makes every row read as a foreign
 // clock. Fall back to the raw string when the value is missing or unparseable.
-function localTime(value: string | undefined, locale: Locale): string | undefined {
+function localTime(value: string | undefined): string | undefined {
   const parsed = Date.parse(value ?? '');
   if (!Number.isFinite(parsed)) return value;
-  return new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'medium' }).format(parsed);
+  return formatLocalTimestamp(parsed);
 }
 
 // The stored graphId is an internal id ('debate', 'consult'). Show the name the user picked the

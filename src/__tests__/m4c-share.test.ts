@@ -8,7 +8,11 @@ import {
 } from '../ui/exportMarkdown';
 import type { ExecutionSnapshot } from '../workflow/snapshot/types';
 
-const fixedDate = new Date('2026-07-04T13:45:07Z');
+// Local wall clock, not a UTC literal: the export renders local time, so a UTC fixture would only
+// hold in one timezone.
+const fixedDate = new Date(2026, 6, 4, 13, 45, 7);
+const runStart = new Date(2026, 6, 4, 13, 40, 0);
+const runEnd = new Date(2026, 6, 4, 13, 44, 0);
 
 describe('M4c share export helpers', () => {
   it('renders the mode title, exported line, and separators', () => {
@@ -17,8 +21,7 @@ describe('M4c share export helpers', () => {
 
     expect(title).toBe(`AI Consultant — ${CHAT_MODES[mode].icon} ${CHAT_MODES[mode].name}`);
     expect(content.split('\n')[0]).toBe(`# ${title}`);
-    expect(content).toContain('> Exported: ');
-    expect(content).toContain('> Exported (UTC): 2026-07-04T13:45:07.000Z');
+    expect(content).toMatch(/^> Exported: 2026-07-04 13:45:07 UTC[+-]\d{2}:\d{2}$/m);
     expect(content).toContain('\n---\n');
   });
 
@@ -50,7 +53,7 @@ describe('M4c share export helpers', () => {
 
     expect(content).not.toContain('## 👤 User');
     expect(content).not.toContain('## 🤖');
-    expect(content.split('\n')).toHaveLength(6);
+    expect(content.split('\n')).toHaveLength(5);
   });
 
   it('labels brainstorm exports without changing their underlying free mode', () => {
@@ -73,7 +76,7 @@ describe('M4c share export helpers', () => {
     expect(content).toContain('> Latest workflow: roundtable v1');
     expect(content).toContain('> Latest snapshot: snapshot-export');
     expect(content).toContain('> Latest run app version: 1.0.1');
-    expect(content).toContain('> Latest run (UTC): 2026-07-04T13:40:00.000Z → 2026-07-04T13:44:00.000Z');
+    expect(content).toMatch(/^> Latest run: 2026-07-04 13:40:00 → 2026-07-04 13:44:00 \(UTC[+-]\d{2}:\d{2}\)$/m);
     expect(content).toContain(`> Adapter versions: ${AI_PROVIDERS.chatgpt.name} v7, ${AI_PROVIDERS.claude.name} v8`);
   });
 
@@ -105,8 +108,8 @@ function buildSnapshot(): ExecutionSnapshot {
     graphId: 'roundtable',
     graphVersion: 1,
     appVersion: '1.0.1',
-    createdAt: '2026-07-04T13:40:00.000Z',
-    completedAt: '2026-07-04T13:44:00.000Z',
+    createdAt: runStart.toISOString(),
+    completedAt: runEnd.toISOString(),
     adapterVersions: { chatgpt: 7, claude: 8 },
     roleMap: {},
     redactionTier: 'full-local',

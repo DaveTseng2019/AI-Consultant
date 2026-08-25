@@ -106,7 +106,7 @@ export function ConversationSidebar({
                         {session.title === DEFAULT_CONVERSATION_SESSION_TITLE ? labels.newConversation : session.title}
                       </span>
                       <span className="mt-1 block text-[0.625rem] text-zinc-500 dark:text-zinc-400">
-                        {new Intl.DateTimeFormat(locale, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(session.updatedAt)}
+                        {new Intl.DateTimeFormat(locale, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }).format(session.updatedAt)}
                       </span>
                     </button>
                     {pendingDeleteId === session.id ? (

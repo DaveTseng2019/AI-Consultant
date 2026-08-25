@@ -1,5 +1,6 @@
 import { AI_PROVIDERS } from '../../shared/constants';
 import type { AIProvider, BridgeMessage, ChatMode, ProviderState } from '../../shared/types';
+import { formatLocalTimestamp } from '../formatTime';
 import {
   normalizeAdapterStatus,
   normalizeBridgeStatus,
@@ -262,7 +263,7 @@ export function formatEventLogText(events: readonly EventLogEvent[]): string {
 export function formatEventLogLine(event: EventLogEvent): string {
   const provider = event.provider ? ` [${providerName(event.provider)}]` : '';
   const detail = event.detail && Object.keys(event.detail).length > 0 ? ` ${JSON.stringify(event.detail)}` : '';
-  return `${new Date(event.ts).toISOString()} ${event.kind}${provider} - ${event.summary}${detail}`;
+  return `${formatLocalTimestamp(event.ts, { millis: true })} ${event.kind}${provider} - ${event.summary}${detail}`;
 }
 
 export function filterEventLogByProvider(

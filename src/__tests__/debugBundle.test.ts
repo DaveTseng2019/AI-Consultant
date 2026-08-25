@@ -23,7 +23,7 @@ function state(provider: AIProvider, patch: Partial<ProviderState> = {}): Provid
 function baseBundle(overrides: Partial<Parameters<typeof buildDebugBundle>[0]> = {}): string {
   return buildDebugBundle({
     appVersion: '0.1.0',
-    timestampMs: Date.parse('2026-07-05T01:02:03Z'),
+    timestampMs: new Date(2026, 6, 5, 1, 2, 3).getTime(),
     userAgent: 'Vitest UA',
     platform: 'Win32',
     providerStates: Object.fromEntries(providers.map((provider) => [provider, state(provider)])) as Record<
@@ -231,7 +231,7 @@ describe('debug bundle builder', () => {
     };
     const chatgpt = parsed.providers.find((provider) => provider.provider === 'chatgpt');
 
-    expect(parsed.generatedAt).toBe('2026-07-05T01:02:03.000Z');
+    expect(parsed.generatedAt).toMatch(/^2026-07-05 01:02:03 UTC[+-]\d{2}:\d{2}$/);
     expect(parsed.app.version).toBe('0.2.0');
     expect(parsed.environment).toEqual({ userAgent: 'Vitest UA', platform: 'Win32' });
     expect(parsed.settings).toEqual({
@@ -250,6 +250,6 @@ describe('debug bundle builder', () => {
     expect(chatgpt?.adapterVersion).toBe(7);
     expect(parsed.providers.map((provider) => provider.provider)).toEqual(providers);
     expect(parsed.eventLog).toContain('ChatGPT adapter update v7');
-    expect(debugBundleFilename(new Date('2026-07-05T01:02:03Z'))).toBe('ai-consultant-debug-2026-07-05-01-02-03.txt');
+    expect(debugBundleFilename(new Date(2026, 6, 5, 1, 2, 3))).toBe('ai-consultant-debug-2026-07-05-01-02-03.txt');
   });
 });

@@ -141,6 +141,13 @@ describe('event log reducer', () => {
     expect(events[0].detail).not.toHaveProperty('query');
   });
 
+  it('stamps a copied log with the local 24-hour clock, not UTC', () => {
+    const ts = new Date(2026, 7, 25, 15, 9, 42, 7).getTime();
+    const events = appendEvent([], { ts, provider: 'claude', kind: 'provider-state', summary: 'local clock' });
+
+    expect(formatEventLogText(events)).toMatch(/^2026-08-25 15:09:42\.007 provider-state \[Claude\] - local clock$/);
+  });
+
   it('formats only provider-filtered events when copying a filtered log', () => {
     const events = [
       { ts: 1, provider: 'chatgpt' as const, kind: 'provider-state' as const, summary: 'chatgpt-only' },

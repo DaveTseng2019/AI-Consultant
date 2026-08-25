@@ -1,5 +1,6 @@
 import { AI_PROVIDERS } from '../../shared/constants';
 import type { AIProvider, ProviderState } from '../../shared/types';
+import { formatLocalTimestamp, localFilenameStamp, localTimezoneLabel } from '../formatTime';
 import { appendEvent, formatEventLogText, providerName, type EventLogEvent } from './eventLog';
 import {
   normalizeAdapterStatus,
@@ -64,7 +65,7 @@ export function buildDebugBundle(input: DebugBundleInput): string {
   const events = sanitizeEvents(input.events);
   const report: DebugBundleReport = {
     bundleVersion: 1,
-    generatedAt: new Date(input.timestampMs).toISOString(),
+    generatedAt: `${formatLocalTimestamp(input.timestampMs)} ${localTimezoneLabel(input.timestampMs)}`,
     app: {
       version: input.appVersion,
     },
@@ -81,8 +82,7 @@ export function buildDebugBundle(input: DebugBundleInput): string {
 }
 
 export function debugBundleFilename(date: Date): string {
-  const stamp = date.toISOString().replace(/\.\d{3}Z$/, '').replace(/[:T]/g, '-');
-  return `ai-consultant-debug-${stamp}.txt`;
+  return `ai-consultant-debug-${localFilenameStamp(date)}.txt`;
 }
 
 export function pickDebugSettings(settings: unknown): DebugBundleSettings {
