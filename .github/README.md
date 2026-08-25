@@ -62,6 +62,7 @@ Cloudflare 驗證）；Linux 目前只有 CI 建置，沒有實機回報。詳�
 
 | 版本 | 日期 | 異動 |
 |---|---|---|
+| [v0.0.3](https://github.com/DaveTseng2019/AI-Consultant/releases/tag/v0.0.3) | 2026-08-25 | 原生問答的回答也會進主畫面；時間改本地 24 小時制；AI 連線與傳送晶片加上 provider logo；記住上次的工作模式；字級拆成介面與主版面兩段 |
 | [v0.0.2](https://github.com/DaveTseng2019/AI-Consultant/releases/tag/v0.0.2) | 2026-08-21 | 在 provider 自己的畫面打的問題會進逐字稿；設定新增等寬字型 |
 | [v0.0.1](https://github.com/DaveTseng2019/AI-Consultant/releases/tag/v0.0.1) | 2026-08-21 | 首次發佈 |
 
