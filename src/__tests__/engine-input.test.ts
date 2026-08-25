@@ -818,6 +818,43 @@ describe('injected engine input hardening', () => {
     });
   });
 
+  it('reports the answer when the provider renders the answer element with the send', async () => {
+    vi.useFakeTimers();
+    const env = createEnv({ inputKind: 'textarea' });
+    const handler = await installEngine(env);
+    dispatchAdapter(handler, {
+      thinkingDetectors: ['.thinking'],
+      timing: { doneDelayMs: 10, chunkDebounceMs: 0, statusIntervalMs: 1_000_000, backupPollMs: 10 },
+    });
+
+    const previousAnswer = new FakeElement(env.document, 'div', '上一題的回答');
+    env.responses = [previousAnswer];
+    env.input.setVisibleText('原生輸入的問題');
+    flushMutations();
+
+    // Claude renders the answer container together with the user's message, so it is already on
+    // screen by the time the emptied composer is noticed. A baseline taken then would swallow the
+    // whole answer and the app would show the question with nothing under it.
+    const answer = new FakeElement(env.document, 'div', '');
+    env.responses = [previousAnswer, answer];
+    env.input.setVisibleText('');
+    env.thinking = true;
+    flushMutations();
+    await flushMicrotasks();
+
+    answer.textContent = '原生畫面的回答';
+    env.thinking = false;
+    await vi.advanceTimersByTimeAsync(10);
+    await vi.advanceTimersByTimeAsync(10);
+
+    expect(env.emitted).toContainEqual({
+      v: 1,
+      action: 'RESPONSE_DONE',
+      provider: 'grok',
+      payload: '原生畫面的回答',
+    });
+  });
+
   it('adopts a native turn when only a fresh answer element marks the send', async () => {
     vi.useFakeTimers();
     const env = createEnv({ inputKind: 'textarea' });

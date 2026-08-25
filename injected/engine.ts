@@ -190,6 +190,7 @@ class InactiveSendOperationError extends Error {
   let lastCompletionActivityAt = 0;
   let pendingPromptText = '';
   let nativeDraftText = '';
+  let nativeResponseBaseline: Element[] = [];
   let nativeAdoptPending = false;
   let lastChunkTime = 0;
 
@@ -524,6 +525,11 @@ class InactiveSendOperationError extends Error {
     const prompt = composerPromptText(queryFirst(adapter.inputSelectors));
     if (prompt) {
       nativeDraftText = prompt;
+      // The response baseline has to predate the send. A composer that still holds a draft is the
+      // proof of that: the provider renders the answer element together with the user's message,
+      // so a baseline taken any later already contains it and getLatestResponseText() skips the
+      // answer for the whole turn.
+      nativeResponseBaseline = queryResponses(adapter);
       return;
     }
     const emptied = nativeDraftText;
@@ -548,17 +554,19 @@ class InactiveSendOperationError extends Error {
     if (!activeAdapter) return;
     // An emptied composer is not proof of a send: the user can also clear a draft by hand. Wait for
     // the provider to answer for it. A fresh answer element counts alongside the thinking
-    // detectors, so a provider whose thinking markup drifted still gets its turn captured -- and
-    // the baseline is taken here, before that element exists, or the wait would skip it.
-    const baseline = queryResponses(activeAdapter);
-    const baselineEls = new Set(baseline);
+    // detectors, so a provider whose thinking markup drifted still gets its turn captured. That
+    // confirmation compares against what is on screen now, so a hand-cleared draft cannot read as
+    // a send; the response watch is armed with the pre-send baseline instead, because everything
+    // rendered by the send itself -- the answer element included -- is already here.
+    const preSendResponses = nativeResponseBaseline;
+    const confirmEls = new Set(queryResponses(activeAdapter));
     const started = await retryLookup(
-      () => (isThinking() || queryResponses(activeAdapter).some((el) => !baselineEls.has(el)) ? true : null),
+      () => (isThinking() || queryResponses(activeAdapter).some((el) => !confirmEls.has(el)) ? true : null),
       { intervalMs: NATIVE_TURN_POLL_MS, timeoutMs: NATIVE_TURN_CONFIRM_TIMEOUT_MS },
     );
     if (!started) return;
     if (adapter !== activeAdapter || waitingForResponse || draftStaging || activeSendOperation !== undefined) return;
-    armResponseWatch(activeAdapter, prompt, baseline);
+    armResponseWatch(activeAdapter, prompt, preSendResponses);
     logEngine(`${activeAdapter.provider} adopted a native turn typed in the provider UI`);
     bridge.emit({ v: 1, action: 'NATIVE_PROMPT', provider: activeAdapter.provider, payload: prompt });
   }
@@ -988,6 +996,7 @@ class InactiveSendOperationError extends Error {
     // The composer was watched before this turn, not during it. Drop what it held so the empty
     // composer this turn leaves behind cannot read as a second, native send.
     nativeDraftText = '';
+    nativeResponseBaseline = [];
     clearTimersForResponse();
     responseBaselineEls.clear();
     pendingPromptText = '';
@@ -1052,7 +1061,20 @@ class InactiveSendOperationError extends Error {
         return;
       }
       const currentText = getLatestResponseText();
-      if (!currentText || currentText === lastResponseText) return;
+      if (!currentText || currentText === lastResponseText) {
+        // A watch that never sees one line of text has no other way out: checkIfDone only ever runs
+        // after the first chunk, so the wait would stay armed for the life of the page and every
+        // later send on this provider would be refused as "response in flight". Same inactivity
+        // window as the completion check, and thinking keeps it alive.
+        if (
+          !lastResponseText &&
+          !isThinking() &&
+          Date.now() - lastCompletionActivityAt > TURN_COMPLETION_CONFIRM_TIMEOUT_MS
+        ) {
+          doneWithError(`${adapter?.provider ?? 'provider'} produced no response text`, undefined, activeSendOperation);
+        }
+        return;
+      }
       clearFinishResponseTimeout();
       lastResponseText = currentText;
       lastCompletionActivityAt = Date.now();
