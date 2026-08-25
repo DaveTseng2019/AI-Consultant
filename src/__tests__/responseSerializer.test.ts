@@ -125,6 +125,18 @@ describe('serializeResponseText', () => {
     expect(serialize(root)).toBe(`Run this:\n\n\`\`\`\n${code}\n\`\`\``);
   });
 
+  it('drops the screen-reader-only copy of a tool pill label', () => {
+    const root = element('div', [
+      element('div', [
+        element('button', [text('Searched the web')], { 'data-testid': 'tool-status-pill' }),
+        element('span', [text('Searched the web')], { class: 'sr-only' }),
+      ]),
+      element('p', [text('The answer itself.')]),
+    ]);
+
+    expect(serialize(root)).toBe('The answer itself.');
+  });
+
   it('keeps rendered math instead of dropping the aria-hidden formula', () => {
     const katex = (tex: string, glyphs: string) =>
       element('span', [

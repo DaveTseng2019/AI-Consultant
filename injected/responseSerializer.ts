@@ -20,6 +20,11 @@ const BLOCK_TAGS = new Set([
   'SECTION',
 ]);
 const OMITTED_TAGS = new Set(['BUTTON', 'NOSCRIPT', 'SCRIPT', 'STYLE', 'SVG', 'TEMPLATE']);
+// Text that exists only for assistive tech is not part of the answer. Claude repeats the label of
+// every tool pill ("Searched the web") in an sr-only span beside the button this list already
+// drops, and that copy was arriving as the first line of the captured answer. The span carries no
+// aria-hidden -- it is the accessible name -- so the class is the only handle on it.
+const SCREEN_READER_ONLY_CLASSES = new Set(['sr-only', 'visually-hidden']);
 const TABLE_SECTION_TAGS = new Set(['TBODY', 'TFOOT', 'THEAD']);
 
 interface SerializationContext {
@@ -48,7 +53,13 @@ function serializeNode(node: Node, context: SerializationContext): string {
   const element = node as Element;
   if (node.nodeType !== ELEMENT_NODE && node.nodeType !== undefined) return '';
   if (typeof element.tagName !== 'string') return '';
-  if (OMITTED_TAGS.has(tagName(element)) || attribute(element, 'aria-hidden') === 'true') return '';
+  if (
+    OMITTED_TAGS.has(tagName(element)) ||
+    attribute(element, 'aria-hidden') === 'true' ||
+    classList(element).some((name) => SCREEN_READER_ONLY_CLASSES.has(name))
+  ) {
+    return '';
+  }
   if (!element.childNodes) return normalizeText(element.textContent ?? '');
 
   const tag = tagName(element);
