@@ -1975,6 +1975,21 @@ export default function App() {
   const modeBlockedMessage = modeSendBlocked
     ? formatI18n(translate('input.modeNotReady'), { remaining: missingModeProviderCount })
     : undefined;
+  const showSendTargets = mode === 'free' && presetId !== 'brainstorm';
+  // The composer's placeholder was the app's only word about why nothing can be sent -- and the
+  // conversation column it lives in is collapsed for exactly as long as that stays true, so at
+  // startup the message was written where nobody could read it. Say it in the column that is
+  // always on screen instead.
+  // "Connect a provider" is an instruction, and at startup there is nothing for the user to do: the
+  // providers they already registered are opening on their own. Say which of the two it is.
+  const providersOpening = PROVIDERS.some(
+    (provider) => states[provider].webview !== 'none' && states[provider].login === 'unknown',
+  );
+  const sendBlockedNotice = isProcessing
+    ? undefined
+    : noSendableProviders
+      ? translate(providersOpening ? 'input.connectingProviders' : 'input.connectProvider')
+      : modeBlockedMessage;
 
   return (
     <main className="app-shell h-screen overflow-hidden bg-white text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
@@ -2012,7 +2027,7 @@ export default function App() {
             onToggle={() => setSessionSidebarCollapsed((current) => !current)}
             onNewConversation={() => {
               startNewConversation();
-              setSessionSidebarCollapsed(true);
+              if (appSettings.collapseHistoryOnNewConversation) setSessionSidebarCollapsed(true);
             }}
             onSelectSession={selectConversationSession}
             onDeleteSession={deleteConversationSession}
@@ -2042,14 +2057,6 @@ export default function App() {
                 detailsPresetId={presetDetailsId}
                 layout="sidebar"
               />
-              {mode === 'free' && presetId !== 'brainstorm' ? (
-                <section className="mt-2 rounded border border-zinc-200 bg-white p-2 dark:border-zinc-800 dark:bg-zinc-950">
-                  <div className="mb-2 text-xs font-semibold uppercase text-zinc-600 dark:text-zinc-400">{translate('input.sendSelectedProviders')}</div>
-                  <div className="flex flex-wrap gap-1.5">
-                    <TargetChips providers={PROVIDERS} states={states} selected={targets} onChange={handleTargetsChange} disabled={isProcessing} />
-                  </div>
-                </section>
-              ) : null}
               {checkpoint ? (
                 <details className="mt-2 border border-amber-300 bg-white dark:border-amber-900 dark:bg-zinc-950" open>
                   <summary className="cursor-pointer px-3 py-2 text-xs font-medium text-amber-800 hover:bg-amber-100 dark:text-amber-100 dark:hover:bg-amber-950">
@@ -2069,6 +2076,30 @@ export default function App() {
                 </details>
               ) : null}
             </section>
+            {/* Outside the shelf above on purpose. That shelf is hidden while the centred provider
+                signs in, and the conversation column beside it is collapsed until some provider can
+                receive a message -- both true for the whole of startup, which is exactly when the
+                send targets and the reason nothing can be sent have to be readable. */}
+            {showSendTargets || sendBlockedNotice ? (
+              <section
+                aria-label={translate('input.sendSelectedProviders')}
+                className="shrink-0 border-b border-zinc-200 bg-white px-3 py-2 dark:border-zinc-800 dark:bg-zinc-950"
+              >
+                {showSendTargets ? (
+                  <>
+                    <div className="mb-2 text-xs font-semibold uppercase text-zinc-600 dark:text-zinc-400">{translate('input.sendSelectedProviders')}</div>
+                    <div className="flex flex-wrap gap-1.5">
+                      <TargetChips providers={PROVIDERS} states={states} selected={targets} onChange={handleTargetsChange} disabled={isProcessing} />
+                    </div>
+                  </>
+                ) : null}
+                {sendBlockedNotice ? (
+                  <div role="status" className={`text-xs text-amber-700 dark:text-amber-300 ${showSendTargets ? 'mt-2' : ''}`}>
+                    {sendBlockedNotice}
+                  </div>
+                ) : null}
+              </section>
+            ) : null}
             <FocusPane
               centeredProvider={centeredProvider}
               scrollFocusedProvider={scrollFocusedProvider}

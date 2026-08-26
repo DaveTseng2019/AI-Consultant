@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { compareVersions } from '../ui/updateCheck';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { compareVersions, fetchLatestRelease } from '../ui/updateCheck';
 
 describe('update version comparison', () => {
   it('treats equal versions as not newer', () => {
@@ -38,5 +38,48 @@ describe('update version comparison', () => {
     expect(compareVersions('1.2.3', 'latest')).toBe(false);
     expect(compareVersions('', '1.2.4')).toBe(false);
     expect(compareVersions('1.2.3.4', '1.2.5')).toBe(false);
+  });
+});
+
+describe('latest release parsing', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  function stubRelease(body: unknown) {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve(body) })),
+    );
+  }
+
+  it('picks the portable zip so a portable install is not sent at an installer', async () => {
+    stubRelease({
+      tag_name: 'v1.2.3',
+      html_url: 'https://github.com/owner/repo/releases/tag/v1.2.3',
+      assets: [
+        { name: 'AI-Consultant_1.2.3_x64-setup.exe', browser_download_url: 'https://example.com/setup.exe' },
+        { name: 'ai-consultant-1.2.3-windows-portable.zip', browser_download_url: 'https://example.com/portable.zip' },
+      ],
+    });
+
+    await expect(fetchLatestRelease('owner/repo')).resolves.toEqual({
+      tagName: 'v1.2.3',
+      htmlUrl: 'https://github.com/owner/repo/releases/tag/v1.2.3',
+      portableAssetUrl: 'https://example.com/portable.zip',
+    });
+  });
+
+  it('falls back to the release page when no portable asset is trustworthy', async () => {
+    stubRelease({
+      tag_name: 'v1.2.3',
+      html_url: 'https://github.com/owner/repo/releases/tag/v1.2.3',
+      assets: [{ name: 'ai-consultant-1.2.3-windows-portable.zip', browser_download_url: 'http://example.com/portable.zip' }],
+    });
+
+    await expect(fetchLatestRelease('owner/repo')).resolves.toEqual({
+      tagName: 'v1.2.3',
+      htmlUrl: 'https://github.com/owner/repo/releases/tag/v1.2.3',
+    });
   });
 });

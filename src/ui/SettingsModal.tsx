@@ -42,7 +42,7 @@ type UpdateCheckState =
   | { status: 'idle' }
   | { status: 'checking' }
   | { status: 'up-to-date'; version: string }
-  | { status: 'available'; tagName: string; htmlUrl: string }
+  | { status: 'available'; tagName: string; htmlUrl: string; portableAssetUrl?: string }
   | { status: 'unavailable' }
   | { status: 'error'; message: string };
 
@@ -333,7 +333,12 @@ export function SettingsModal({
         return;
       }
       if (compareVersions(currentVersion, latest.tagName)) {
-        setUpdateCheck({ status: 'available', tagName: latest.tagName, htmlUrl: latest.htmlUrl });
+        setUpdateCheck({
+          status: 'available',
+          tagName: latest.tagName,
+          htmlUrl: latest.htmlUrl,
+          ...(latest.portableAssetUrl ? { portableAssetUrl: latest.portableAssetUrl } : {}),
+        });
       } else {
         setUpdateCheck({ status: 'up-to-date', version: currentVersion });
       }
@@ -461,6 +466,18 @@ export function SettingsModal({
                 <span>
                   <span className="block font-medium text-zinc-700 dark:text-zinc-300">{t('settings.autoNewConversationOnStart')}</span>
                   <span className="mt-1 block leading-relaxed">{t('settings.autoNewConversationOnStartDescription')}</span>
+                </span>
+              </label>
+              <label className="mt-3 flex items-start gap-3 text-xs text-zinc-600 dark:text-zinc-400">
+                <input
+                  type="checkbox"
+                  checked={draft.collapseHistoryOnNewConversation}
+                  onChange={(event) => void persistDraftFieldImmediately('collapseHistoryOnNewConversation', event.target.checked)}
+                  className="mt-0.5 h-4 w-4 accent-sky-700"
+                />
+                <span>
+                  <span className="block font-medium text-zinc-700 dark:text-zinc-300">{t('settings.collapseHistoryOnNewConversation')}</span>
+                  <span className="mt-1 block leading-relaxed">{t('settings.collapseHistoryOnNewConversationDescription')}</span>
                 </span>
               </label>
             </section>
@@ -608,8 +625,10 @@ export function SettingsModal({
               </button>
             </div>
 
-            {!draft.portable ? (
-              <section className="space-y-3 border-t border-zinc-200 dark:border-zinc-800 pt-4">
+            {/* Portable builds check too. The button only opens a page in the browser -- exactly
+                what README-portable.txt used to ask the user to do by hand -- so there was nothing
+                for the marker to protect them from. */}
+            <section className="space-y-3 border-t border-zinc-200 dark:border-zinc-800 pt-4">
                 <span className="block text-xs text-zinc-600 dark:text-zinc-400">{t('settings.updates')}</span>
                 <div className="flex flex-wrap items-center gap-3">
                   <button
@@ -626,12 +645,18 @@ export function SettingsModal({
                   {updateCheck.status === 'available' ? (
                     <span className="text-xs text-sky-700 dark:text-sky-300">
                       {t('settings.newVersionAvailable').replace('{version}', updateCheck.tagName)} {'->'}{' '}
+                      {/* A portable install replaces itself by unzipping, so send it straight at the
+                          zip rather than at a page listing installers it must not run. */}
                       <button
                         type="button"
                         className="underline hover:text-sky-800 dark:hover:text-sky-200"
-                        onClick={() => void host.app.openExternal(updateCheck.htmlUrl)}
+                        onClick={() =>
+                          void host.app.openExternal(
+                            draft.portable && updateCheck.portableAssetUrl ? updateCheck.portableAssetUrl : updateCheck.htmlUrl,
+                          )
+                        }
                       >
-                        {t('settings.downloadPage')}
+                        {t(draft.portable && updateCheck.portableAssetUrl ? 'settings.downloadPortable' : 'settings.downloadPage')}
                       </button>
                     </span>
                   ) : null}
@@ -642,8 +667,7 @@ export function SettingsModal({
                     <span className="text-xs text-red-700 dark:text-red-300">{t('settings.updateCheckFailed')} {updateCheck.message}</span>
                   ) : null}
                 </div>
-              </section>
-            ) : null}
+            </section>
 
             <details className="group border-t border-zinc-200 pt-4 dark:border-zinc-800">
               <summary className="cursor-pointer list-none rounded px-1 py-2 focus-visible:outline-offset-2">

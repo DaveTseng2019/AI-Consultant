@@ -106,16 +106,7 @@ export function beginNewConversationSession({
   const existing = normalizedSessions.find((session) => session.id === activeSessionId);
 
   if (normalizedMessages.length === 0) {
-    const active = existing
-      ? {
-          id: existing.id,
-          title: DEFAULT_CONVERSATION_SESSION_TITLE,
-          createdAt: existing.createdAt,
-          updatedAt: Math.max(existing.createdAt, timestamp),
-          mode: 'free' as const,
-          messages: [],
-        }
-      : createConversationSession({ now: timestamp });
+    const active = existing ? resetToBlankSession(existing, timestamp) : createConversationSession({ now: timestamp });
     return { sessions: upsertConversationSession(normalizedSessions, active), active };
   }
 
@@ -134,8 +125,22 @@ export function beginNewConversationSession({
     else delete archivedSession.presetId;
     archived = upsertConversationSession(normalizedSessions, archivedSession);
   }
-  const active = createConversationSession({ now: timestamp });
+  // A blank conversation is already the thing the button asks for, so a second one only adds a
+  // duplicate "New conversation" row to the history. Reuse the one that is there and bump its time.
+  const blank = archived.find((session) => session.messages.length === 0);
+  const active = blank ? resetToBlankSession(blank, timestamp) : createConversationSession({ now: timestamp });
   return { sessions: upsertConversationSession(archived, active), active };
+}
+
+function resetToBlankSession(existing: ConversationSession, timestamp: number): ConversationSession {
+  return {
+    id: existing.id,
+    title: DEFAULT_CONVERSATION_SESSION_TITLE,
+    createdAt: existing.createdAt,
+    updatedAt: Math.max(existing.createdAt, timestamp),
+    mode: 'free',
+    messages: [],
+  };
 }
 
 export function titleFromFirstUserMessage(messages: unknown): string {

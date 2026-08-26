@@ -86,7 +86,7 @@ pnpm build:local --stamp-only   # 只補蓋章，前提是 HEAD 沒動過
 - 純執行檔：`src-tauri/target/release/*.exe`
 - NSIS 安裝檔：`src-tauri/target/release/bundle/nsis/*-setup.exe`
 
-portable zip（含 `PORTABLE` 標記，停用 app 內更新 UI）：
+portable zip（含 `PORTABLE` 標記；更新檢查照常可用，只是「下載」會直接指向可攜版 zip）：
 
 ```sh
 pnpm pack:portable    # 從 src-tauri/target/release 打包到 dist/portable/

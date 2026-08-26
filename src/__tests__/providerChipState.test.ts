@@ -26,6 +26,16 @@ describe('provider chip state', () => {
     expect(chipState(state({ webview: 'creating' }), 'side', translate).label).toBe('Opening…');
   });
 
+  it('calls a provider that has not reported yet opening, not stale', () => {
+    // Every restored provider looks like this for the first seconds after a start.
+    expect(chipState(state({ webview: 'loaded', dom: 'unknown', login: 'unknown' }), 'side', translate).label).toBe(
+      'Opening…',
+    );
+    expect(chipState(state({ webview: 'loaded', dom: 'unknown', login: 'logged_in' }), 'side', translate).label).toBe(
+      'Checking…',
+    );
+  });
+
   it('shows actionable health before the background presentation label', () => {
     expect(
       chipState(state({ webview: 'loaded', dom: 'ready', login: 'logged_out' }), 'chip', translate).label,

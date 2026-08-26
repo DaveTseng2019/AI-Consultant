@@ -178,6 +178,30 @@ describe('conversation sessions', () => {
     });
   });
 
+  it('reuses a blank conversation left in the history instead of stacking another one', () => {
+    const blank = session('blank', 15, { title: DEFAULT_CONVERSATION_SESSION_TITLE, messages: [] });
+    const current = session('current', 10);
+    const messages = [{ id: 'question', role: 'user' as const, content: 'How should this be fixed?' }];
+
+    const result = beginNewConversationSession({
+      sessions: [blank, current],
+      activeSessionId: current.id,
+      messages,
+      mode: 'consult',
+      now: 20,
+    });
+
+    expect(result.sessions).toHaveLength(2);
+    expect(result.active).toEqual({
+      id: 'blank',
+      title: DEFAULT_CONVERSATION_SESSION_TITLE,
+      createdAt: 15,
+      updatedAt: 20,
+      mode: 'free',
+      messages: [],
+    });
+  });
+
   it('persists the brainstorm preset only when it is backed by free mode', () => {
     expect(
       normalizeConversationSession({

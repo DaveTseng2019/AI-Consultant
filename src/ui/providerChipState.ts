@@ -66,6 +66,16 @@ export function chipState(
       dotClassName: 'animate-pulse bg-blue-500 dark:bg-blue-400',
     };
   }
+  // A page that has never said whether anyone is signed in has not gone stale -- it has not spoken
+  // yet. At startup every restored provider sits here for seconds, and calling that "stale" read as
+  // a fault the user had to fix rather than as work still in progress.
+  if (state.login === 'unknown') {
+    return {
+      label: t('connection.connecting'),
+      className: 'border-sky-300 dark:border-sky-700 text-sky-700 dark:text-sky-300',
+      dotClassName: 'animate-pulse bg-sky-500 dark:bg-sky-400',
+    };
+  }
   if (!isSendable(state)) {
     return {
       label: t('connection.stale'),

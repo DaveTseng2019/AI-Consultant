@@ -40,8 +40,9 @@ macOS 只有 ad-hoc 簽章，不是 Developer ID 簽章、也沒有公證；Wind
 尚未驗：NSIS 安裝檔沒有實際安裝過；影像生成、匯出、更新檢查等下方清單的其他項目在這一版
 沒有逐項重跑。
 
-**可攜版不會隔離資料。** `PORTABLE` 標記只讓 app 隱藏更新檢查介面（`src-tauri/src/settings.rs`
-的 `portable_marker_exists`），設定與登入狀態仍走 `app_data_dir()`，跟安裝版共用同一份。
+**可攜版不會隔離資料。** `PORTABLE` 標記（`src-tauri/src/settings.rs` 的 `portable_marker_exists`）
+只用來認出這是可攜版：更新檢查的「下載」會指向 release 的可攜版 zip 而不是安裝檔頁面，
+debug bundle 也會記下這一欄。設定與登入狀態仍走 `app_data_dir()`，跟安裝版共用同一份。
 換一台電腦不會帶著登入狀態走，也會在原本那台留下痕跡。
 
 ## Agent 原始碼啟動通道

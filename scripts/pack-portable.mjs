@@ -17,7 +17,9 @@ Requirements:
 
 Portable notes:
 - Keep the PORTABLE marker file next to the .exe.
-- Portable mode hides the in-app update controls. Download newer releases manually from:
+- Settings > Check for updates works here. When a newer release exists it links straight to
+  that release's portable zip; unzip it over this folder, keeping the PORTABLE marker.
+  Releases are also listed at:
   https://github.com/DaveTseng2019/AI-Consultant/releases/latest
 `;
 
