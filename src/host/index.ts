@@ -43,6 +43,8 @@ function safeSnapshotId(snapshotId: string): string {
 export const host = {
   app: {
     version: (): Promise<string> => getVersion(),
+    /** What to show the user: the local build stamp when there is one, else the package version. */
+    versionLabel: (): Promise<string> => invoke('app_version_label'),
     openExternal: (url: string): Promise<void> => invoke('open_external_url', { url }),
   },
   onNavBlocked: async (handler: (payload: NavBlockedPayload) => void): Promise<() => void> => {

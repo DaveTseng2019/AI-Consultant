@@ -261,6 +261,7 @@ export const I18N_KEYS = [
   'settings.snapshotTierPromptText',
   'settings.snapshotTierFullLocal',
   'settings.updates',
+  'settings.currentVersion',
   'settings.checking',
   'settings.checkForUpdates',
   'settings.upToDate',

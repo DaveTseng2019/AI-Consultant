@@ -42,6 +42,7 @@ pub fn run() {
             adapters::adapter_push,
             adapters::report_broken,
             adapters::open_adapter_issue,
+            settings::app_version_label,
             settings::settings_get,
             settings::settings_set,
             settings::export_markdown,

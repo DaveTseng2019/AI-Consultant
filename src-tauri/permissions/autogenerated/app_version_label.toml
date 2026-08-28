@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-app-version-label"
+description = "Enables the app_version_label command without any pre-configured scope."
+commands.allow = ["app_version_label"]
+
+[[permission]]
+identifier = "deny-app-version-label"
+description = "Denies the app_version_label command without any pre-configured scope."
+commands.deny = ["app_version_label"]

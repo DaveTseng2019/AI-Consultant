@@ -37,6 +37,28 @@ fn portable_marker_exists() -> bool {
         .is_some_and(|path| path.exists())
 }
 
+/// What to print as the version. The repo pins 0.0.0 and only CI injects a real one from the tag,
+/// so on a locally built exe the package version says nothing about which build is in hand.
+/// build-local.mjs stamps `describe` beside the exe for exactly this, and it wins when present.
+fn build_stamp_from_json(content: &str) -> Option<String> {
+    let value: Value = serde_json::from_str(content).ok()?;
+    let describe = value.get("describe")?.as_str()?.trim();
+    (!describe.is_empty()).then(|| describe.to_string())
+}
+
+fn local_build_stamp() -> Option<String> {
+    let path = std::env::current_exe()
+        .ok()?
+        .parent()?
+        .join("build-info.json");
+    build_stamp_from_json(&std::fs::read_to_string(path).ok()?)
+}
+
+#[tauri::command]
+pub async fn app_version_label(app: AppHandle) -> String {
+    local_build_stamp().unwrap_or_else(|| app.package_info().version.to_string())
+}
+
 pub fn read_settings(path: &Path) -> Result<Value, String> {
     match std::fs::read_to_string(path) {
         Ok(content) if content.trim().is_empty() => Ok(Value::Object(Map::new())),
@@ -538,12 +560,26 @@ pub async fn open_external_url(
 
 #[cfg(test)]
 mod tests {
-    use super::{normalize_settings_value, read_settings, write_settings, ARCHIVE_LABEL_MAX_CHARS};
+    use super::{
+        build_stamp_from_json, normalize_settings_value, read_settings, write_settings,
+        ARCHIVE_LABEL_MAX_CHARS,
+    };
     use serde_json::json;
     use std::path::PathBuf;
     use std::sync::atomic::{AtomicUsize, Ordering};
 
     static NEXT_ID: AtomicUsize = AtomicUsize::new(0);
+
+    #[test]
+    fn build_stamp_is_read_only_from_a_describe_that_says_something() {
+        assert_eq!(
+            build_stamp_from_json(r#"{"describe":"v0.0.5-1-g951ebd5"}"#),
+            Some("v0.0.5-1-g951ebd5".to_string())
+        );
+        assert_eq!(build_stamp_from_json(r#"{"describe":"  "}"#), None);
+        assert_eq!(build_stamp_from_json(r#"{"commit":"abc"}"#), None);
+        assert_eq!(build_stamp_from_json("not json"), None);
+    }
 
     fn unique_path(name: &str) -> PathBuf {
         std::env::temp_dir().join(format!(

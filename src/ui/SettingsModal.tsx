@@ -89,6 +89,7 @@ export function SettingsModal({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<SettingsError | undefined>();
   const [updateCheck, setUpdateCheck] = useState<UpdateCheckState>({ status: 'idle' });
+  const [versionLabel, setVersionLabel] = useState('');
   const closeTimerRef = useRef<number | undefined>();
   const settingsPersistenceRef = useRef(createSettingsPersistence(host.settings));
   const fontSizeDebounceRef = useRef<TrailingDebounce<PendingFontSizeUpdate> | undefined>(undefined);
@@ -106,6 +107,21 @@ export function SettingsModal({
     if (!open) return;
     setExpandedRoleModes(activeModeRoleSettings ? [activeModeRoleSettings] : []);
   }, [activeModeRoleSettings, open]);
+
+  // Read once per opening, before anything is clicked: which build the user is holding is the
+  // first thing the update section has to answer, not something the check produces.
+  useEffect(() => {
+    if (!open) return;
+    let disposed = false;
+    void (async () => {
+      const stamped = await host.app.versionLabel().catch(() => '');
+      const label = stamped || (await host.app.version().catch(() => ''));
+      if (!disposed) setVersionLabel(label.trim());
+    })();
+    return () => {
+      disposed = true;
+    };
+  }, [open]);
 
   useEffect(() => {
     const modalSession = ++modalSessionRef.current;
@@ -630,6 +646,9 @@ export function SettingsModal({
                 for the marker to protect them from. */}
             <section className="space-y-3 border-t border-zinc-200 dark:border-zinc-800 pt-4">
                 <span className="block text-xs text-zinc-600 dark:text-zinc-400">{t('settings.updates')}</span>
+                <span className="block text-xs text-zinc-800 dark:text-zinc-200">
+                  {t('settings.currentVersion')}: {versionLabel || '—'}
+                </span>
                 <div className="flex flex-wrap items-center gap-3">
                   <button
                     type="button"

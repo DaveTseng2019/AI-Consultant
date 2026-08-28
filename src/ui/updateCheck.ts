@@ -2,7 +2,8 @@
 //        built exe always reads as older than the newest release and Settings always offers an
 //        update. That is the same trade-off the source project makes, and why build-local.mjs
 //        stamps the commit beside the exe -- read build-info.json, not the version, to know
-//        which build you are holding.
+//        which build you are holding. Settings now shows that stamp itself (app_version_label),
+//        so the answer is on screen; the comparison below still uses the pinned version.
 export const DEFAULT_RELEASE_REPO = 'DaveTseng2019/AI-Consultant';
 
 export interface LatestRelease {

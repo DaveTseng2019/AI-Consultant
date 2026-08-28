@@ -17,6 +17,7 @@ fn main() {
             "adapter_push",
             "report_broken",
             "open_adapter_issue",
+            "app_version_label",
             "settings_get",
             "settings_set",
             "export_markdown",
