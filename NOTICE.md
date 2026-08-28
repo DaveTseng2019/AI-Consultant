@@ -2,6 +2,9 @@
 
 AI Consultant is distributed under the [MIT License](./LICENSE).
 
+Copyright © 2026 Ted Huang (teddashh) — original author of multi-ai-chat-desktop.
+Copyright © 2026 Dave Tseng — modifications in this fork.
+
 Portions of this project adapt MIT-licensed ideas or implementation patterns from:
 
 - [`teddashh/multi-ai-chat-desktop`](https://github.com/teddashh/multi-ai-chat-desktop) — this project's code originates here

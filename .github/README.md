@@ -1,92 +1,123 @@
+**English** | [繁體中文](./README.zh-TW.md)
+
 # AI Consultant
 
-把 ChatGPT、Claude、Gemini、Grok 的**網頁版**並排在同一個桌面視窗裡，一次提問四家同時作答，
-或讓它們依照預設流程接力、互審、辯論。Tauri 2 ＋ React ＋ Rust。
+Put the **web versions** of ChatGPT, Claude, Gemini and Grok side by side in one desktop
+window. Ask once and all four answer at the same time, or bring one provider's own view
+to the centre and ask it alone in its own input box — that question and answer reach the
+transcript too. Or let them run a preset flow in relay — reviewing each other, or debating.
+Tauri 2 + React + Rust.
 
-## 沒有 API key
+## No API key
 
-主視窗掛四個子 webview，載入你平常用的那四個網站。送出時不呼叫任何 API，而是**用你已登入的
-網頁 session**——把字打進那個網站自己的輸入框、按它自己的送出鈕、再把回答抓回來。
+The main window holds four child webviews that load the same four sites you use every day.
+Sending does not call any API. It **uses the browser session you are already logged in
+with**: it types into the site's own input box, presses the site's own send button, and
+reads the answer back.
 
-所以帳號、額度、模型版本都是你自己的，沒有金鑰要保管。代價是 **provider 改版就會壞**，
-壞掉的地方通常在 `adapters/*.json` 的選擇器。
+So the account, the quota and the model version are all yours, and there is no key to keep
+safe. The price is that **a provider redesign breaks it**, and what breaks is usually a
+selector in `adapters/*.json`.
 
-機制細節（三層構造、bridge、連線狀態、送出路徑）見 [`docs/BASICS.md`](../docs/BASICS.md)。
+For the mechanism (the three layers, the bridge, connection state, the send path) see
+[`docs/BASICS.md`](../docs/BASICS.md).
 
-## 六個模式
+## Six modes
 
-| 模式 | 形狀 |
+| Mode | Shape |
 |---|---|
-| 自由模式 | 同時發給四家，各自獨立回答 |
-| 多方諮詢 | 雙源先答 → 審查補充 → 總結研究 |
-| 四方辯證 | 正方 → 反方 → 判官 → 總結 |
-| Coding 模式 | 規劃 → 審查 → 實作 → 測試 → 驗收（8 步） |
-| 道理辯證 | 5 輪辯證螺旋 × 4 席 |
-| 腦力激盪 | 12 輪 · 48 次發言 · 5 階段 |
+| Free mode | Send to all four at once, each answers on its own |
+| Multi-party consultation | Two sources answer → review and add → summarise the research |
+| Four-way debate | For → against → judge → summary |
+| Coding mode | Plan → review → implement → test → accept (8 steps) |
+| Reasoned dialectic | 5 rounds of dialectic spiral × 4 seats |
+| Brainstorm | 12 rounds · 48 turns · 5 stages |
 
-除了自由模式，其餘都是串行——**後續步驟拿得到前面的回答當材料**，這是它們與自由模式的根本差別。
+Every mode except free mode is serial — **a later step gets the earlier answers as
+material**. That is the basic difference from free mode.
 
-送出後會留下 transcript 與 snapshot，可匯出 Markdown。「重播」是**沿原路重跑一次**，
-AI 會重新回答，不是回放舊畫面。
+A send leaves a transcript and a snapshot behind, and both export to Markdown. "Replay"
+**runs the question again**, so the AIs answer afresh; it does not play back the old
+screen.
 
-## 執行
+A snapshot lives in memory only and is gone when the app closes. To keep it across a
+restart, turn on "durable snapshots" in settings: it redacts the snapshot and stores it in
+the local app data (no cookies, no provider storage). What survives depends on the
+redaction tier: `full-local` keeps both the question and the AI answers in plain text,
+`prompt-text` keeps the question in plain text and hashes the answers, and `metadata-only`
+and `hashes` keep no text at all — you have to type the question again to replay.
 
-沒有發佈任何安裝檔，自己建一支來用。
+## Running it
 
-前置需求：Node.js `^22.13.0 || >=24.0.0`、pnpm 11（`corepack enable`）、Rust stable
-（Windows 需 MSVC Build Tools 的「Desktop development with C++」）、WebView2（Windows 10/11 通常已內建）。
+There is no installer. Build one yourself.
+
+Prerequisites: Node.js `^22.13.0 || >=24.0.0`, pnpm 11 (`corepack enable`), Rust stable
+(on Windows, "Desktop development with C++" from the MSVC Build Tools), and WebView2
+(usually already present on Windows 10/11).
 
 ```sh
 pnpm install
-pnpm build:injected   # 產生注入腳本，不能省
-pnpm tauri dev        # 第一次 Rust 編譯較久
+pnpm build:injected   # generates the injected scripts, do not skip it
+pnpm tauri dev        # the first Rust compile takes a while
 ```
 
-改完跑 `pnpm verify`（typecheck ＋ lint ＋ test ＋ agent 契約 ＋ adapter 檢查）。
-建 release 版、可攜版、agent 腳本啟動法見 [`docs/RUN-AND-UPDATE.md`](../docs/RUN-AND-UPDATE.md)。
+After a change, run `pnpm verify` (typecheck + lint + test + agent contract + adapter
+check). For release builds, the portable build and the agent launch scripts, see
+[`docs/RUN-AND-UPDATE.md`](../docs/RUN-AND-UPDATE.md).
 
-資料目錄在 `%APPDATA%\tw.micasa.aiconsultant`，四家各自獨立的登入 profile 都在裡面。
+The data directory is `%APPDATA%\tw.micasa.aiconsultant`, and it holds a separate login
+profile for each of the four providers.
 
-## 現況
+## Where it stands
 
-repo 裡的版號永遠是 `0.0.0`，真正的版號由 CI 從 tag 注入。app 可以檢查有沒有新版，
-但不會自己下載或安裝。
+The version number in the repo is always `0.0.0`; the real one is injected by CI from the
+tag. The app can check whether a newer version exists, but it never downloads or installs
+one by itself.
 
-Windows x64 是實機驗證過的平台；macOS Apple Silicon 只有部分驗證（ad-hoc 簽章，Grok 曾卡在
-Cloudflare 驗證）；Linux 目前只有 CI 建置，沒有實機回報。詳見
-[`docs/COMPATIBILITY.md`](../docs/COMPATIBILITY.md)。
+Windows x64 is verified on real hardware. macOS Apple Silicon is only partly verified
+(ad-hoc signature; Grok once got stuck on a Cloudflare check). Linux is built by CI only,
+with no report from real hardware. See
+[`docs/COMPATIBILITY.md`](../docs/COMPATIBILITY.md).
 
-回報漏洞請走 GitHub Security 的私人表單，不要開公開 issue：[`SECURITY.md`](../SECURITY.md)。
+Report a vulnerability through the private form in GitHub Security, not a public issue:
+[`SECURITY.md`](../SECURITY.md).
 
-## 版本異動
+## Changes by version
 
-| 版本 | 日期 | 異動 |
+| Version | Date | Changes |
 |---|---|---|
-| [v0.0.6](https://github.com/DaveTseng2019/AI-Consultant/releases/tag/v0.0.6) | 2026-08-28 | 截圖可直接從剪貼簿貼進問題一起送出（Grok 已實測）；「傳送已選的 AI」在每個模式都看得到，角色決定參與者的模式以已勾選但不可更改的樣子顯示 |
-| [v0.0.5](https://github.com/DaveTseng2019/AI-Consultant/releases/tag/v0.0.5) | 2026-08-28 | Grok 中途去搜尋時不再只收下開場白；程式碼方塊補回框線；閒置時點連線 chip 會放大該 provider 的視窗，回答進行中則不放大；設定裡直接看得到目前版本 |
-| [v0.0.4](https://github.com/DaveTseng2019/AI-Consultant/releases/tag/v0.0.4) | 2026-08-27 | 啟動時看得見連線進度，送出對象與狀態訊息不再被收合藏住；按「新對話」不再堆出第二筆空白對話；收起對話紀錄改為選項；可攜版開放更新檢查，下載直指可攜版 zip |
-| [v0.0.3](https://github.com/DaveTseng2019/AI-Consultant/releases/tag/v0.0.3) | 2026-08-25 | 原生問答的回答也會進主畫面；時間改本地 24 小時制；AI 連線與傳送晶片加上 provider logo；記住上次的工作模式；字級拆成介面與主版面兩段 |
-| [v0.0.2](https://github.com/DaveTseng2019/AI-Consultant/releases/tag/v0.0.2) | 2026-08-21 | 在 provider 自己的畫面打的問題會進逐字稿；設定新增等寬字型 |
-| [v0.0.1](https://github.com/DaveTseng2019/AI-Consultant/releases/tag/v0.0.1) | 2026-08-21 | 首次發佈 |
+| [v0.0.6](https://github.com/DaveTseng2019/AI-Consultant/releases/tag/v0.0.6) | 2026-08-28 | A screenshot pastes straight from the clipboard into the question and goes out with it (tested on Grok); "send to the selected AIs" stays visible in every mode, and a mode whose roles fix the participants shows them ticked but locked |
+| [v0.0.5](https://github.com/DaveTseng2019/AI-Consultant/releases/tag/v0.0.5) | 2026-08-28 | Grok no longer returns only the opening line when it stops to search; code blocks have their border back; clicking a connection chip while idle enlarges that provider's view, but not while an answer is in progress; settings shows the running version |
+| [v0.0.4](https://github.com/DaveTseng2019/AI-Consultant/releases/tag/v0.0.4) | 2026-08-27 | Connection progress is visible at start-up, and the send targets and status message are no longer hidden by a collapsed panel; "New conversation" no longer stacks up a second empty conversation; collapsing the history is now an option; the portable build can check for updates, and the download points at the portable zip |
+| [v0.0.3](https://github.com/DaveTseng2019/AI-Consultant/releases/tag/v0.0.3) | 2026-08-25 | Answers to questions asked in a provider's own view reach the main screen too; times are local 24-hour; connection and send chips carry the provider logo; the last work mode is remembered; font size splits into interface and main surface |
+| [v0.0.2](https://github.com/DaveTseng2019/AI-Consultant/releases/tag/v0.0.2) | 2026-08-21 | A question typed in a provider's own view reaches the transcript; a monospace font setting was added |
+| [v0.0.1](https://github.com/DaveTseng2019/AI-Consultant/releases/tag/v0.0.1) | 2026-08-21 | First release |
 
-完整內容看各版的 release 說明。
+The release notes of each version have the full content.
 
+## Documents
 
-## 文件
-
-| 檔案 | 內容 |
+| File | Content |
 |---|---|
-| [`docs/BASICS.md`](../docs/BASICS.md) | 這個 app 怎麼運作。機制說明，不是操作手冊 |
-| [`docs/RUN-AND-UPDATE.md`](../docs/RUN-AND-UPDATE.md) | 執行、更新、產生執行檔 |
-| [`docs/COMPATIBILITY.md`](../docs/COMPATIBILITY.md) | 各平台實際驗證到哪 |
-| [`docs/RELEASE.md`](../docs/RELEASE.md) | 發佈流程與凍結的發佈政策 |
-| [`docs/AGENT-READY-SOURCE-RELEASE.md`](../docs/AGENT-READY-SOURCE-RELEASE.md) | 讓 agent 從原始碼啟動這支 app 的契約 |
+| [`docs/BASICS.md`](../docs/BASICS.md) | How this app works. The mechanism, not a user manual |
+| [`docs/RUN-AND-UPDATE.md`](../docs/RUN-AND-UPDATE.md) | Run it, update it, produce an executable |
+| [`docs/COMPATIBILITY.md`](../docs/COMPATIBILITY.md) | How far each platform is actually verified |
+| [`docs/RELEASE.md`](../docs/RELEASE.md) | The release procedure and the frozen release policy |
+| [`docs/AGENT-READY-SOURCE-RELEASE.md`](../docs/AGENT-READY-SOURCE-RELEASE.md) | The contract that lets an agent start this app from source |
 
-`docs/` 有幾份是從來源專案帶過來的，描述的是**它**的產品，與本專案已經開始不同。
+Some files in `docs/` came from the source project and describe **its** product, which is
+already different from this one.
 
-## 來源與授權
+## Source and licence
 
-由 [teddashh/multi-ai-chat-desktop](https://github.com/teddashh/multi-ai-chat-desktop) 衍生的
-獨立專案。程式碼在 2026-08-20 從上游的狀態分出來。
+An independent project derived from
+[teddashh/multi-ai-chat-desktop](https://github.com/teddashh/multi-ai-chat-desktop). The
+code was branched from the state of the upstream project on 2026-08-20.
 
-MIT，與來源專案相同。原始著作權屬 teddashh，歸屬說明見 [`NOTICE.md`](../NOTICE.md)。
+MIT, the same as the source project.
+
+Copyright © 2026 Ted Huang (teddashh) — original author of multi-ai-chat-desktop.
+Copyright © 2026 Dave Tseng — modifications in this fork.
+
+The full text is in [`LICENSE`](../LICENSE); attribution details are in
+[`NOTICE.md`](../NOTICE.md).
