@@ -61,6 +61,11 @@ const SEND_BUTTON_SELECTOR_TIMEOUT_MS = 800;
 const PRE_SEND_DELAY_MS = 800;
 const SEND_RETRY_DELAY_MS = 1500;
 const SEND_FINAL_VERIFY_DELAY_MS = 1500;
+// A pasted image is uploaded by the provider before it counts as an attachment, and a send fired
+// during that upload either drops it or is refused. Wait after each paste.
+// notes: a fixed wait, not a signal that the upload finished -- every provider shows that
+//        differently. Watch the composer for the thumbnail if a slow connection drops images.
+const IMAGE_PASTE_SETTLE_MS = 2000;
 const USER_MESSAGE_ANCESTOR_SELECTOR = [
   '[data-message-author-role="user"]',
   '[data-testid="user-message"]',
@@ -152,6 +157,24 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => {
     globalThis.setTimeout(resolve, ms);
   });
+}
+
+// The clipboard cannot be read from an injected script, so the image arrives as a data URL and is
+// rebuilt into a File here. Pasting that File is what every provider's composer already understands;
+// nothing about it is provider-specific, which is why it lives beside the input strategies.
+function fileFromDataUrl(dataUrl: string): File | undefined {
+  const match = /^data:(image\/[\w.+-]+);base64,([A-Za-z0-9+/=]+)$/.exec(dataUrl.trim());
+  if (!match) return undefined;
+  try {
+    const binary = atob(match[2]);
+    const bytes = new Uint8Array(binary.length);
+    for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+    const subtype = match[1].slice('image/'.length);
+    const extension = subtype === 'jpeg' ? 'jpg' : subtype.replace(/[^a-z0-9]/gi, '') || 'png';
+    return new File([bytes], `pasted-image.${extension}`, { type: match[1] });
+  } catch {
+    return undefined;
+  }
 }
 
 class InputInjectionError extends Error {
@@ -246,8 +269,8 @@ class InactiveSendOperationError extends Error {
       const sendOperation = beginSendOperation(message.provider);
       if (sendOperation === undefined) return;
       if (abortAutomationForChallenge(message.provider, true, 'send', sendOperation)) return;
-      const payload = message.payload as { text?: string } | undefined;
-      void sendMessage(payload?.text ?? '', message.provider, sendOperation);
+      const payload = message.payload as { text?: string; images?: string[] } | undefined;
+      void sendMessage(payload?.text ?? '', message.provider, sendOperation, payload?.images ?? []);
       return;
     }
     if (message.action === 'FILL_DRAFT' && (!adapter || !message.provider || message.provider === adapter.provider)) {
@@ -408,6 +431,7 @@ class InactiveSendOperationError extends Error {
     providerHint?: AIProvider,
     challengeErrorAsDone = true,
     sendOperation?: number,
+    images: readonly string[] = [],
   ): Promise<{ activeAdapter: AdapterConfig; input: Element; injectionStartedAt: number } | undefined> {
     if (sendOperation !== undefined && !isActiveSendOperation(sendOperation)) return undefined;
     if (
@@ -469,6 +493,9 @@ class InactiveSendOperationError extends Error {
       await inputStrategies[activeAdapter.inputStrategy](input, text, assertCanMutate);
       assertCanMutate();
       assertInputLanded(input, text, activeAdapter.inputStrategy);
+      // After the text, never before: the paste strategies select the whole editor before pasting,
+      // which would take an inline image with it.
+      await pasteImages(input, images, assertCanMutate);
     } catch (error) {
       if (error instanceof ChallengeActiveError) {
         if (!challengeErrorAsDone) cancelResponseWait();
@@ -488,8 +515,33 @@ class InactiveSendOperationError extends Error {
     return { activeAdapter, input, injectionStartedAt };
   }
 
-  async function sendMessage(text: string, providerHint: AIProvider | undefined, sendOperation: number) {
-    const staged = await stageDraftForResponse(text, providerHint, true, sendOperation);
+  async function pasteImages(input: Element, images: readonly string[], assertCanMutate: ChallengeMutationGuard) {
+    for (const dataUrl of images) {
+      const file = fileFromDataUrl(dataUrl);
+      if (!file) {
+        logEngine('image paste skipped: not a base64 image data URL');
+        continue;
+      }
+      assertCanMutate();
+      tryFocus(input as HTMLElement, 'image paste');
+      const transfer = new DataTransfer();
+      transfer.items.add(file);
+      input.dispatchEvent(
+        new ClipboardEvent('paste', { clipboardData: transfer, bubbles: true, cancelable: true }),
+      );
+      assertCanMutate();
+      await sleep(IMAGE_PASTE_SETTLE_MS);
+      assertCanMutate();
+    }
+  }
+
+  async function sendMessage(
+    text: string,
+    providerHint: AIProvider | undefined,
+    sendOperation: number,
+    images: readonly string[] = [],
+  ) {
+    const staged = await stageDraftForResponse(text, providerHint, true, sendOperation, images);
     if (!staged) return;
     if (!isActiveSendOperation(sendOperation)) return;
     const { activeAdapter, input, injectionStartedAt } = staged;

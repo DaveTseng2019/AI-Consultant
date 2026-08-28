@@ -160,6 +160,7 @@ describe('InputBar file acquisition', () => {
 
     expect(onSend).toHaveBeenCalledWith(
       formatInsertedFilesPrompt([insertedFile('a.txt', 'alpha'), insertedFile('b.txt', 'beta')], 'Summarize both.'),
+      [],
     );
     expect(chipNames(renderer)).toEqual([]);
   });

@@ -95,6 +95,7 @@ export async function runWorkflow({
   }
 }
 
+export { clearRunImages, setRunImages } from './pendingImages';
 export { isSendable } from './sendability';
 export { resetWorkflowRuntimeForTests } from './runtime';
 export { chooseStepTimeoutAction, onStepTimeoutEvent } from './stepTimeout';

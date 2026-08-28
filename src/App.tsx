@@ -12,7 +12,7 @@ import type { Locale } from './i18n/resolve';
 import { formatI18n, t as translateKey } from './i18n/t';
 import { mergePullBridgeState, type PullBridgeState } from './appBridgeState';
 import { onCheckpoint, type PendingCheckpoint } from './workflow/checkpoint';
-import { isSendable, onStepTimeoutEvent, runWorkflow } from './workflow';
+import { clearRunImages, isSendable, onStepTimeoutEvent, runWorkflow, setRunImages } from './workflow';
 import { createResponseLanguagePolicy } from './workflow/responseLanguage';
 import type { PreflightResult } from './workflow/preflight';
 import { bubbleAuthorLabel } from './bubbleAuthorLabel';
@@ -1531,11 +1531,12 @@ export default function App() {
     setCheckpoint(undefined);
     setCheckpointDraft('');
     activeResponses.current.clear();
+    clearRunImages();
     setIsProcessing(processingAfterSettle());
   };
 
-  const send = async (trimmed: string): Promise<boolean> => {
-    if (!trimmed) return false;
+  const send = async (trimmed: string, images: readonly string[] = []): Promise<boolean> => {
+    if (!trimmed && images.length === 0) return false;
     const brainstorm = presetId === 'brainstorm';
     const serialMode = isSerialMode(mode) ? mode as Exclude<ChatMode, 'free'> : undefined;
     const modeRoles = settingsRef.current.modeRoles;
@@ -1619,6 +1620,9 @@ export default function App() {
       return false;
     }
 
+    // Set here rather than passed down: the images belong to the run, and every layer between
+    // this call and the send would otherwise carry a parameter it does nothing with.
+    setRunImages(images);
     void executeSend(trimmed, workflowTargets);
     return true;
   };
@@ -1655,6 +1659,7 @@ export default function App() {
     setCheckpoint(undefined);
     setCheckpointDraft('');
     activeResponses.current.clear();
+    clearRunImages();
     setProcessTrace((current) => (current ? settleProcessTrace(current) : current));
   };
 
@@ -2091,7 +2096,11 @@ export default function App() {
                 signs in, and the conversation column beside it is collapsed until some provider can
                 receive a message -- both true for the whole of startup, which is exactly when the
                 send targets and the reason nothing can be sent have to be readable. */}
-            {showSendTargets || sendBlockedNotice ? (
+            {/* Always on screen, in every mode: before sending, the one thing the user has to be
+                able to read is who the question goes to. Free mode lets them choose it here; the
+                other modes take their participants from the mode's role settings, so the same strip
+                shows that list rather than disappearing and leaving the question unanswered. */}
+            {showSendTargets || requiredModeProviders.length > 0 || sendBlockedNotice ? (
               <section
                 aria-label={translate('input.sendSelectedProviders')}
                 className="shrink-0 border-b border-zinc-200 bg-white px-3 py-2 dark:border-zinc-800 dark:bg-zinc-950"
@@ -2103,9 +2112,28 @@ export default function App() {
                       <TargetChips providers={PROVIDERS} states={states} selected={targets} onChange={handleTargetsChange} disabled={isProcessing} />
                     </div>
                   </>
+                ) : requiredModeProviders.length > 0 ? (
+                  <>
+                    <div className="mb-2 flex flex-wrap items-baseline gap-2">
+                      <span className="text-xs font-semibold uppercase text-zinc-600 dark:text-zinc-400">{translate('input.sendSelectedProviders')}</span>
+                      <span className="text-[0.6875rem] text-zinc-500 dark:text-zinc-500">{translate('input.sendTargetsByRole')}</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {/* The same chips, ticked and frozen. A tick means "this one is being asked"
+                          wherever it appears; a second way of saying it would only have to be
+                          learned. They cannot be cleared because the roles decide who takes part. */}
+                      <TargetChips
+                        providers={PROVIDERS}
+                        states={states}
+                        selected={requiredModeProviders}
+                        onChange={() => undefined}
+                        disabled
+                      />
+                    </div>
+                  </>
                 ) : null}
                 {sendBlockedNotice ? (
-                  <div role="status" className={`text-xs text-amber-700 dark:text-amber-300 ${showSendTargets ? 'mt-2' : ''}`}>
+                  <div role="status" className={`text-xs text-amber-700 dark:text-amber-300 ${showSendTargets || requiredModeProviders.length > 0 ? 'mt-2' : ''}`}>
                     {sendBlockedNotice}
                   </div>
                 ) : null}

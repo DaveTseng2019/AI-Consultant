@@ -481,7 +481,7 @@ describe('snapshot replay', () => {
       { onSnapshotComplete: undefined },
     );
     expect(host.provider.send).toHaveBeenCalledTimes(1);
-    expect(host.provider.send).toHaveBeenCalledWith('chatgpt', 'free replay sendability');
+    expect(host.provider.send).toHaveBeenCalledWith('chatgpt', 'free replay sendability', []);
   });
 
   it('honors CANCEL_WORKFLOW during replay before any prior workflow run', async () => {

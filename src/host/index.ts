@@ -64,14 +64,14 @@ export const host = {
     eval: (provider: AIProvider, js: string): Promise<void> => invoke('provider_eval', { provider, js }),
     evalWithCallback: (provider: AIProvider, js: string): Promise<string> =>
       invoke('provider_eval_with_callback', { provider, js }),
-    send: (provider: AIProvider, text: string): Promise<void> =>
+    send: (provider: AIProvider, text: string, images: readonly string[] = []): Promise<void> =>
       invoke('provider_eval', {
         provider,
         js: `window.__MAC_BRIDGE__ && window.__MAC_BRIDGE__.dispatch(${JSON.stringify({
           v: 1,
           action: 'SEND_MESSAGE',
           provider,
-          payload: { text },
+          payload: images.length > 0 ? { text, images } : { text },
         })});`,
       }),
     fill: (provider: AIProvider, text: string): Promise<void> =>

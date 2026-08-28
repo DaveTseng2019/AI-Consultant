@@ -4,6 +4,7 @@ import { host } from '../host';
 import { eventFromProviderSend } from '../diagnostics/eventLog';
 import { recordEventLog } from '../diagnostics/eventLogStore';
 import { clearInFlight, markInFlight } from './cancel';
+import { takeRunImagesFor } from './pendingImages';
 import { reserveTurn } from './state';
 import { rejectWaiter, waitForResponse } from './waitForResponse';
 
@@ -18,7 +19,7 @@ export async function sendAndWait(provider: AIProvider, text: string, reservedTu
   markInFlight(provider);
   try {
     recordEventLog(eventFromProviderSend(provider, text));
-    await host.provider.send(provider, text);
+    await host.provider.send(provider, text, takeRunImagesFor(provider));
   } catch (error) {
     rejectWaiter(provider, turn, error instanceof Error ? error : new Error(String(error)));
     clearInFlight(provider);

@@ -264,7 +264,7 @@ describe('workflow engine', () => {
     publishBridgeMessage(done('chatgpt', 'ok'));
     await expect(run).resolves.toEqual({ ok: true });
     expect(host.provider.send).toHaveBeenCalledTimes(1);
-    expect(host.provider.send).toHaveBeenCalledWith('chatgpt', 'q');
+    expect(host.provider.send).toHaveBeenCalledWith('chatgpt', 'q', []);
     expect(statuses).toEqual([`⚡ ${providerName('chatgpt')} answering in parallel…`, '']);
 
     vi.mocked(host.provider.send).mockClear();
@@ -491,8 +491,8 @@ describe('workflow engine', () => {
       'chatgpt',
       "window.__MAC_ENGINE__ && typeof window.__MAC_ENGINE__.stop === 'function' && window.__MAC_ENGINE__.stop();",
     );
-    expect(host.provider.send).toHaveBeenNthCalledWith(1, 'chatgpt', 'retry prompt');
-    expect(host.provider.send).toHaveBeenNthCalledWith(2, 'chatgpt', 'retry prompt');
+    expect(host.provider.send).toHaveBeenNthCalledWith(1, 'chatgpt', 'retry prompt', []);
+    expect(host.provider.send).toHaveBeenNthCalledWith(2, 'chatgpt', 'retry prompt', []);
     expect(vi.mocked(host.provider.eval).mock.invocationCallOrder[0]).toBeLessThan(
       vi.mocked(host.provider.send).mock.invocationCallOrder[1],
     );
@@ -814,7 +814,7 @@ describe('workflow engine', () => {
     await expect(run).resolves.toEqual({ ok: true });
 
     unsubscribeCheckpoint();
-    expect(host.provider.send).toHaveBeenNthCalledWith(1, DEFAULT_DEBATE_ROLES.pro, 'edited pro draft');
+    expect(host.provider.send).toHaveBeenNthCalledWith(1, DEFAULT_DEBATE_ROLES.pro, 'edited pro draft', []);
     expect(host.provider.fill).not.toHaveBeenCalled();
     expect(getLastSnapshot()?.humanEdits).toHaveLength(1);
     expect(getLastSnapshot()?.humanEdits[0]).toMatchObject({

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ChangeEvent, type DragEvent } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent, type ClipboardEvent, type DragEvent } from 'react';
 import {
   attachmentChipName,
   attachmentChipSize,
@@ -12,6 +12,14 @@ import {
   type AttachmentChip,
 } from './fileAttachments';
 import { filesFromDataTransfer, isOsFileDrag, markFileDragCopy, preventFileDragDefaults } from './fileDrop';
+import {
+  acceptPastedImages,
+  imagesFromClipboard,
+  pastedImageDataUrls,
+  readPastedImage,
+  removePastedImage,
+  type PastedImage,
+} from './pastedImages';
 import { formatInsertedFilesPrompt, TEXT_FILE_EXTENSIONS, type FileLike } from './fileInsert';
 import type { Locale } from '../i18n/resolve';
 import { t } from '../i18n/t';
@@ -25,7 +33,7 @@ export function InputBar({
   isProcessing,
   locale = 'en',
 }: {
-  onSend: (text: string) => boolean | void | Promise<boolean | void>;
+  onSend: (text: string, images: string[]) => boolean | void | Promise<boolean | void>;
   onCancel: () => void;
   disabled: boolean;
   sendBlocked?: boolean;
@@ -35,10 +43,12 @@ export function InputBar({
 }) {
   const [text, setText] = useState('');
   const [attachmentChips, setAttachmentChips] = useState<AttachmentChip[]>([]);
+  const [pastedImages, setPastedImages] = useState<PastedImage[]>([]);
   const [attachmentError, setAttachmentError] = useState<string | undefined>();
   const [dropActive, setDropActive] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const attachmentChipsRef = useRef<AttachmentChip[]>([]);
+  const pastedImagesRef = useRef<PastedImage[]>([]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const batchGeneration = useRef(0);
@@ -83,6 +93,34 @@ export function InputBar({
     if (settled.error) setAttachmentError(settled.error.message);
   };
 
+  const commitPastedImages = (images: PastedImage[]) => {
+    pastedImagesRef.current = images;
+    setPastedImages(images);
+  };
+
+  // A screenshot is the ordinary attachment for most people, and it lives on the clipboard, not in
+  // a folder. Text keeps the default paste; only image items are intercepted.
+  const handlePaste = async (event: ClipboardEvent<HTMLTextAreaElement>) => {
+    const files = imagesFromClipboard(event.clipboardData);
+    if (files.length === 0) return;
+    event.preventDefault();
+    if (!canAddFilesFromRef()) return;
+
+    const { accepted, error } = acceptPastedImages(pastedImagesRef.current, files, locale);
+    setAttachmentError(error);
+    if (accepted.length === 0) return;
+
+    const read = await Promise.allSettled(accepted.map((file) => readPastedImage(file)));
+    const added = read.flatMap((result) => (result.status === 'fulfilled' ? [result.value] : []));
+    if (added.length < read.length) setAttachmentError(t('image.readFailed', locale));
+    if (added.length > 0) commitPastedImages([...pastedImagesRef.current, ...added]);
+  };
+
+  const removePastedImageChip = (id: string) => {
+    commitPastedImages(removePastedImage(pastedImagesRef.current, id));
+    setAttachmentError(undefined);
+  };
+
   const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.currentTarget.files ?? []);
     event.currentTarget.value = '';
@@ -92,6 +130,7 @@ export function InputBar({
   const clearAttachments = () => {
     batchGeneration.current += 1;
     commitAttachmentChips([]);
+    commitPastedImages([]);
     setAttachmentError(undefined);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
@@ -108,12 +147,13 @@ export function InputBar({
 
   const submit = async () => {
     const trimmed = text.trim();
-    if ((!trimmed && !hasReadyAttachments) || disabled || sendBlocked || isProcessing || isReadingFile || submittingRef.current) return;
+    const images = pastedImageDataUrls(pastedImagesRef.current);
+    if ((!trimmed && !hasReadyAttachments && images.length === 0) || disabled || sendBlocked || isProcessing || isReadingFile || submittingRef.current) return;
     submittingRef.current = true;
     setIsSubmitting(true);
     setAttachmentError(undefined);
     try {
-      const decision = onSend(hasReadyAttachments ? formatInsertedFilesPrompt(readyFiles, trimmed) : trimmed);
+      const decision = onSend(hasReadyAttachments ? formatInsertedFilesPrompt(readyFiles, trimmed) : trimmed, images);
       const accepted = decision instanceof Promise ? await decision : decision;
       if (accepted !== false) {
         setText('');
@@ -164,7 +204,8 @@ export function InputBar({
       : sendBlocked
         ? blockedMessage ?? t('input.connectProvider', locale)
         : t('input.messagePlaceholder', locale);
-  const sendDisabled = disabled || sendBlocked || isProcessing || isSubmitting || isReadingFile || (!text.trim() && !hasReadyAttachments);
+  const sendDisabled =
+    disabled || sendBlocked || isProcessing || isSubmitting || isReadingFile || (!text.trim() && !hasReadyAttachments && pastedImages.length === 0);
   const insertDisabled = disabled || isProcessing || isSubmitting || isReadingFile;
   const showDropActive = dropActive && canAddFiles;
 
@@ -186,6 +227,7 @@ export function InputBar({
           className="min-h-12 flex-1 resize-none border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 p-2 text-sm outline-none focus:border-emerald-500 disabled:opacity-50"
           value={text}
           onChange={(event) => setText(event.target.value)}
+          onPaste={(event) => void handlePaste(event)}
           onKeyDown={(event) => {
             if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
               event.preventDefault();
@@ -227,6 +269,28 @@ export function InputBar({
           {isSubmitting ? t('input.preparing', locale) : t('input.send', locale)}
         </button>
       </div>
+      {pastedImages.length > 0 ? (
+        <div className="flex flex-wrap gap-2">
+          {pastedImages.map((image) => (
+            <div
+              key={image.id}
+              className="flex items-center gap-2 border border-zinc-200 bg-zinc-50 px-2 py-1 text-xs dark:border-zinc-800 dark:bg-zinc-900"
+            >
+              <img src={image.dataUrl} alt={image.name} className="h-10 w-10 shrink-0 object-cover" />
+              <span className="shrink-0 text-zinc-500 dark:text-zinc-500">{formatAttachmentSize(image.size, locale)}</span>
+              <button
+                type="button"
+                className="shrink-0 text-base leading-none text-zinc-600 hover:text-zinc-900 disabled:cursor-not-allowed disabled:opacity-50 dark:text-zinc-400 dark:hover:text-zinc-100"
+                onClick={() => removePastedImageChip(image.id)}
+                disabled={isProcessing}
+                aria-label={`${t('input.removeFile', locale)} ${image.name}`}
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+      ) : null}
       {attachmentChips.length > 0 ? (
         <div className="flex flex-wrap gap-2">
           {attachmentChips.map((chip) => (
