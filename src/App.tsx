@@ -354,6 +354,9 @@ export default function App() {
   const forcedNativeCenterProviderRef = useRef<AIProvider | undefined>();
   /** Which centred provider the stage/surface decision was already made for. */
   const stageDecisionRef = useRef<AIProvider | undefined>();
+  /** Chip click asks for the stage of the provider it centres, so the login decision cannot collapse it. */
+  const chipExpandRequestRef = useRef<AIProvider | undefined>();
+  const isProcessingRef = useRef(false);
   const changeProviderPresentationRef = useRef<(provider: AIProvider, state: WebviewPresentationState) => Promise<void>>(async () => {});
   const centerHiddenRef = useRef<Set<AIProvider>>(centerHidden);
   const centerTransitionsInFlightRef = useRef<Set<AIProvider>>(centerTransitionsInFlight);
@@ -426,6 +429,7 @@ export default function App() {
     Boolean(preflight) || Boolean(stepTimeout?.timedOut) || settingsOpen || Boolean(reportPreview) || processTraceDetailOpen || messagesMaximized;
   const manualFocusIdlePaused = Boolean(checkpoint) || Boolean(stepTimeout);
   overlayGuardOpenRef.current = overlayGuardOpen;
+  isProcessingRef.current = isProcessing;
 
   const setCenterSurfaceMode = useCallback((surface: CenterSurface) => {
     centerSurfaceRef.current = surface;
@@ -451,7 +455,14 @@ export default function App() {
     // the startup report or the user finishing the sign-in on screen. It is never persisted: the
     // expand is a login affordance, not a preference. A manual expand lasts until the next login
     // change or the next card centred.
-    setStageExpanded(decision.stageExpanded);
+    // ...except when the user centred this provider by clicking its chip: the click asks for the
+    // big stage, and it is this decision -- which lands after the centring -- that would undo it.
+    // A request that has waited for its provider to report is dropped, not honoured, once a
+    // question is in flight: the stage would then grow on the Enter key, which asked for no such
+    // thing. The click asks for the stage of an idle app only.
+    const chipExpandRequested = chipExpandRequestRef.current === centeredProvider;
+    if (chipExpandRequested) chipExpandRequestRef.current = undefined;
+    setStageExpanded(decision.stageExpanded || (chipExpandRequested && !isProcessingRef.current));
     // The face, in contrast, is decided once per centring. Completing a sign-in must not swap the
     // page the user just landed on for the empty text view of a brand new session.
     if (stageDecisionRef.current === centeredProvider) return;
@@ -2128,6 +2139,12 @@ export default function App() {
               onChipClick={(provider) => {
                 const container = transcriptRef.current;
                 if (container) scrollTranscriptToProviderMessage(container, provider);
+                // Not while an answer is still coming in: switching chips mid-run is how the user
+                // watches the answers arrive, and a stage that grows under them reads as a fault.
+                if (isProcessing) return;
+                // Already centred: no stage decision is coming, so expand right here.
+                if (provider === centeredProvider) setStageExpanded(true);
+                else chipExpandRequestRef.current = provider;
               }}
               stageExpanded={stageExpanded}
               onToggleStageExpanded={() => setStageExpanded((current) => !current)}

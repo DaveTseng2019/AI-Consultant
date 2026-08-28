@@ -1166,6 +1166,41 @@ describe('injected engine input hardening', () => {
     });
   });
 
+  it('keeps waiting while a Grok turn still shows an empty action bar, then finishes once it fills', async () => {
+    vi.useFakeTimers();
+    const env = createEnv({ inputKind: 'textarea' });
+    const handler = await installEngine(env);
+    const actionBar = new FakeElement(env.document, 'div');
+    env.detectorElements.set('.action-buttons', [actionBar]);
+    dispatchAdapter(handler, {
+      provider: 'grok',
+      thinkingDetectors: ['.thinking'],
+      timing: { doneDelayMs: 100, chunkDebounceMs: 0, statusIntervalMs: 1_000_000, backupPollMs: 1_000 },
+    });
+
+    // Grok never raises a thinking signal this engine can see, so the opening line followed by a
+    // long search is exactly the shape that used to be sent as the whole answer.
+    env.thinking = false;
+    send(handler, 'ask something', 'grok');
+    await flushMicrotasks();
+    env.responses = [new FakeElement(env.document, 'div', 'let me look that up')];
+    await vi.advanceTimersByTimeAsync(1_000);
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(env.emitted.filter((message) => message.action === 'RESPONSE_DONE')).toHaveLength(0);
+
+    env.responses = [new FakeElement(env.document, 'div', 'let me look that up. Here is the answer.')];
+    actionBar.appendChild(new FakeElement(env.document, 'button'));
+    await vi.advanceTimersByTimeAsync(1_000);
+    await vi.advanceTimersByTimeAsync(100);
+
+    expect(env.emitted).toContainEqual({
+      v: 1,
+      action: 'RESPONSE_DONE',
+      provider: 'grok',
+      payload: 'let me look that up. Here is the answer.',
+    });
+  });
+
   it('keeps waiting while a ChatGPT turn has not grown its copy button, then finishes once it does', async () => {
     vi.useFakeTimers();
     const env = createEnv({ inputKind: 'textarea' });
@@ -1425,6 +1460,7 @@ class FakeElement {
     if (attribute) {
       return this.children.find((child) => child.getAttribute(attribute[1]) === attribute[2]) ?? null;
     }
+    if (/^[a-z]+$/.test(selector)) return this.children.find((child) => child.tagName === selector) ?? null;
     return null;
   }
 

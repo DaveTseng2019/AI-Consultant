@@ -81,6 +81,18 @@ const TURN_COMPLETION_SIGNALS: Partial<Record<AIProvider, { turn: string; comple
     turn: '[data-testid^="conversation-turn-"]',
     complete: '[data-testid="copy-turn-action-button"]',
   },
+  // Grok needs the same cover, and needs it more: measured on grok.com 2026-08-28, none of its
+  // thinkingDetectors fire at all. The stop button carries no data-testid and its aria-label is
+  // translated ("停止模型響應"), [data-streaming] never appears, and .thinking-container reads
+  // "運作了 6 秒" rather than "Thinking". isThinking() is therefore false for the whole turn, so an
+  // answer that pauses over doneDelayMs to run a search was finished on its opening line alone.
+  // Every turn owns an .action-buttons bar. It is created empty with the turn and fills with the
+  // copy/share/rate buttons only once the answer is complete, so the last bar in the document
+  // holding no button is the one signal that survives a UI language change.
+  grok: {
+    turn: '.action-buttons',
+    complete: 'button',
+  },
 };
 
 // Fail closed after the shipped 10-minute inactivity window if the positive completion signal
