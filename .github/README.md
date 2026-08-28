@@ -62,6 +62,7 @@ Cloudflare 驗證）；Linux 目前只有 CI 建置，沒有實機回報。詳�
 
 | 版本 | 日期 | 異動 |
 |---|---|---|
+| [v0.0.5](https://github.com/DaveTseng2019/AI-Consultant/releases/tag/v0.0.5) | 2026-08-28 | Grok 中途去搜尋時不再只收下開場白；程式碼方塊補回框線；閒置時點連線 chip 會放大該 provider 的視窗，回答進行中則不放大 |
 | [v0.0.4](https://github.com/DaveTseng2019/AI-Consultant/releases/tag/v0.0.4) | 2026-08-27 | 啟動時看得見連線進度，送出對象與狀態訊息不再被收合藏住；按「新對話」不再堆出第二筆空白對話；收起對話紀錄改為選項；可攜版開放更新檢查，下載直指可攜版 zip |
 | [v0.0.3](https://github.com/DaveTseng2019/AI-Consultant/releases/tag/v0.0.3) | 2026-08-25 | 原生問答的回答也會進主畫面；時間改本地 24 小時制；AI 連線與傳送晶片加上 provider logo；記住上次的工作模式；字級拆成介面與主版面兩段 |
 | [v0.0.2](https://github.com/DaveTseng2019/AI-Consultant/releases/tag/v0.0.2) | 2026-08-21 | 在 provider 自己的畫面打的問題會進逐字稿；設定新增等寬字型 |
