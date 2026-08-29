@@ -65,7 +65,7 @@ export const en: Record<I18nKey, string> = {
   'archive.failed': 'Archive script failed: {detail}',
   'settings.archiveScript': 'Custom script (PowerShell)',
   'settings.archiveScriptDescription':
-    'Full path to a .ps1. Once set, the conversation toolbar shows a button (name configurable below, defaults if left blank), which calls the script with -SnapshotId <this run>. Leave empty to hide the button. What the script does with the run is up to it - write it up as an Obsidian note, put it in a database, send it somewhere else. It works with durable snapshots above turned off: the app writes that one run at full-local for the script to read, then deletes it again.',
+    'Full path to a .ps1. Once set, the conversation toolbar shows a button (name configurable below, defaults if left blank), which calls the script with -SnapshotId <this run>. Leave empty to hide the button. What the script does with the run is up to it. The most useful shape is a .md file dropped in a folder you keep, opened in VS Code or any Markdown viewer on Windows; filing it into a notes app or a database works just as well. It works with durable snapshots above turned off: the app writes that one run at full-local for the script to read, then deletes it again.',
   'settings.archiveScriptBrowse': 'Browse…',
   'settings.archiveLabel': 'Button caption',
   'settings.archiveLabelDescription': 'Leave empty for the default. Up to 16 characters -- a longer one pushes the toolbar onto a second row.',

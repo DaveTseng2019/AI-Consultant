@@ -59,7 +59,7 @@ export const zhTW: Record<I18nKey, string> = {
   'archive.failed': '存檔腳本失敗：{detail}',
   'settings.archiveScript': '自訂腳本（PowerShell）',
   'settings.archiveScriptDescription':
-    '.ps1 的完整路徑。填了之後對話工具列會出現一個按鈕（名稱可在下方設定，留空則用預設名稱），按下時以 -SnapshotId <本次執行 id> 呼叫這個腳本。空白則不顯示按鈕。腳本自己決定要拿那次執行做什麼，例如寫成一則 Obsidian 筆記、丟進資料庫，或送到別的地方。上面的「持久化 snapshots」關著也能用：app 會為那一次執行臨時寫一份 full-local 的檔給腳本讀，跑完就刪掉。',
+    '.ps1 的完整路徑。填了之後對話工具列會出現一個按鈕（名稱可在下方設定，留空則用預設名稱），按下時以 -SnapshotId <本次執行 id> 呼叫這個腳本。空白則不顯示按鈕。腳本自己決定要拿那次執行做什麼。最實用的一種是寫成 .md 檔存到固定資料夾，在 Windows 用 VS Code 或任何 Markdown 檢視器打開；要整理成筆記軟體的格式或送進資料庫也可以。上面的「持久化 snapshots」關著也能用：app 會為那一次執行臨時寫一份 full-local 的檔給腳本讀，跑完就刪掉。',
   'settings.archiveScriptBrowse': '瀏覽…',
   'settings.archiveLabel': '按鈕名稱',
   'settings.archiveLabelDescription': '留空就用預設名稱。最多 16 個字，太長會把工具列擠到換行。',

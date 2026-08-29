@@ -65,7 +65,7 @@ export const ja: Record<I18nKey, string> = {
   'archive.failed': '保存スクリプトが失敗しました：{detail}',
   'settings.archiveScript': 'カスタムスクリプト（PowerShell）',
   'settings.archiveScriptDescription':
-    '.ps1 のフルパス。設定すると会話ツールバーにボタンが表示されます（名前は下で設定、空欄なら既定名）。-SnapshotId <今回の実行 id> を付けてスクリプトを呼び出します。空欄ならボタンは出ません。その実行をどう扱うかはスクリプト次第です。例えば Obsidian のノートにする、データベースに入れる、別の場所へ送る、など。上の「実行記録の保存」が無効でも使えます。その 1 回分だけを full-local で一時的に書き出してスクリプトに読ませ、完了後に削除します。',
+    '.ps1 のフルパス。設定すると会話ツールバーにボタンが表示されます（名前は下で設定、空欄なら既定名）。-SnapshotId <今回の実行 id> を付けてスクリプトを呼び出します。空欄ならボタンは出ません。その実行をどう扱うかはスクリプト次第です。最も実用的なのは .md ファイルとして決まったフォルダーに書き出し、Windows なら VS Code など任意の Markdown ビューアーで開く形です。ノートアプリの形式に整える、データベースへ入れる、なども同様にできます。上の「実行記録の保存」が無効でも使えます。その 1 回分だけを full-local で一時的に書き出してスクリプトに読ませ、完了後に削除します。',
   'settings.archiveScriptBrowse': '参照…',
   'settings.archiveLabel': 'ボタンの名称',
   'settings.archiveLabelDescription': '空欄なら既定の名称を使います。最大 16 文字。長すぎるとツールバーが折り返します。',

@@ -65,7 +65,7 @@ export const de: Record<I18nKey, string> = {
   'archive.failed': 'Ablage-Skript fehlgeschlagen: {detail}',
   'settings.archiveScript': 'Benutzerdefiniertes Skript (PowerShell)',
   'settings.archiveScriptDescription':
-    'Vollständiger Pfad zu einer .ps1. Danach zeigt die Unterhaltungsleiste eine Schaltfläche (Name unten einstellbar, sonst Standardname) und ruft das Skript mit -SnapshotId <dieser Lauf> auf. Leer lassen, um die Schaltfläche auszublenden. Was das Skript mit dem Lauf macht, entscheidet es selbst - als Obsidian-Notiz schreiben, in eine Datenbank legen, anderswohin senden. Es funktioniert auch, wenn die dauerhafte Aufzeichnung oben aus ist: Die App schreibt diesen einen Lauf als full-local für das Skript und löscht ihn danach wieder.',
+    'Vollständiger Pfad zu einer .ps1. Danach zeigt die Unterhaltungsleiste eine Schaltfläche (Name unten einstellbar, sonst Standardname) und ruft das Skript mit -SnapshotId <dieser Lauf> auf. Leer lassen, um die Schaltfläche auszublenden. Was das Skript mit dem Lauf macht, entscheidet es selbst. Am nützlichsten ist eine .md-Datei in einem festen Ordner, die Sie unter Windows in VS Code oder einem beliebigen Markdown-Viewer öffnen; ebenso gut in eine Notiz-App oder eine Datenbank. Es funktioniert auch, wenn die dauerhafte Aufzeichnung oben aus ist: Die App schreibt diesen einen Lauf als full-local für das Skript und löscht ihn danach wieder.',
   'settings.archiveScriptBrowse': 'Durchsuchen…',
   'settings.archiveLabel': 'Beschriftung der Schaltflaeche',
   'settings.archiveLabelDescription': 'Leer lassen fuer die Vorgabe. Hoechstens 16 Zeichen -- laengere schieben die Leiste in eine zweite Zeile.',
