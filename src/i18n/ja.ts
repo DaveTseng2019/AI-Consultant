@@ -73,6 +73,8 @@ export const ja: Record<I18nKey, string> = {
   'archive.confirmMessage': 'このスクリプトを実行しますか？\n\nスクリプト：{script}\n実行記録：{snapshot}',
   'provider.access': 'アクセス',
   'provider.access.heading': 'このアダプターがアクセスできる範囲',
+  'provider.access.appliesTo': '適用対象',
+  'provider.access.everyProvider': '各プロバイダー',
   'provider.access.readTitle': '読み取り可能（ページから）',
   'provider.access.writeTitle': '書き込み可能（ページへ）',
   'provider.access.cannotTitle': 'アクセス不可（設計により保証）',

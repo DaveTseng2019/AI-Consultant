@@ -45,6 +45,22 @@ describe('adapter permission summaries', () => {
     expect(summary.writes.some((line) => line.selectors)).toBe(false);
   });
 
+  // The settings panel shows this one summary for all four, so a line that names a single provider
+  // would be a lie there -- and would put back the four-identical-panels reading it replaced.
+  it('names no single provider in the shared summary', () => {
+    const shared = buildAdapterPermissionSummary(undefined);
+
+    expect(shared.provider).toBeUndefined();
+    expect(shared.providerName).toBe('every provider');
+
+    const text = [...shared.reads, ...shared.writes, ...shared.cannot]
+      .map((line) => `${line.title} ${line.detail}`)
+      .join(' ');
+    for (const provider of providers) {
+      expect(text, provider).not.toContain(AI_PROVIDERS[provider].name);
+    }
+  });
+
   it('reflects provider selector details when they are supplied', () => {
     const summary = buildAdapterPermissionSummary('grok', {
       responseSelectors: ['[data-testid="assistant-message"]', '[data-testid="assistant-message"]'],

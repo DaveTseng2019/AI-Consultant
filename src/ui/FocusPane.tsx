@@ -292,6 +292,7 @@ function FocusStage({
     >
       <div className="flex items-center justify-between gap-2 border-b border-sky-300 dark:border-sky-900 px-3 py-2 text-sm">
         <span className="flex min-w-0 items-center gap-2 truncate">
+          <ProviderLogo provider={provider} className="h-4 w-4" />
           <span className="truncate">{AI_PROVIDERS[provider].name}</span>
         </span>
         <div className="flex flex-wrap justify-end gap-2 text-xs">
@@ -594,7 +595,22 @@ export function AdapterAccessPanel({ id, summary }: { id: string; summary: Adapt
     <section id={id} className="border-b border-sky-300 dark:border-sky-900 bg-sky-50 dark:bg-sky-950/30 px-3 py-3 text-xs text-zinc-700 dark:text-zinc-300">
       <div className="mb-2 flex items-center justify-between gap-2">
         <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{t('provider.access.heading')}</h3>
-        <span className="shrink-0 text-[0.6875rem] text-sky-700 dark:text-sky-200">{summary.providerName}</span>
+        {summary.provider ? (
+          <span className="flex shrink-0 items-center gap-1 text-[0.6875rem] text-sky-700 dark:text-sky-200">
+            <ProviderLogo provider={summary.provider} className="h-3.5 w-3.5" />
+            {summary.providerName}
+          </span>
+        ) : (
+          <span className="flex flex-wrap items-center justify-end gap-x-2 gap-y-1 text-[0.6875rem] text-sky-700 dark:text-sky-200">
+            <span>{t('provider.access.appliesTo')}</span>
+            {PROVIDERS.map((candidate) => (
+              <span key={candidate} className="flex items-center gap-1">
+                <ProviderLogo provider={candidate} className="h-3.5 w-3.5" />
+                {AI_PROVIDERS[candidate].name}
+              </span>
+            ))}
+          </span>
+        )}
       </div>
       <div className="grid gap-3">
         <PermissionGroup title={t('provider.access.readTitle')} lines={summary.reads} />

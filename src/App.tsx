@@ -114,8 +114,9 @@ import { loadFreeTargetSelection, saveFreeTargetSelection } from './ui/freeTarge
 import { loadWorkflowPreset, saveWorkflowPreset } from './ui/workflowPresetPreference';
 import { useOverlayGuard } from './ui/useOverlayGuard';
 import { buildMarkdown, exportFilename, matchingSnapshotForConversation } from './ui/exportMarkdown';
+import { ProviderLogo } from './ui/ProviderLogo';
 import { formatReportBody, type AdapterNotice, type ReportDigest } from './ui/reportBroken';
-import { persistSnapshotIfEnabled } from './workflow/snapshot/persistence';
+import { persistSnapshotIfEnabled, writeSnapshot } from './workflow/snapshot/persistence';
 import { getLastSnapshot } from './workflow/snapshot/recorder';
 import type { ReplayPlan } from './workflow/snapshot/replay';
 import type { ExecutionSnapshot } from './workflow/snapshot/types';
@@ -1799,7 +1800,20 @@ export default function App() {
       : undefined;
     setSharing(true);
     setShareNotice({ kind: 'ok', text: translateKey('archive.running', localeRef.current) });
+    // With durable snapshots off there is no file for the script to read, so this run is written
+    // just for the export and removed again in the finally: "off" is about what STAYS on disk, and
+    // pressing the button is an explicit request to archive THIS run's text. Written at full-local
+    // whatever the tier setting says, because the redacting tiers would archive placeholders and a
+    // note holding "(no text)" is worth nothing. A file that is already there is left alone -- and
+    // left behind, so a durable snapshot is never deleted by an export.
+    // notes: snapshot_save prunes to the newest 50. Writing a temporary one can therefore drop the
+    //        oldest durable snapshot. Give snapshot_save a no-prune flag if that ever bites.
+    let temporary = false;
     try {
+      if (settingsRef.current.snapshotPersistence !== true) {
+        temporary = (await host.snapshot.load(snapshot.snapshotId)) === null;
+        if (temporary) await writeSnapshot(snapshot, 'full-local');
+      }
       const detail = await host.share.runArchiveScript(snapshot.snapshotId, confirmPrompt);
       // null means the confirmation was declined -- nothing ran, so say nothing rather than
       // leaving "正在存檔…" on screen as if it were still going.
@@ -1821,6 +1835,7 @@ export default function App() {
       });
       setShareNotice({ kind: 'error', text: formatI18n(translateKey('archive.failed', localeRef.current), { detail }) });
     } finally {
+      if (temporary) await host.snapshot.delete(snapshot.snapshotId);
       setSharing(false);
     }
   };
@@ -2049,18 +2064,19 @@ export default function App() {
             onDeleteSession={deleteConversationSession}
           />
           <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-            {/* 放大檢視時暫時收起選單區讓 webview 吃滿高度；流程跑起來之後選單是唯讀的，
-                縮到只剩一列模式項目，其餘高度讓給流程追蹤與對話。
-                notes: 4.5rem＝本區塊的 p-3（上下共 1.5rem）＋ PresetCatalog compact 項目的
-                       min-h-12（3rem）。PresetCatalog 改了那個高度，這裡要跟著改。
-                checkpoint 是 inline 渲染在這個區塊內，而且要輸入與按鈕，
-                所以它在的時候兩種收合都不套用。 */}
+            {/* Hidden by either thing that wants the height more: a run in flight (the mode is
+                locked in by then, and the trace and transcript need the room) or an expanded stage
+                (a webview at full height is the whole point of expanding). Both undo themselves --
+                the run settles, the stage collapses from the button in the provider header -- and
+                the picker comes back on its own, which is when the next mode choice is made.
+                A checkpoint renders inline here and needs its input and buttons, so it stays open
+                even mid-run. */}
             <section
               id="workflow-control-shelf"
               aria-label={translate('preset.catalog.aria')}
               className={`shrink-0 overflow-auto border-b border-zinc-200 bg-zinc-50/80 p-3 dark:border-zinc-800 dark:bg-zinc-900/70 ${
-                stageExpanded && !checkpoint ? 'hidden' : ''
-              } ${isProcessing && !checkpoint ? 'max-h-[4.5rem]' : 'max-h-[42vh]'}`}
+                (isProcessing || stageExpanded) && !checkpoint ? 'hidden' : 'max-h-[42vh]'
+              }`}
             >
               <PresetCatalog
                 mode={mode}
@@ -2512,10 +2528,15 @@ export function ChatArea({
             data-provider={isProvider ? p : undefined}
           >
             <div className="mb-1 flex items-center gap-2">
-              <div className="text-xs uppercase text-zinc-500 dark:text-zinc-500">
-                {bubbleAuthorLabel(message)}
-                {message.modeRole ? ` · ${message.modeRole}` : ''}
-                {statusLabel ? ` ${statusLabel}` : ''}
+              <div className="flex items-center gap-1.5 text-xs uppercase text-zinc-500 dark:text-zinc-500">
+                {/* A role label ("Reviewer") replaces the provider name, so the mark is what still
+                    says which AI wrote the bubble. */}
+                {isProvider ? <ProviderLogo provider={p as AIProvider} className="h-4 w-4" /> : null}
+                <span>
+                  {bubbleAuthorLabel(message)}
+                  {message.modeRole ? ` · ${message.modeRole}` : ''}
+                  {statusLabel ? ` ${statusLabel}` : ''}
+                </span>
               </div>
             </div>
             {thinking ? (

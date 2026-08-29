@@ -67,6 +67,8 @@ export const zhTW: Record<I18nKey, string> = {
   'archive.confirmMessage': '要執行這個腳本嗎？\n\n腳本：{script}\n執行紀錄：{snapshot}',
   'provider.access': '權限',
   'provider.access.heading': '這個 adapter 可以存取什麼',
+  'provider.access.appliesTo': '適用於',
+  'provider.access.everyProvider': '各家 AI',
   'provider.access.readTitle': '可以讀取（從頁面）',
   'provider.access.writeTitle': '可以寫入（到頁面）',
   'provider.access.cannotTitle': '不能做（由架構保證）',

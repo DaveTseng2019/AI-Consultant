@@ -28,7 +28,8 @@ export interface AdapterPermissionLine {
 }
 
 export interface AdapterPermissionSummary {
-  provider: AIProvider;
+  /** Absent for the shared summary, the scope every provider has in common. */
+  provider?: AIProvider;
   providerName: string;
   selectorDetailsAvailable: boolean;
   reads: AdapterPermissionLine[];
@@ -37,12 +38,15 @@ export interface AdapterPermissionSummary {
   note?: string;
 }
 
+// `provider` undefined asks for the shared summary. The scope is written once in code and comes out
+// the same for all four -- one injected engine, one set of things it can do -- so naming one provider
+// would only invite the reader to hunt for a difference that is not there.
 export function buildAdapterPermissionSummary(
-  provider: AIProvider,
+  provider: AIProvider | undefined,
   selectors?: AdapterPermissionSelectorDetails,
   locale: Locale = 'en',
 ): AdapterPermissionSummary {
-  const providerName = AI_PROVIDERS[provider].name;
+  const providerName = provider ? AI_PROVIDERS[provider].name : t('provider.access.everyProvider', locale);
   const responseSelectors = normalizeSelectorRefs(selectors?.responseSelectors, locale);
   const loginSelectors = normalizeSelectorRefs(selectors?.loginDetectors, locale);
   const loggedOutSelectors = normalizeSelectorRefs(selectors?.loggedOutDetectors, locale);

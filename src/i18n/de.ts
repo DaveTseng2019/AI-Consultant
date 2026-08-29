@@ -73,6 +73,8 @@ export const de: Record<I18nKey, string> = {
   'archive.confirmMessage': 'Dieses Skript ausfuehren?\n\nSkript: {script}\nLauf: {snapshot}',
   'provider.access': 'Zugriff',
   'provider.access.heading': 'Worauf dieser Adapter zugreifen kann',
+  'provider.access.appliesTo': 'Gilt für',
+  'provider.access.everyProvider': 'jeden Anbieter',
   'provider.access.readTitle': 'DARF lesen (von der Seite)',
   'provider.access.writeTitle': 'DARF schreiben (auf die Seite)',
   'provider.access.cannotTitle': 'DARF NICHT (durch die Architektur garantiert)',

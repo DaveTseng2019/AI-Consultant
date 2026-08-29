@@ -33,6 +33,7 @@ import {
 import { buildDebugBundle, debugBundleFilename } from '../diagnostics/debugBundle';
 import { useEventLog } from './useEventLog';
 import { ModalDialog } from './ModalDialog';
+import { ProviderLogo } from './ProviderLogo';
 import { createSettingsPersistence } from './settingsPersistence';
 import { createTrailingDebounce, type TrailingDebounce } from './trailingDebounce';
 
@@ -576,9 +577,10 @@ export function SettingsModal({
                   </select>
                 </label>
               ) : null}
-              {/* Only reachable once snapshots hold real text -- the script reads the snapshot file,
-                  so offering it at a redacting tier would just archive placeholders. */}
-              {draft.snapshotPersistence && draft.snapshotRedactionTier === 'full-local' ? (
+              {/* Hidden only where the archived notes would be placeholders: durable snapshots ON at a
+                  redacting tier, where the file the script reads holds no text. With them OFF the
+                  export writes its own full-local file for the run, so the button is worth offering. */}
+              {!draft.snapshotPersistence || draft.snapshotRedactionTier === 'full-local' ? (
                 <div className="space-y-3">
                   <label className="block text-xs text-zinc-600 dark:text-zinc-400">
                     <span className="mb-1 block">{t('settings.archiveScript')}</span>
@@ -758,36 +760,19 @@ type DebugBundleExportState =
   | { status: 'cancelled' }
   | { status: 'error'; message: string };
 
+// One panel, not one per provider: the scope is identical for all four, so four buttons that swap
+// nothing but the name read as four different answers and send the reader looking for the
+// difference. The marks the panel lists are what says the answer covers every provider.
 function AccessTransparencySection() {
   const { locale, t } = useI18n();
-  const [provider, setProvider] = useState<AIProvider>(PROVIDERS[0]);
-  const summary = useMemo(() => buildAdapterPermissionSummary(provider, undefined, locale), [locale, provider]);
+  const summary = useMemo(() => buildAdapterPermissionSummary(undefined, undefined, locale), [locale]);
 
   return (
     <section className="space-y-3 border-t border-zinc-200 dark:border-zinc-800 pt-4">
       <div>
         <h3 className="text-xs font-medium text-zinc-700 dark:text-zinc-300">{t('provider.access')}</h3>
       </div>
-      <div className="flex flex-wrap gap-2">
-        {PROVIDERS.map((candidate) => {
-          const selected = candidate === provider;
-          return (
-            <button
-              key={candidate}
-              className={`border px-3 py-1.5 text-xs ${
-                selected
-                  ? 'border-sky-300 dark:border-sky-700 bg-sky-50 dark:bg-sky-950 text-sky-800 dark:text-sky-100'
-                  : 'border-zinc-300 dark:border-zinc-700 text-zinc-800 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800'
-              }`}
-              aria-pressed={selected}
-              onClick={() => setProvider(candidate)}
-            >
-              {AI_PROVIDERS[candidate].name}
-            </button>
-          );
-        })}
-      </div>
-      <AdapterAccessPanel id={`settings-adapter-access-${provider}`} summary={summary} />
+      <AdapterAccessPanel id="settings-adapter-access" summary={summary} />
     </section>
   );
 }
@@ -923,7 +908,10 @@ function DiagnosticsSection({
           return (
             <div key={provider} className="border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 px-3 py-2 text-xs">
               <div className="mb-2 flex items-center justify-between gap-2">
-                <span className="font-medium text-zinc-900 dark:text-zinc-100">{providerName(provider)}</span>
+                <span className="flex min-w-0 items-center gap-1.5 font-medium text-zinc-900 dark:text-zinc-100">
+                  <ProviderLogo provider={provider} className="h-4 w-4" />
+                  <span className="truncate">{providerName(provider)}</span>
+                </span>
                 <span className="text-zinc-500 dark:text-zinc-500">{lastEvent ? formatRelativeTime(lastEvent, now) : t('settings.noEvents')}</span>
               </div>
               <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-zinc-600 dark:text-zinc-400">
@@ -969,7 +957,12 @@ function EventLogRow({ event, now }: { event: EventLogEvent; now: number }) {
       <div className="flex flex-wrap items-center gap-2 text-zinc-500 dark:text-zinc-500">
         <span>{formatRelativeTime(event.ts, now)}</span>
         <span className="border border-zinc-300 dark:border-zinc-700 px-1.5 py-0.5 text-[0.6875rem] uppercase text-zinc-700 dark:text-zinc-300">{event.kind}</span>
-        {event.provider ? <span className="text-sky-700 dark:text-sky-300">{providerName(event.provider)}</span> : null}
+        {event.provider ? (
+          <span className="flex items-center gap-1 text-sky-700 dark:text-sky-300">
+            <ProviderLogo provider={event.provider} className="h-3.5 w-3.5" />
+            {providerName(event.provider)}
+          </span>
+        ) : null}
       </div>
       <div className="mt-1 break-words text-zinc-800 dark:text-zinc-200">{event.summary}</div>
       {event.detail ? <code className="mt-1 block break-words text-[0.6875rem] text-zinc-500 dark:text-zinc-500">{JSON.stringify(event.detail)}</code> : null}

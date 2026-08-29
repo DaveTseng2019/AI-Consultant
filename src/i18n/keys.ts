@@ -65,6 +65,8 @@ export const I18N_KEYS = [
   'archive.confirmMessage',
   'provider.access',
   'provider.access.heading',
+  'provider.access.appliesTo',
+  'provider.access.everyProvider',
   'provider.access.readTitle',
   'provider.access.writeTitle',
   'provider.access.cannotTitle',

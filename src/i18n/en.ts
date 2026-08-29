@@ -73,6 +73,8 @@ export const en: Record<I18nKey, string> = {
   'archive.confirmMessage': 'Run this script?\n\nScript: {script}\nRun: {snapshot}',
   'provider.access': 'Access',
   'provider.access.heading': 'What this adapter can access',
+  'provider.access.appliesTo': 'Applies to',
+  'provider.access.everyProvider': 'every provider',
   'provider.access.readTitle': 'CAN read (from the page)',
   'provider.access.writeTitle': 'CAN write (to the page)',
   'provider.access.cannotTitle': 'CANNOT (guaranteed by architecture)',
