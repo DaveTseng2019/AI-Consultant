@@ -70,6 +70,7 @@ Cloudflare 驗證）；Linux 目前只有 CI 建置，沒有實機回報。詳�
 
 | 版本 | 日期 | 異動 |
 |---|---|---|
+| [v0.0.7](https://github.com/DaveTseng2019/AI-Consultant/releases/tag/v0.0.7) | 2026-08-29 | 「匯到 Obsidian」在持久化 snapshots 關閉時也能用：臨時寫一份給腳本讀、跑完刪掉，筆記以問題命名（已實測）；每個 provider 名稱旁都加上標誌，涵蓋對話、provider 視窗標題、診斷卡片與事件紀錄、存取範圍面板；模式選單只在處理中或視窗放大時隱藏；存取範圍從四份相同的說明改成一份共用 |
 | [v0.0.6](https://github.com/DaveTseng2019/AI-Consultant/releases/tag/v0.0.6) | 2026-08-28 | 截圖可直接從剪貼簿貼進問題一起送出（Grok 已實測）；「傳送已選的 AI」在每個模式都看得到，角色決定參與者的模式以已勾選但不可更改的樣子顯示 |
 | [v0.0.5](https://github.com/DaveTseng2019/AI-Consultant/releases/tag/v0.0.5) | 2026-08-28 | Grok 中途去搜尋時不再只收下開場白；程式碼方塊補回框線；閒置時點連線 chip 會放大該 provider 的視窗，回答進行中則不放大；設定裡直接看得到目前版本 |
 | [v0.0.4](https://github.com/DaveTseng2019/AI-Consultant/releases/tag/v0.0.4) | 2026-08-27 | 啟動時看得見連線進度，送出對象與狀態訊息不再被收合藏住；按「新對話」不再堆出第二筆空白對話；收起對話紀錄改為選項；可攜版開放更新檢查，下載直指可攜版 zip |
