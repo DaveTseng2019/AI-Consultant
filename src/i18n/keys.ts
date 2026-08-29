@@ -140,6 +140,7 @@ export const I18N_KEYS = [
   'input.sendFailed',
   'input.reading',
   'input.insertFile',
+  'input.attachmentHint',
   'input.stop',
   'input.send',
   'input.removeFile',

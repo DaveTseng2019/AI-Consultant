@@ -327,7 +327,10 @@ export default function App() {
   const [initialRestoreComplete, setInitialRestoreComplete] = useState(false);
   const [connectionSnapshotLoaded, setConnectionSnapshotLoaded] = useState(false);
   const [focusPaneWidth, setFocusPaneWidth] = useState(() => defaultSettings().focusPaneWidth);
-  const [stageExpanded, setStageExpanded] = useState(false);
+  // Why the stage grew matters to the mode picker below it: a stage the app expanded on its own
+  // (a signed-out provider) must not take the picker away, a stage the user asked for gets it.
+  const [stageExpand, setStageExpand] = useState<'none' | 'auto' | 'manual'>('none');
+  const stageExpanded = stageExpand !== 'none';
   const [messagesMaximized, setMessagesMaximized] = useState(false);
   const [scrollFocusedProvider, setScrollFocusedProvider] = useState<AIProvider | undefined>();
   const [presentation, setPresentation] = useState<PresentationByProvider>(() => defaultPresentation());
@@ -464,7 +467,7 @@ export default function App() {
     // thing. The click asks for the stage of an idle app only.
     const chipExpandRequested = chipExpandRequestRef.current === centeredProvider;
     if (chipExpandRequested) chipExpandRequestRef.current = undefined;
-    setStageExpanded(decision.stageExpanded || (chipExpandRequested && !isProcessingRef.current));
+    setStageExpand(decision.stageExpanded ? 'auto' : chipExpandRequested && !isProcessingRef.current ? 'manual' : 'none');
     // The face, in contrast, is decided once per centring. Completing a sign-in must not swap the
     // page the user just landed on for the empty text view of a brand new session.
     if (stageDecisionRef.current === centeredProvider) return;
@@ -2074,19 +2077,21 @@ export default function App() {
             onDeleteSession={deleteConversationSession}
           />
           <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-            {/* Hidden while a run is in flight and at no other time: the mode is locked in by then,
+            {/* Hidden while a run is in flight: the mode is locked in by then,
                 and the height is worth more to the process trace and the transcript. It comes back
                 when the run settles, which is when the next mode choice is made.
-                An expanded stage deliberately does NOT hide it. The stage expands on its own at
-                start-up, while the providers still report signed-out, so hiding on expand took the
-                picker away exactly when the empty transcript was asking for a mode to be picked.
+                Also hidden when the user presses Expand on the stage: that press asks for the whole
+                column, and this shelf is the room it asks for. Only the user's press -- the stage
+                also expands on its own at start-up, while the providers still report signed-out,
+                and hiding then took the picker away exactly when the empty transcript was asking
+                for a mode to be picked.
                 A checkpoint renders inline here and needs its input and buttons, so it stays open
                 even mid-run. */}
             <section
               id="workflow-control-shelf"
               aria-label={translate('preset.catalog.aria')}
               className={`shrink-0 overflow-auto border-b border-zinc-200 bg-zinc-50/80 p-3 dark:border-zinc-800 dark:bg-zinc-900/70 ${
-                isProcessing && !checkpoint ? 'hidden' : 'max-h-[42vh]'
+                (isProcessing || stageExpand === 'manual') && !checkpoint ? 'hidden' : 'max-h-[42vh]'
               }`}
             >
               <PresetCatalog
@@ -2198,11 +2203,11 @@ export default function App() {
                 // watches the answers arrive, and a stage that grows under them reads as a fault.
                 if (isProcessing) return;
                 // Already centred: no stage decision is coming, so expand right here.
-                if (provider === centeredProvider) setStageExpanded(true);
+                if (provider === centeredProvider) setStageExpand('manual');
                 else chipExpandRequestRef.current = provider;
               }}
               stageExpanded={stageExpanded}
-              onToggleStageExpanded={() => setStageExpanded((current) => !current)}
+              onToggleStageExpanded={() => setStageExpand((current) => (current === 'none' ? 'manual' : 'none'))}
               onOpenSettings={() => setSettingsOpen(true)}
             />
           </div>

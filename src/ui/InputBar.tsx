@@ -269,6 +269,12 @@ export function InputBar({
           {isSubmitting ? t('input.preparing', locale) : t('input.send', locale)}
         </button>
       </div>
+      {/* The file button only ever took text files, and its rejection message was the only place
+          that said so -- after the user had already picked an image. Say what goes where before
+          the pick: text files through the button, images through a paste.
+          notes: the keys named in the string are the Windows ones, which is every user this app
+                 has; macOS pastes with Cmd+V. Branch on the platform when a mac build ships. */}
+      <p className="text-[0.6875rem] leading-relaxed text-zinc-500 dark:text-zinc-500">{t('input.attachmentHint', locale)}</p>
       {pastedImages.length > 0 ? (
         <div className="flex flex-wrap gap-2">
           {pastedImages.map((image) => (
