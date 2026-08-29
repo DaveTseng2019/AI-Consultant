@@ -46,6 +46,7 @@ function renderFocusPane({
       <FocusPane
         centeredProvider={centeredProvider ?? undefined}
         onStepTimeoutClose={() => undefined}
+        onOpenSettings={vi.fn()}
         scrollFocusedProvider={scrollFocusedProvider}
         states={states(stateOverrides)}
         presentation={presentation}

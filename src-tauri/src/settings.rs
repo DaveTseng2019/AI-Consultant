@@ -19,6 +19,9 @@ const SETTINGS_NORMALIZATION_CONTAINER_WIDTH: f64 = 1400.0;
 const DEFAULT_SNAPSHOT_REDACTION_TIER: &str = "metadata-only";
 const SNAPSHOT_REDACTION_TIERS: &[&str] = &["metadata-only", "hashes", "prompt-text", "full-local"];
 const ARCHIVE_LABEL_MAX_CHARS: usize = 16;
+const ACTION_ID_MAX_CHARS: usize = 64;
+const CUSTOM_ACTION_PAYLOADS: &[&str] = &["none", "run", "markdown"];
+const ACTION_NOTE_MAX_CHARS: usize = 200;
 const PROVIDERS: &[&str] = &["chatgpt", "claude", "gemini", "grok"];
 const PRESENTATION_STATES: &[&str] = &["chip", "side", "center"];
 
@@ -142,47 +145,183 @@ pub fn normalize_settings_value(settings: Value) -> Value {
             Value::String(tier.to_string()),
         );
 
-        // Path of a script the user points the archive button at. Only the shape is checked here;
-        // run_archive_script re-checks existence, because the file can vanish after it was set.
-        let archive_script = map
-            .get("archiveScript")
-            .and_then(|value| value.as_str())
-            .filter(|value| is_archive_script_path(value))
-            .unwrap_or("");
-        map.insert(
-            "archiveScript".to_string(),
-            Value::String(archive_script.to_string()),
-        );
+        // The toolbar's user-defined buttons. Only the shape of each script path is checked here;
+        // run_custom_action re-checks existence, because a file can vanish after it was set.
+        let actions = normalize_custom_actions(map.get("customActions"));
+        map.insert("customActions".to_string(), actions);
+        // Superseded by customActions, which normalization above seeds from them. Removed so the
+        // file cannot end up describing one button in two places that disagree.
+        map.remove("archiveScript");
+        map.remove("archiveLabel");
+        map.remove("archiveConfirm");
 
-        // The button's caption. Empty falls back to the translated default. Capped and stripped of
-        // line breaks because this lands in a toolbar that already has to wrap at narrow widths.
-        let archive_label = map
-            .get("archiveLabel")
-            .and_then(|value| value.as_str())
-            .map(|value| {
-                value
-                    .chars()
-                    .filter(|character| !character.is_control())
-                    .take(ARCHIVE_LABEL_MAX_CHARS)
-                    .collect::<String>()
-                    .trim()
-                    .to_string()
-            })
-            .unwrap_or_default();
-        map.insert("archiveLabel".to_string(), Value::String(archive_label));
-
-        // Defaults to ON: the button starts a child process, and an unasked first click is a worse
-        // surprise than one extra dialog. Absent in an older settings.json therefore means "ask".
-        let archive_confirm = map
-            .get("archiveConfirm")
+        // Defaults to ON: two copies of this app fight over the same provider profiles and the
+        // same settings file, and nobody asked for that by double-clicking a shortcut twice.
+        let single_instance = map
+            .get("singleInstance")
             .and_then(|value| value.as_bool())
             .unwrap_or(true);
-        map.insert("archiveConfirm".to_string(), Value::Bool(archive_confirm));
+        map.insert("singleInstance".to_string(), Value::Bool(single_instance));
 
         let presentation = normalize_presentation_value(map.get("presentation"));
         map.insert("presentation".to_string(), presentation);
     }
     settings
+}
+
+/// Reduces a suggested file name to a plain `<stem>.md`. The name arrives from the frontend, and
+/// this path is joined onto a directory: a separator or a `..` in it would place the file somewhere
+/// nobody asked for.
+fn safe_export_name(suggested: &str) -> String {
+    let stem: String = suggested
+        .trim_end_matches(".md")
+        .chars()
+        .map(|character| {
+            if character.is_control() || r#"\/:*?"<>|"#.contains(character) {
+                '-'
+            } else {
+                character
+            }
+        })
+        .take(120)
+        .collect();
+    let stem = stem.trim_matches(['.', ' ', '-']).to_string();
+    if stem.is_empty() {
+        "conversation.md".to_string()
+    } else {
+        format!("{stem}.md")
+    }
+}
+
+/// Keeps the entries that name an absolute `.ps1` and drops the rest, because an entry whose script
+/// cannot run is a toolbar button that can only fail. Captions are capped and stripped of control
+/// characters: they land in a toolbar that already has to wrap at narrow widths.
+///
+/// Both flags default to ON. `passRun` matches the one button this list replaced, and `confirm` is
+/// the safer answer for something that starts a child process -- an unasked first click is a worse
+/// surprise than one extra dialog.
+fn normalize_custom_actions(value: Option<&Value>) -> Value {
+    let Some(actions) = value.and_then(|value| value.as_array()) else {
+        return Value::Array(Vec::new());
+    };
+
+    let normalized = actions
+        .iter()
+        .enumerate()
+        .filter_map(|(index, action)| {
+            let action = action.as_object()?;
+            let script = action.get("script").and_then(|value| value.as_str())?;
+            if !is_archive_script_path(script) {
+                return None;
+            }
+            let text = |key: &str, limit: usize| {
+                action
+                    .get(key)
+                    .and_then(|value| value.as_str())
+                    .map(|value| {
+                        value
+                            .chars()
+                            .filter(|character| !character.is_control())
+                            .take(limit)
+                            .collect::<String>()
+                            .trim()
+                            .to_string()
+                    })
+                    .unwrap_or_default()
+            };
+            let flag = |key: &str| {
+                action
+                    .get(key)
+                    .and_then(|value| value.as_bool())
+                    .unwrap_or(true)
+            };
+            // `passRun` is what the first version of the list stored: true meant the run, false
+            // meant nothing at all.
+            let payload = action
+                .get("payload")
+                .and_then(|value| value.as_str())
+                .filter(|value| CUSTOM_ACTION_PAYLOADS.contains(value))
+                .map(|value| value.to_string())
+                .unwrap_or_else(|| {
+                    if action.get("passRun").and_then(|value| value.as_bool()) == Some(false) {
+                        "none".to_string()
+                    } else {
+                        "run".to_string()
+                    }
+                });
+            let id = match text("id", ACTION_ID_MAX_CHARS) {
+                id if id.is_empty() => format!("action-{index}"),
+                id => id,
+            };
+
+            let mut entry = Map::new();
+            entry.insert("id".to_string(), Value::String(id));
+            entry.insert(
+                "name".to_string(),
+                Value::String(text("name", ARCHIVE_LABEL_MAX_CHARS)),
+            );
+            entry.insert("script".to_string(), Value::String(script.to_string()));
+            entry.insert(
+                "note".to_string(),
+                Value::String(text("note", ACTION_NOTE_MAX_CHARS)),
+            );
+            entry.insert("payload".to_string(), Value::String(payload));
+            entry.insert("confirm".to_string(), Value::Bool(flag("confirm")));
+            Some(Value::Object(entry))
+        })
+        .collect::<Vec<_>>();
+
+    Value::Array(normalized)
+}
+
+/// The script path of one entry of `customActions`, or empty when the id is not in the list.
+fn custom_action_script(settings: &Value, action_id: &str) -> String {
+    settings
+        .get("customActions")
+        .and_then(|value| value.as_array())
+        .and_then(|actions| {
+            actions
+                .iter()
+                .find(|action| action.get("id").and_then(|value| value.as_str()) == Some(action_id))
+        })
+        .and_then(|action| action.get("script"))
+        .and_then(|value| value.as_str())
+        .unwrap_or("")
+        .to_string()
+}
+
+/// Reads the single-instance preference before Tauri exists. A second process has to decide
+/// whether to exit while it is still building its `Builder`, which is before any `AppHandle` -- and
+/// therefore before `settings_path` -- is available.
+///
+/// notes: this re-derives the directory that `settings_path` gets from `app_data_dir()`, so the
+///        two can drift. They agree as long as the bundle identifier below matches
+///        `tauri.conf.json` and Tauri keeps its platform conventions. An unreadable file means ON,
+///        which is the same answer as a fresh install.
+pub fn single_instance_preference() -> bool {
+    const IDENTIFIER: &str = "tw.micasa.aiconsultant";
+
+    let base = if cfg!(windows) {
+        std::env::var_os("APPDATA").map(PathBuf::from)
+    } else if cfg!(target_os = "macos") {
+        std::env::var_os("HOME").map(|home| PathBuf::from(home).join("Library/Application Support"))
+    } else {
+        std::env::var_os("XDG_DATA_HOME")
+            .map(PathBuf::from)
+            .or_else(|| {
+                std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".local/share"))
+            })
+    };
+    let Some(base) = base else { return true };
+
+    read_settings(&base.join(IDENTIFIER).join("settings.json"))
+        .ok()
+        .and_then(|settings| {
+            settings
+                .get("singleInstance")
+                .and_then(|value| value.as_bool())
+        })
+        .unwrap_or(true)
 }
 
 /// An absolute path to a `.ps1`. Absolute because the app's working directory is not somewhere the
@@ -398,9 +537,10 @@ pub async fn pick_archive_script(
     }
 }
 
-// Run the user's archive script for one recorded run. The script path comes from settings and is
-// never assembled from anything the app received over the network; the snapshot id is the only
-// argument and is checked against the same shape snapshot_save enforces for file names.
+// Run one of the user's toolbar scripts. The path comes from settings, looked up by the action id
+// the frontend sends, and is never assembled from anything the app received over the network. The
+// snapshot id, when there is one, is the only argument and is checked against the same shape
+// snapshot_save enforces for file names.
 //
 // Reachable from the control pane only (provider webviews are granted no permissions), so the
 // pages loaded from chatgpt.com and friends cannot invoke this.
@@ -409,28 +549,29 @@ pub async fn pick_archive_script(
 // from the frontend because that is where the i18n table lives; the decision to ask is the
 // archiveConfirm setting. Returns Ok(None) when the user answers no.
 #[tauri::command]
-pub async fn run_archive_script(
+pub async fn run_custom_action(
     app: AppHandle,
     webview: tauri::Webview,
-    snapshot_id: String,
+    action_id: String,
+    snapshot_id: Option<String>,
+    markdown_name: Option<String>,
+    markdown_content: Option<String>,
     confirm: Option<String>,
 ) -> Result<Option<String>, String> {
     use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
 
     crate::webviews::ensure_control_webview(&webview)?;
-    crate::snapshots::validate_snapshot_id(&snapshot_id)?;
+    if let Some(id) = &snapshot_id {
+        crate::snapshots::validate_snapshot_id(id)?;
+    }
 
     let settings = read_settings(&settings_path(&app)?)?;
-    let script = settings
-        .get("archiveScript")
-        .and_then(|value| value.as_str())
-        .unwrap_or("")
-        .to_string();
+    let script = custom_action_script(&settings, &action_id);
     if script.is_empty() || !is_archive_script_path(&script) {
-        return Err("no archive script configured".to_string());
+        return Err(format!("no script configured for action: {action_id}"));
     }
     if !Path::new(&script).is_file() {
-        return Err(format!("archive script not found: {script}"));
+        return Err(format!("script not found: {script}"));
     }
 
     // Asked after the checks, so a misconfigured path fails with the real reason instead of making
@@ -449,11 +590,24 @@ pub async fn run_archive_script(
         }
     }
 
-    let output =
-        tauri::async_runtime::spawn_blocking(move || run_in_powershell(&script, &snapshot_id))
-            .await
-            .map_err(|error| error.to_string())?
-            .map_err(|error| error.to_string())?;
+    // Written before the script starts and left there: the script hands the file to whatever the
+    // user opens .md with, and deleting it out from under that program is how you get an empty
+    // window. The OS temp directory is the one place that cleans up after us.
+    let markdown_path = match (markdown_name, markdown_content) {
+        (Some(name), Some(content)) => {
+            let path = std::env::temp_dir().join(safe_export_name(&name));
+            std::fs::write(&path, content).map_err(|error| error.to_string())?;
+            Some(path.to_string_lossy().into_owned())
+        }
+        _ => None,
+    };
+
+    let output = tauri::async_runtime::spawn_blocking(move || {
+        run_in_powershell(&script, snapshot_id.as_deref(), markdown_path.as_deref())
+    })
+    .await
+    .map_err(|error| error.to_string())?
+    .map_err(|error| error.to_string())?;
 
     // The script's own last words, not a generic "failed" -- when an unattended-looking button goes
     // wrong the reason has to reach the user, and stderr is where PowerShell puts it.
@@ -495,23 +649,34 @@ pub async fn run_archive_script(
 /// parser error rather than anything that names encoding. pwsh reads UTF-8 whether or not there is a
 /// BOM. Preferring it means the user's script does not have to be saved a particular way.
 #[cfg(windows)]
-fn run_in_powershell(script: &str, snapshot_id: &str) -> std::io::Result<std::process::Output> {
+fn run_in_powershell(
+    script: &str,
+    snapshot_id: Option<&str>,
+    markdown_path: Option<&str>,
+) -> std::io::Result<std::process::Output> {
     use std::os::windows::process::CommandExt;
     const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
     let mut missing = None;
     for shell in ["pwsh.exe", "powershell.exe"] {
-        let attempt = std::process::Command::new(shell)
-            .args([
-                "-NoProfile",
-                "-NonInteractive",
-                "-ExecutionPolicy",
-                "Bypass",
-                "-File",
-                script,
-                "-SnapshotId",
-                snapshot_id,
-            ])
+        let mut command = std::process::Command::new(shell);
+        command.args([
+            "-NoProfile",
+            "-NonInteractive",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            script,
+        ]);
+        // Omitted, not passed empty: a script that declares no -SnapshotId parameter fails on an
+        // unknown argument, and one that does declare it can then default it itself.
+        if let Some(id) = snapshot_id {
+            command.args(["-SnapshotId", id]);
+        }
+        if let Some(path) = markdown_path {
+            command.args(["-MarkdownPath", path]);
+        }
+        let attempt = command
             // Without this a console window flashes up on every click.
             .creation_flags(CREATE_NO_WINDOW)
             .output();
@@ -528,17 +693,20 @@ fn run_in_powershell(script: &str, snapshot_id: &str) -> std::io::Result<std::pr
 // notes: pwsh only off Windows -- Windows PowerShell does not exist there. Untested; this build
 //        target has no user for the feature yet. Drop the arm if that stays true.
 #[cfg(not(windows))]
-fn run_in_powershell(script: &str, snapshot_id: &str) -> std::io::Result<std::process::Output> {
-    std::process::Command::new("pwsh")
-        .args([
-            "-NoProfile",
-            "-NonInteractive",
-            "-File",
-            script,
-            "-SnapshotId",
-            snapshot_id,
-        ])
-        .output()
+fn run_in_powershell(
+    script: &str,
+    snapshot_id: Option<&str>,
+    markdown_path: Option<&str>,
+) -> std::io::Result<std::process::Output> {
+    let mut command = std::process::Command::new("pwsh");
+    command.args(["-NoProfile", "-NonInteractive", "-File", script]);
+    if let Some(id) = snapshot_id {
+        command.args(["-SnapshotId", id]);
+    }
+    if let Some(path) = markdown_path {
+        command.args(["-MarkdownPath", path]);
+    }
+    command.output()
 }
 
 // Open an external URL in the OS default browser from the control pane. Tauri does not route
@@ -564,7 +732,7 @@ mod tests {
         build_stamp_from_json, normalize_settings_value, read_settings, write_settings,
         ARCHIVE_LABEL_MAX_CHARS,
     };
-    use serde_json::json;
+    use serde_json::{json, Value};
     use std::path::PathBuf;
     use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -658,18 +826,33 @@ mod tests {
         let _ = std::fs::remove_file(path);
     }
 
-    // The button hands this path to a child process, so anything but an absolute .ps1 has to be
+    // Each entry hands its path to a child process, so anything but an absolute .ps1 has to be
     // dropped at normalization -- a relative path resolves against the app's cwd, which is not
-    // anywhere the user chose, and a non-.ps1 means the setting was filled in by mistake.
+    // anywhere the user chose, and a non-.ps1 means the field was filled in by mistake. A dropped
+    // entry is better than a toolbar button that can only fail.
     #[test]
-    fn archive_script_setting_keeps_only_absolute_ps1_paths() {
+    fn custom_actions_keep_only_absolute_ps1_paths() {
         let script = if cfg!(windows) {
             "C:\\Users\\me\\archive.ps1"
         } else {
             "/home/me/archive.ps1"
         };
-        let kept = normalize_settings_value(json!({ "archiveScript": script }));
-        assert_eq!(kept.get("archiveScript").unwrap(), script);
+        let actions = |value: Value| {
+            normalize_settings_value(json!({ "customActions": value }))
+                .get("customActions")
+                .unwrap()
+                .as_array()
+                .unwrap()
+                .clone()
+        };
+
+        let kept = actions(json!([{ "id": "a", "script": script }]));
+        assert_eq!(kept.len(), 1);
+        assert_eq!(kept[0].get("script").unwrap(), script);
+        // Defaults: the run, because that is what the one button this list replaced always passed,
+        // and confirm ON, because the entry starts a child process.
+        assert_eq!(kept[0].get("payload").unwrap(), "run");
+        assert_eq!(kept[0].get("confirm").unwrap(), true);
 
         for rejected in [
             "archive.ps1",           // relative
@@ -678,31 +861,61 @@ mod tests {
             "C:\\tools\\archive",    // no extension
             "",
         ] {
-            let normalized = normalize_settings_value(json!({ "archiveScript": rejected }));
-            assert_eq!(
-                normalized.get("archiveScript").unwrap(),
-                "",
-                "should have been rejected: {rejected}"
-            );
+            let dropped = actions(json!([{ "id": "a", "script": rejected }]));
+            assert!(dropped.is_empty(), "should have been rejected: {rejected}");
         }
     }
 
     // The caption goes straight into the toolbar, so a pasted paragraph or a newline would either
     // break the row or smuggle a line break into a flex item.
     #[test]
-    fn archive_label_is_trimmed_stripped_of_control_chars_and_capped() {
-        let label = |value: &str| {
-            normalize_settings_value(json!({ "archiveLabel": value }))
-                .get("archiveLabel")
+    fn custom_action_name_is_trimmed_stripped_of_control_chars_and_capped() {
+        let script = if cfg!(windows) {
+            "C:\\Users\\me\\archive.ps1"
+        } else {
+            "/home/me/archive.ps1"
+        };
+        let name = |value: &str| {
+            normalize_settings_value(json!({
+                "customActions": [{ "id": "a", "script": script, "name": value }]
+            }))
+            .get("customActions")
+            .unwrap()[0]
+                .get("name")
                 .unwrap()
                 .as_str()
                 .unwrap()
                 .to_string()
         };
-        assert_eq!(label("  存到 Obsidian  "), "存到 Obsidian");
-        assert_eq!(label("存到\nObsidian"), "存到Obsidian");
-        assert_eq!(label(&"x".repeat(40)), "x".repeat(ARCHIVE_LABEL_MAX_CHARS));
-        assert_eq!(label(""), "");
+        assert_eq!(
+            name("  \u{5b58}\u{5230} Obsidian  "),
+            "\u{5b58}\u{5230} Obsidian"
+        );
+        assert_eq!(
+            name("\u{5b58}\u{5230}\nObsidian"),
+            "\u{5b58}\u{5230}Obsidian"
+        );
+        assert_eq!(name(&"x".repeat(40)), "x".repeat(ARCHIVE_LABEL_MAX_CHARS));
+        assert_eq!(name(""), "");
+    }
+
+    // A settings.json written before the list still describes a button the user configured, so it
+    // is carried over rather than dropped on the floor.
+    #[test]
+    fn legacy_archive_fields_are_dropped_from_the_saved_settings() {
+        let script = if cfg!(windows) {
+            "C:\\Users\\me\\archive.ps1"
+        } else {
+            "/home/me/archive.ps1"
+        };
+        let normalized = normalize_settings_value(json!({
+            "archiveScript": script,
+            "archiveLabel": "Archive",
+            "archiveConfirm": false,
+        }));
+        assert!(normalized.get("archiveScript").is_none());
+        assert!(normalized.get("archiveLabel").is_none());
+        assert!(normalized.get("archiveConfirm").is_none());
     }
 
     #[test]
@@ -716,9 +929,8 @@ mod tests {
                 "focusPaneWidth": 620,
                 "snapshotPersistence": false,
                 "snapshotRedactionTier": "metadata-only",
-                "archiveScript": "",
-                "archiveLabel": "",
-                "archiveConfirm": true,
+                "customActions": [],
+                "singleInstance": true,
                 "presentation": {
                     "chatgpt": "side",
                     "claude": "side",
@@ -731,9 +943,7 @@ mod tests {
             normalize_settings_value(json!({
                 "snapshotPersistence": true,
                 "snapshotRedactionTier": "full-local",
-                "archiveScript": "",
-                "archiveLabel": "",
-                "archiveConfirm": true,
+                "customActions": [],
                 "presentation": {
                     "chatgpt": "chip",
                     "claude": "center",
@@ -748,9 +958,8 @@ mod tests {
                 "focusPaneWidth": 620,
                 "snapshotPersistence": true,
                 "snapshotRedactionTier": "full-local",
-                "archiveScript": "",
-                "archiveLabel": "",
-                "archiveConfirm": true,
+                "customActions": [],
+                "singleInstance": true,
                 "presentation": {
                     "chatgpt": "chip",
                     "claude": "center",
@@ -778,9 +987,8 @@ mod tests {
                 "focusPaneWidth": 620,
                 "snapshotPersistence": false,
                 "snapshotRedactionTier": "metadata-only",
-                "archiveScript": "",
-                "archiveLabel": "",
-                "archiveConfirm": true,
+                "customActions": [],
+                "singleInstance": true,
                 "presentation": {
                     "chatgpt": "center",
                     "claude": "side",

@@ -49,6 +49,7 @@ export function FocusPane({
   onChipClick,
   stageExpanded = false,
   onToggleStageExpanded,
+  onOpenSettings,
 }: {
   centeredProvider?: AIProvider;
   scrollFocusedProvider?: AIProvider;
@@ -76,6 +77,7 @@ export function FocusPane({
   onTraceDetailOpenChange?: (open: boolean) => void;
   onChipClick?: (provider: AIProvider) => void;
   stageExpanded?: boolean;
+  onOpenSettings: () => void;
   onToggleStageExpanded?: () => void;
 }) {
   const { locale, t } = useI18n();
@@ -156,6 +158,7 @@ export function FocusPane({
           one, and losing the switcher to see it bigger trades the wrong thing away. Only the
           process trace gives up its room. */}
       <StatusStrip
+        onOpenSettings={onOpenSettings}
         centeredProvider={centeredProvider}
         scrollFocusedProvider={scrollFocusedProvider}
         states={states}
@@ -474,6 +477,7 @@ export function TextCenterView({
 }
 
 function StatusStrip({
+  onOpenSettings,
   centeredProvider,
   scrollFocusedProvider,
   states,
@@ -491,13 +495,26 @@ function StatusStrip({
   activateProvider: (provider: AIProvider) => Promise<void>;
   openingProvider?: AIProvider;
   onChipClick?: (provider: AIProvider) => void;
+  onOpenSettings: () => void;
 }) {
   const { t } = useI18n();
   return (
     <section aria-labelledby="provider-connections-title" className="mt-3 shrink-0 overflow-x-auto overflow-y-hidden rounded border border-zinc-200 bg-white px-2 py-2 dark:border-zinc-800 dark:bg-zinc-950">
-      <div className="mb-2 flex items-baseline justify-between gap-3 px-0.5">
+      {/* Settings lives here, not in the conversation toolbar: that column is hidden at start-up
+          until a provider can receive a question, which is exactly when someone needs to reach
+          settings. This strip is on screen from the first frame. */}
+      <div className="mb-2 flex items-center justify-between gap-3 px-0.5">
         <h2 id="provider-connections-title" className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">{t('provider.connections')}</h2>
-        <span className="text-[0.6875rem] text-zinc-500 dark:text-zinc-400">{t('provider.connectionsHint')}</span>
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="min-w-0 truncate text-[0.6875rem] text-zinc-500 dark:text-zinc-400">{t('provider.connectionsHint')}</span>
+          <button
+            type="button"
+            className="shrink-0 border border-zinc-300 px-2 py-1 text-xs text-zinc-800 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+            onClick={onOpenSettings}
+          >
+            {t('header.settings')}
+          </button>
+        </div>
       </div>
       <div className="grid grid-cols-4 gap-1.5">
         {PROVIDERS.map((provider) => (

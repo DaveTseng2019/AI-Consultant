@@ -6,7 +6,24 @@ mod snapshots;
 mod webviews;
 
 pub fn run() {
-    tauri::Builder::default()
+    let mut builder = tauri::Builder::default();
+
+    // Registered only when the preference asks for it, because the plugin's whole job is to end
+    // the second process -- once it is in, there is no later point at which to change our mind.
+    // The callback runs in the FIRST instance: raise the window that is already there, so a second
+    // double-click reads as "here it is" rather than as nothing happening at all.
+    if settings::single_instance_preference() {
+        builder = builder.plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
+            use tauri::Manager;
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.unminimize();
+                let _ = window.show();
+                let _ = window.set_focus();
+            }
+        }));
+    }
+
+    builder
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         // The feature-frozen edition intentionally uses GitHub Releases instead of a self-updater.
@@ -46,7 +63,7 @@ pub fn run() {
             settings::settings_get,
             settings::settings_set,
             settings::export_markdown,
-            settings::run_archive_script,
+            settings::run_custom_action,
             settings::pick_archive_script,
             settings::open_external_url,
             snapshots::snapshot_save,

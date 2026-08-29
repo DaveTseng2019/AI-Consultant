@@ -116,6 +116,7 @@ import { useOverlayGuard } from './ui/useOverlayGuard';
 import { buildMarkdown, exportFilename, matchingSnapshotForConversation } from './ui/exportMarkdown';
 import { ProviderLogo } from './ui/ProviderLogo';
 import { formatReportBody, type AdapterNotice, type ReportDigest } from './ui/reportBroken';
+import type { CustomAction } from './ui/settingsModel';
 import { persistSnapshotIfEnabled, writeSnapshot } from './workflow/snapshot/persistence';
 import { getLastSnapshot } from './workflow/snapshot/recorder';
 import type { ReplayPlan } from './workflow/snapshot/replay';
@@ -1751,23 +1752,30 @@ export default function App() {
     [activeSessionId, isProcessing, selectConversationSession, sessions],
   );
 
+  // The same markdown the export writes, for whoever needs it: the export dialog, or an action
+  // that asked for the conversation as a file.
+  const conversationMarkdown = async () => {
+    const now = new Date();
+    const appVersion = await getRuntimeAppVersion();
+    const snapshot = matchingSnapshotForConversation(messages, getLastSnapshot());
+    const exportPreset =
+      presetId === 'brainstorm'
+        ? {
+            id: presetId,
+            icon: '✨',
+            name: translateKey('preset.brainstorm.displayName', localeRef.current),
+          }
+        : undefined;
+    const { content } = buildMarkdown(messages, mode, now, { appVersion, snapshot, preset: exportPreset });
+    return { name: exportFilename(mode, now, exportPreset?.id), content };
+  };
+
   const exportConversation = async () => {
     if (messages.length === 0 || sharing) return;
     setSharing(true);
     try {
-      const now = new Date();
-      const appVersion = await getRuntimeAppVersion();
-      const snapshot = matchingSnapshotForConversation(messages, getLastSnapshot());
-      const exportPreset =
-        presetId === 'brainstorm'
-          ? {
-              id: presetId,
-              icon: '✨',
-              name: translateKey('preset.brainstorm.displayName', localeRef.current),
-            }
-          : undefined;
-      const { content } = buildMarkdown(messages, mode, now, { appVersion, snapshot, preset: exportPreset });
-      const saved = await host.share.exportMarkdown(exportFilename(mode, now, exportPreset?.id), content);
+      const { name, content } = await conversationMarkdown();
+      const saved = await host.share.exportMarkdown(name, content);
       if (saved) setShareNotice({ kind: 'ok', text: formatI18n(translateKey('share.exported', localeRef.current), { path: saved }) });
     } catch (reason) {
       recordEventLog({
@@ -1782,20 +1790,22 @@ export default function App() {
     }
   };
 
-  // Hands ONE run to the user's script. matchingSnapshotForConversation is what makes it one run
-  // rather than the whole vault: it returns the snapshot only when it belongs to the question
-  // currently on screen, so a stale snapshot from an earlier session cannot be archived by mistake.
-  const archiveConversation = async () => {
+  // Runs one toolbar action. An action that asked for the run gets ONE run, not the history:
+  // matchingSnapshotForConversation returns the snapshot only when it belongs to the question
+  // currently on screen, so a stale snapshot from an earlier session cannot be handed over by
+  // mistake. An action that did not ask for a run is a plain utility and runs with no argument.
+  const runCustomAction = async (action: CustomAction) => {
     if (sharing) return;
-    const snapshot = matchingSnapshotForConversation(messages, getLastSnapshot());
-    if (!snapshot) {
+    const snapshot = action.payload === 'run' ? matchingSnapshotForConversation(messages, getLastSnapshot()) : undefined;
+    if (action.payload === 'run' && !snapshot) {
       setShareNotice({ kind: 'error', text: translateKey('archive.noSnapshot', localeRef.current) });
       return;
     }
-    const confirmPrompt = settingsRef.current.archiveConfirm
+    const markdown = action.payload === 'markdown' ? await conversationMarkdown() : null;
+    const confirmPrompt = action.confirm
       ? formatI18n(translateKey('archive.confirmMessage', localeRef.current), {
-          script: settingsRef.current.archiveScript,
-          snapshot: snapshot.snapshotId,
+          script: action.script,
+          snapshot: snapshot?.snapshotId ?? translateKey('archive.noRunArgument', localeRef.current),
         })
       : undefined;
     setSharing(true);
@@ -1810,11 +1820,11 @@ export default function App() {
     //        oldest durable snapshot. Give snapshot_save a no-prune flag if that ever bites.
     let temporary = false;
     try {
-      if (settingsRef.current.snapshotPersistence !== true) {
+      if (snapshot && settingsRef.current.snapshotPersistence !== true) {
         temporary = (await host.snapshot.load(snapshot.snapshotId)) === null;
         if (temporary) await writeSnapshot(snapshot, 'full-local');
       }
-      const detail = await host.share.runArchiveScript(snapshot.snapshotId, confirmPrompt);
+      const detail = await host.share.runCustomAction(action.id, snapshot?.snapshotId ?? null, markdown, confirmPrompt);
       // null means the confirmation was declined -- nothing ran, so say nothing rather than
       // leaving "正在存檔…" on screen as if it were still going.
       setShareNotice(
@@ -1822,7 +1832,7 @@ export default function App() {
           ? undefined
           : {
               kind: 'ok',
-              text: formatI18n(translateKey('archive.done', localeRef.current), { detail: detail || snapshot.snapshotId }),
+              text: formatI18n(translateKey('archive.done', localeRef.current), { detail: detail || action.name }),
             },
       );
     } catch (reason) {
@@ -1835,7 +1845,7 @@ export default function App() {
       });
       setShareNotice({ kind: 'error', text: formatI18n(translateKey('archive.failed', localeRef.current), { detail }) });
     } finally {
-      if (temporary) await host.snapshot.delete(snapshot.snapshotId);
+      if (temporary && snapshot) await host.snapshot.delete(snapshot.snapshotId);
       setSharing(false);
     }
   };
@@ -2064,18 +2074,19 @@ export default function App() {
             onDeleteSession={deleteConversationSession}
           />
           <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-            {/* Hidden by either thing that wants the height more: a run in flight (the mode is
-                locked in by then, and the trace and transcript need the room) or an expanded stage
-                (a webview at full height is the whole point of expanding). Both undo themselves --
-                the run settles, the stage collapses from the button in the provider header -- and
-                the picker comes back on its own, which is when the next mode choice is made.
+            {/* Hidden while a run is in flight and at no other time: the mode is locked in by then,
+                and the height is worth more to the process trace and the transcript. It comes back
+                when the run settles, which is when the next mode choice is made.
+                An expanded stage deliberately does NOT hide it. The stage expands on its own at
+                start-up, while the providers still report signed-out, so hiding on expand took the
+                picker away exactly when the empty transcript was asking for a mode to be picked.
                 A checkpoint renders inline here and needs its input and buttons, so it stays open
                 even mid-run. */}
             <section
               id="workflow-control-shelf"
               aria-label={translate('preset.catalog.aria')}
               className={`shrink-0 overflow-auto border-b border-zinc-200 bg-zinc-50/80 p-3 dark:border-zinc-800 dark:bg-zinc-900/70 ${
-                (isProcessing || stageExpanded) && !checkpoint ? 'hidden' : 'max-h-[42vh]'
+                isProcessing && !checkpoint ? 'hidden' : 'max-h-[42vh]'
               }`}
             >
               <PresetCatalog
@@ -2192,6 +2203,7 @@ export default function App() {
               }}
               stageExpanded={stageExpanded}
               onToggleStageExpanded={() => setStageExpanded((current) => !current)}
+              onOpenSettings={() => setSettingsOpen(true)}
             />
           </div>
         </div>
@@ -2260,16 +2272,20 @@ export default function App() {
                 >
                   {translate('header.exportMarkdown')}
                 </button>
-                {appSettings.archiveScript ? (
+                {/* One button per configured action, in the saved order. The note is the tooltip:
+                    a caption short enough for a toolbar cannot also say what the script does. */}
+                {appSettings.customActions.map((action) => (
                   <button
+                    key={action.id}
                     type="button"
                     className="border border-zinc-300 dark:border-zinc-700 px-2 py-1 text-xs hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50"
-                    onClick={() => void archiveConversation()}
-                    disabled={messages.length === 0 || sharing}
+                    title={action.note || undefined}
+                    onClick={() => void runCustomAction(action)}
+                    disabled={sharing || (action.payload !== 'none' && messages.length === 0)}
                   >
-                    {appSettings.archiveLabel || translate('header.runArchive')}
+                    {action.name || translate('settings.customActionUnnamed')}
                   </button>
-                ) : null}
+                ))}
                 <button
                   type="button"
                   className={`flex h-7 w-7 items-center justify-center border text-xs text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 ${
@@ -2295,9 +2311,6 @@ export default function App() {
                       <path d="M21 15v6h-6" />
                     </svg>
                   )}
-                </button>
-                <button type="button" className="border border-zinc-300 dark:border-zinc-700 px-2 py-1 text-xs hover:bg-zinc-100 dark:hover:bg-zinc-800" onClick={() => setSettingsOpen(true)}>
-                  {translate('header.settings')}
                 </button>
               </div>
             </div>

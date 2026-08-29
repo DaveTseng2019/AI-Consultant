@@ -148,10 +148,24 @@ export const host = {
     /** Resolves with the chosen .ps1 path, or null when the dialog was dismissed. */
     pickArchiveScript: (): Promise<string | null> => invoke('pick_archive_script'),
     /**
+     * Runs one toolbar action. The script path is not sent from here: Rust looks up `actionId` in
+     * the saved settings, so a path the frontend never held cannot be substituted.
+     *
      * Resolves with the script's last line of output, or null when `confirm` was shown and declined.
      * Rejects with the script's exit code and stderr. Pass `confirm` to require approval first.
      */
-    runArchiveScript: async (snapshotId: string, confirm?: string): Promise<string | null> =>
-      invoke('run_archive_script', { snapshotId: safeSnapshotId(snapshotId), confirm: confirm ?? null }),
+    runCustomAction: async (
+      actionId: string,
+      snapshotId: string | null,
+      markdown: { name: string; content: string } | null,
+      confirm?: string,
+    ): Promise<string | null> =>
+      invoke('run_custom_action', {
+        actionId,
+        snapshotId: snapshotId === null ? null : safeSnapshotId(snapshotId),
+        markdownName: markdown?.name ?? null,
+        markdownContent: markdown?.content ?? null,
+        confirm: confirm ?? null,
+      }),
   },
 };

@@ -176,6 +176,14 @@ snapshot 存的是 graph id、graph 版本、角色→provider 對應、原始�
 
 同一題換條件再跑一次做比較（`full-local` 留原文、`hashes` 留 SHA-256，兩者都是給比對用的 `priorOutputs`／`priorHashes`），以及除錯時重現當初那次流程。
 
+## 自訂功能按鈕
+
+對話工具列上的按鈕可以自己加：**設定 → 進階與診斷 → 自訂功能按鈕**。一顆按鈕＝一支 PowerShell 腳本，
+按下時把「本次執行紀錄」（`-SnapshotId`）、「本次對話的 .md」（`-MarkdownPath`）或什麼都不傳給它。
+
+可直接使用的範例與完整說明（含把 `.md` 交給 VS Code 開啟的兩種做法）在
+[`examples/custom-actions/`](../examples/custom-actions/README.md)。
+
 ## 排查看不見的宿主端狀態（Grok trace）
 
 > 2026-08-17 建立。起因：Grok 卡在「狀態過期」查了非常久，因為測試時沒有把追蹤細節記下來，

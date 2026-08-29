@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { AI_PROVIDERS } from '../../shared/constants';
 import type { AIProvider, ProviderState } from '../../shared/types';
 import { buildAdapterPermissionSummary } from './adapterPermissions';
@@ -8,6 +8,8 @@ import { formatI18n } from '../i18n/t';
 import type { PresentationByProvider } from './presentation';
 import {
   type AppSettings,
+  type CustomAction,
+  type CustomActionPayload,
   DEFAULT_FONT_SIZE,
   DEFAULT_READING_FONT_SIZE,
   MIN_FONT_SIZE,
@@ -33,6 +35,7 @@ import {
 import { buildDebugBundle, debugBundleFilename } from '../diagnostics/debugBundle';
 import { useEventLog } from './useEventLog';
 import { ModalDialog } from './ModalDialog';
+import { createUniqueSuffix } from './uniqueId';
 import { ProviderLogo } from './ProviderLogo';
 import { createSettingsPersistence } from './settingsPersistence';
 import { createTrailingDebounce, type TrailingDebounce } from './trailingDebounce';
@@ -191,10 +194,52 @@ export function SettingsModal({
     setDraft((current) => (current ? { ...current, ...patch } : current));
   };
 
+  const updateAction = (index: number, patch: Partial<CustomAction>) => {
+    setDraft((current) =>
+      current
+        ? { ...current, customActions: current.customActions.map((action, i) => (i === index ? { ...action, ...patch } : action)) }
+        : current,
+    );
+  };
+
+  // The id is what Rust looks the script up by, so it has to be unique and it must survive a
+  // rename: a name is a caption, not an identity.
+  const addAction = () => {
+    setDraft((current) =>
+      current
+        ? {
+            ...current,
+            customActions: [
+              ...current.customActions,
+              { id: `action-${createUniqueSuffix()}`, name: '', script: '', note: '', payload: 'run', confirm: true },
+            ],
+          }
+        : current,
+    );
+  };
+
+  // The list order is the toolbar order, so this is the only way to say which button comes first.
+  const moveAction = (index: number, by: -1 | 1) => {
+    setDraft((current) => {
+      if (!current) return current;
+      const target = index + by;
+      if (target < 0 || target >= current.customActions.length) return current;
+      const customActions = [...current.customActions];
+      [customActions[index], customActions[target]] = [customActions[target], customActions[index]];
+      return { ...current, customActions };
+    });
+  };
+
+  const removeAction = (index: number) => {
+    setDraft((current) =>
+      current ? { ...current, customActions: current.customActions.filter((_, i) => i !== index) } : current,
+    );
+  };
+
   // Only the draft is touched; the dialog being dismissed leaves the current path alone.
-  const pickArchiveScript = async () => {
+  const pickActionScript = async (index: number) => {
     const chosen = await host.share.pickArchiveScript();
-    if (chosen) updateDraft({ archiveScript: chosen });
+    if (chosen) updateAction(index, { script: chosen });
   };
 
   const persistSettingsPatch = (patch: Partial<AppSettings>): Promise<AppSettings> =>
@@ -381,7 +426,7 @@ export function SettingsModal({
 
         {draft ? (
           <div className="space-y-5">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">{t('settings.general')}</h3>
+            <SectionHeading>{t('settings.general')}</SectionHeading>
             <section>
               <label className="block text-xs text-zinc-600 dark:text-zinc-400">
                 <span className="mb-1 block font-medium text-zinc-700 dark:text-zinc-300">{t('settings.language')}</span>
@@ -500,7 +545,7 @@ export function SettingsModal({
             </section>
 
             <section className="space-y-3 border-t border-zinc-200 dark:border-zinc-800 pt-4">
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">{t('settings.modeRoles')}</h3>
+              <SectionHeading>{t('settings.modeRoles')}</SectionHeading>
               <p className="text-xs leading-relaxed text-zinc-500 dark:text-zinc-500">{t('settings.modeRolesDescription')}</p>
               {orderedRoleModes.map((roleMode) => (
                 <details
@@ -545,7 +590,21 @@ export function SettingsModal({
             </section>
 
             <section className="space-y-3 border-t border-zinc-200 dark:border-zinc-800 pt-4">
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">{t('settings.privacyHistory')}</h3>
+              <SectionHeading>{t('settings.privacyHistory')}</SectionHeading>
+              {/* Read by Rust before the window exists, so this one is saved like any other field
+                  but only answers at the next launch -- the description says so. */}
+              <label className="flex items-start gap-3 text-xs text-zinc-600 dark:text-zinc-400">
+                <input
+                  type="checkbox"
+                  checked={draft.singleInstance}
+                  onChange={(event) => void persistDraftFieldImmediately('singleInstance', event.target.checked)}
+                  className="mt-0.5 h-4 w-4 accent-sky-700"
+                />
+                <span>
+                  <span className="block font-medium text-zinc-700 dark:text-zinc-300">{t('settings.singleInstance')}</span>
+                  <span className="mt-1 block leading-relaxed">{t('settings.singleInstanceDescription')}</span>
+                </span>
+              </label>
               <label className="flex items-start gap-3 text-xs text-zinc-600 dark:text-zinc-400">
                 <input
                   type="checkbox"
@@ -577,57 +636,122 @@ export function SettingsModal({
                   </select>
                 </label>
               ) : null}
-              {/* Hidden only where the archived notes would be placeholders: durable snapshots ON at a
-                  redacting tier, where the file the script reads holds no text. With them OFF the
-                  export writes its own full-local file for the run, so the button is worth offering. */}
-              {!draft.snapshotPersistence || draft.snapshotRedactionTier === 'full-local' ? (
-                <div className="space-y-3">
-                  <label className="block text-xs text-zinc-600 dark:text-zinc-400">
-                    <span className="mb-1 block">{t('settings.archiveScript')}</span>
-                    <span className="flex gap-2">
-                      <input
-                        type="text"
-                        spellCheck={false}
-                        value={draft.archiveScript}
-                        onChange={(event) => updateDraft({ archiveScript: event.target.value })}
-                        className="min-w-0 flex-1 border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 px-2 py-1.5 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-sky-500 dark:focus:border-sky-600"
-                      />
-                      <button
-                        type="button"
-                        className="shrink-0 border border-zinc-300 dark:border-zinc-700 px-3 py-1.5 text-xs text-zinc-800 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-                        onClick={() => void pickArchiveScript()}
-                      >
-                        {t('settings.archiveScriptBrowse')}
-                      </button>
-                    </span>
-                    <span className="mt-1 block leading-relaxed">{t('settings.archiveScriptDescription')}</span>
-                  </label>
-                  <label className="block text-xs text-zinc-600 dark:text-zinc-400">
-                    <span className="mb-1 block">{t('settings.archiveLabel')}</span>
-                    <input
-                      type="text"
-                      value={draft.archiveLabel}
-                      placeholder={t('settings.archiveLabel')}
-                      onChange={(event) => updateDraft({ archiveLabel: event.target.value })}
-                      className="w-full border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 px-2 py-1.5 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-sky-500 dark:focus:border-sky-600"
-                    />
-                    <span className="mt-1 block leading-relaxed">{t('settings.archiveLabelDescription')}</span>
-                  </label>
-                  <label className="flex items-start gap-3 text-xs text-zinc-600 dark:text-zinc-400">
-                    <input
-                      type="checkbox"
-                      checked={draft.archiveConfirm}
-                      onChange={(event) => updateDraft({ archiveConfirm: event.target.checked })}
-                      className="mt-0.5 h-4 w-4 accent-sky-700"
-                    />
-                    <span>
-                      <span className="block font-medium text-zinc-700 dark:text-zinc-300">{t('settings.archiveConfirm')}</span>
-                      <span className="mt-1 block leading-relaxed">{t('settings.archiveConfirmDescription')}</span>
-                    </span>
-                  </label>
-                </div>
-              ) : null}
             </section>
+
+            {/* Its own section: these buttons are a feature of the toolbar, not of the privacy
+                settings they used to hang off. Hidden only where an action that asks for the run
+                would receive placeholders -- durable snapshots ON at a redacting tier. With them
+                OFF the app writes its own full-local file for the run. */}
+            {!draft.snapshotPersistence || draft.snapshotRedactionTier === 'full-local' ? (
+              <section className="space-y-3 border-t border-zinc-200 pt-4 dark:border-zinc-800">
+                  <SectionHeading>{t('settings.customActions')}</SectionHeading>
+                  <span className="block text-xs leading-relaxed text-zinc-600 dark:text-zinc-400">
+                    {t('settings.customActionsDescription')}
+                  </span>
+                  {draft.customActions.map((action, index) => (
+                    <div key={action.id} className="space-y-2 border border-zinc-200 p-3 dark:border-zinc-800">
+                      <div className="flex gap-2">
+                        <label className="min-w-0 flex-1 text-xs text-zinc-600 dark:text-zinc-400">
+                          <span className="mb-1 block">{t('settings.customActionName')}</span>
+                          <input
+                            type="text"
+                            value={action.name}
+                            onChange={(event) => updateAction(index, { name: event.target.value })}
+                            className="w-full border border-zinc-300 bg-zinc-50 px-2 py-1.5 text-sm text-zinc-900 outline-none focus:border-sky-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:border-sky-600"
+                          />
+                        </label>
+                        <button
+                          type="button"
+                          className="mt-5 h-8 w-8 shrink-0 border border-zinc-300 text-xs text-zinc-800 hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                          aria-label={t('settings.customActionMoveUp')}
+                          title={t('settings.customActionMoveUp')}
+                          disabled={index === 0}
+                          onClick={() => moveAction(index, -1)}
+                        >
+                          ↑
+                        </button>
+                        <button
+                          type="button"
+                          className="mt-5 h-8 w-8 shrink-0 border border-zinc-300 text-xs text-zinc-800 hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                          aria-label={t('settings.customActionMoveDown')}
+                          title={t('settings.customActionMoveDown')}
+                          disabled={index === draft.customActions.length - 1}
+                          onClick={() => moveAction(index, 1)}
+                        >
+                          ↓
+                        </button>
+                        <button
+                          type="button"
+                          className="mt-5 h-8 shrink-0 border border-zinc-300 px-3 text-xs text-zinc-800 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                          onClick={() => removeAction(index)}
+                        >
+                          {t('settings.customActionRemove')}
+                        </button>
+                      </div>
+                      <label className="block text-xs text-zinc-600 dark:text-zinc-400">
+                        <span className="mb-1 block">{t('settings.customActionScript')}</span>
+                        <span className="flex gap-2">
+                          <input
+                            type="text"
+                            spellCheck={false}
+                            value={action.script}
+                            onChange={(event) => updateAction(index, { script: event.target.value })}
+                            className="min-w-0 flex-1 border border-zinc-300 bg-zinc-50 px-2 py-1.5 text-sm text-zinc-900 outline-none focus:border-sky-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:border-sky-600"
+                          />
+                          <button
+                            type="button"
+                            className="shrink-0 border border-zinc-300 px-3 py-1.5 text-xs text-zinc-800 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                            onClick={() => void pickActionScript(index)}
+                          >
+                            {t('settings.archiveScriptBrowse')}
+                          </button>
+                        </span>
+                      </label>
+                      <label className="block text-xs text-zinc-600 dark:text-zinc-400">
+                        <span className="mb-1 block">{t('settings.customActionNote')}</span>
+                        <input
+                          type="text"
+                          value={action.note}
+                          onChange={(event) => updateAction(index, { note: event.target.value })}
+                          className="w-full border border-zinc-300 bg-zinc-50 px-2 py-1.5 text-sm text-zinc-900 outline-none focus:border-sky-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:border-sky-600"
+                        />
+                      </label>
+                      <label className="block text-xs text-zinc-600 dark:text-zinc-400">
+                        <span className="mb-1 block">{t('settings.customActionPayload')}</span>
+                        <select
+                          value={action.payload}
+                          onChange={(event) => updateAction(index, { payload: event.target.value as CustomActionPayload })}
+                          className="w-full border border-zinc-300 bg-zinc-50 px-2 py-1.5 text-sm text-zinc-900 outline-none focus:border-sky-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:border-sky-600"
+                        >
+                          <option value="none">{t('settings.customActionPayloadNone')}</option>
+                          <option value="run">{t('settings.customActionPayloadRun')}</option>
+                          <option value="markdown">{t('settings.customActionPayloadMarkdown')}</option>
+                        </select>
+                        <span className="mt-1 block leading-relaxed">{t('settings.customActionPayloadDescription')}</span>
+                      </label>
+                      <label className="flex items-start gap-3 text-xs text-zinc-600 dark:text-zinc-400">
+                        <input
+                          type="checkbox"
+                          checked={action.confirm}
+                          onChange={(event) => updateAction(index, { confirm: event.target.checked })}
+                          className="mt-0.5 h-4 w-4 accent-sky-700"
+                        />
+                        <span>
+                          <span className="block font-medium text-zinc-700 dark:text-zinc-300">{t('settings.archiveConfirm')}</span>
+                          <span className="mt-1 block leading-relaxed">{t('settings.archiveConfirmDescription')}</span>
+                        </span>
+                      </label>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    className="border border-zinc-300 px-3 py-1.5 text-xs text-zinc-800 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                    onClick={addAction}
+                  >
+                    {t('settings.customActionAdd')}
+                  </button>
+              </section>
+            ) : null}
 
             <div className="flex items-center justify-end gap-2 border-t border-zinc-200 pt-4 dark:border-zinc-800">
               <button type="button" className="px-3 py-1.5 text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100" onClick={closeSettings}>
@@ -647,7 +771,7 @@ export function SettingsModal({
                 what README-portable.txt used to ask the user to do by hand -- so there was nothing
                 for the marker to protect them from. */}
             <section className="space-y-3 border-t border-zinc-200 dark:border-zinc-800 pt-4">
-                <span className="block text-xs text-zinc-600 dark:text-zinc-400">{t('settings.updates')}</span>
+                <SectionHeading>{t('settings.updates')}</SectionHeading>
                 <span className="block text-xs text-zinc-800 dark:text-zinc-200">
                   {t('settings.currentVersion')}: {versionLabel || '—'}
                 </span>
@@ -694,7 +818,9 @@ export function SettingsModal({
               <summary className="cursor-pointer list-none rounded px-1 py-2 focus-visible:outline-offset-2">
                 <span className="flex items-start justify-between gap-3">
                   <span>
-                    <span className="block text-sm font-medium text-zinc-800 dark:text-zinc-200">{t('settings.advanced')}</span>
+                    <span className="block border-l-2 border-sky-500 pl-2 text-sm font-semibold uppercase tracking-wide text-zinc-900 dark:border-sky-400 dark:text-zinc-50">
+                      {t('settings.advanced')}
+                    </span>
                     <span className="mt-1 block text-xs text-zinc-500 dark:text-zinc-400">{t('settings.advancedDescription')}</span>
                   </span>
                   <span className="text-zinc-500 transition group-open:rotate-180" aria-hidden="true">⌄</span>
@@ -763,6 +889,18 @@ type DebugBundleExportState =
 // One panel, not one per provider: the scope is identical for all four, so four buttons that swap
 // nothing but the name read as four different answers and send the reader looking for the
 // difference. The marks the panel lists are what says the answer covers every provider.
+// One look for every top-level heading in this dialog: a size up from the labels beneath it, at the
+// brightest text colour the theme has, with an accent rule down the side. The old headings were the
+// dimmest text on the page, which put the section boundaries -- the thing you scan for -- last in
+// line for the eye.
+function SectionHeading({ children }: { children: ReactNode }) {
+  return (
+    <h3 className="border-l-2 border-sky-500 pl-2 text-sm font-semibold uppercase tracking-wide text-zinc-900 dark:border-sky-400 dark:text-zinc-50">
+      {children}
+    </h3>
+  );
+}
+
 function AccessTransparencySection() {
   const { locale, t } = useI18n();
   const summary = useMemo(() => buildAdapterPermissionSummary(undefined, undefined, locale), [locale]);

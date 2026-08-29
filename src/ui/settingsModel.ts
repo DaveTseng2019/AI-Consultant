@@ -23,6 +23,39 @@ import {
   type ResponseLanguageSetting,
 } from '../i18n/resolve';
 
+/**
+ * One user-defined button in the conversation toolbar. The app knows nothing about what the script
+ * does with the run; it only hands it over and reports how it ended.
+ *
+ * notes: PowerShell only for now, which is what the path check enforces. A future entry kind (a
+ *        Claude skill, say) would be a `kind` field here plus its own branch in run_custom_action.
+ */
+export type CustomActionPayload = 'none' | 'run' | 'markdown';
+
+const CUSTOM_ACTION_PAYLOADS: readonly CustomActionPayload[] = ['none', 'run', 'markdown'];
+
+export interface CustomAction {
+  /** Stable across renames, because it is what the frontend sends to Rust to pick the script. */
+  id: string;
+  /** Button caption. */
+  name: string;
+  /** Absolute path of a .ps1. Validated in Rust as well, where it is actually run. */
+  script: string;
+  /** Shown as the button's tooltip. For the person who wrote it, six months later. */
+  note: string;
+  /**
+   * What the button hands the script:
+   * - `none`: nothing. A utility that has no business with the conversation.
+   * - `run`: `-SnapshotId <this run>`, the recorded question and answers.
+   * - `markdown`: `-MarkdownPath <file>`, this conversation exported as .md. The opener is then
+   *   the script's choice, which is the only way it can be right -- Windows has no default
+   *   program for .md, so "just open it" opens nothing on most machines.
+   */
+  payload: CustomActionPayload;
+  /** Ask before running. */
+  confirm: boolean;
+}
+
 export interface AppSettings {
   settingsSchemaVersion: number;
   language: LanguageSetting;
@@ -49,12 +82,11 @@ export interface AppSettings {
   telemetry: 'none';
   snapshotPersistence: boolean;
   snapshotRedactionTier: SnapshotRedactionTier;
-  /** Absolute path of a .ps1 the archive button runs; empty hides the button. Validated in Rust. */
-  archiveScript: string;
-  /** Caption for that button; empty uses the translated default. Rust caps the length. */
-  archiveLabel: string;
-  /** Ask before running the script. Defaults on, including for a settings.json written before it. */
-  archiveConfirm: boolean;
+  /** The toolbar's user-defined buttons, in the order they are shown. No cap. */
+  customActions: CustomAction[];
+  /** One copy of the app at a time; a second launch raises the window already open. Read in Rust
+   *  before the window exists, so a change only takes effect at the next launch. */
+  singleInstance: boolean;
   presentation: PresentationByProvider;
   /** Which face the centre stage last showed. Only the user's own enlarge/collapse writes it. */
   centerSurface: CenterSurface;
@@ -86,12 +118,61 @@ export function defaultSettings(): AppSettings {
     telemetry: 'none',
     snapshotPersistence: false,
     snapshotRedactionTier: 'metadata-only',
-    archiveScript: '',
-    archiveLabel: '',
-    archiveConfirm: true,
+    customActions: [],
+    singleInstance: true,
     presentation: defaultPresentation(),
     centerSurface: 'text',
   };
+}
+
+/**
+ * The list, or the single archive script a settings.json written before the list is carried into it.
+ * Dropping the old fields silently would take away a button the user had already configured.
+ */
+function customActions(input: Record<string, unknown>): CustomAction[] {
+  const stored = Array.isArray(input.customActions) ? input.customActions : undefined;
+  if (stored) {
+    return stored
+      .map((entry, index) => customAction(entry, index))
+      .filter((action): action is CustomAction => action !== undefined);
+  }
+
+  const legacyScript = stringValue(input.archiveScript, '').trim();
+  if (!legacyScript) return [];
+  return [
+    {
+      id: 'archive',
+      name: stringValue(input.archiveLabel, '').trim(),
+      script: legacyScript,
+      note: '',
+      payload: 'run',
+      confirm: input.archiveConfirm !== false,
+    },
+  ];
+}
+
+function customAction(value: unknown, index: number): CustomAction | undefined {
+  if (!value || typeof value !== 'object') return undefined;
+  const entry = value as Partial<Record<keyof CustomAction, unknown>>;
+  const script = stringValue(entry.script, '').trim();
+  if (!script) return undefined;
+  return {
+    id: stringValue(entry.id, '').trim() || `action-${index}`,
+    name: stringValue(entry.name, '').trim(),
+    script,
+    note: stringValue(entry.note, '').trim(),
+    payload: customActionPayload(entry),
+    confirm: entry.confirm !== false,
+  };
+}
+
+/** `passRun` is what the first version of the list stored; true meant the run, false meant nothing. */
+function customActionPayload(entry: Partial<Record<string, unknown>>): CustomActionPayload {
+  const stored = entry.payload;
+  if (typeof stored === 'string' && (CUSTOM_ACTION_PAYLOADS as readonly string[]).includes(stored)) {
+    return stored as CustomActionPayload;
+  }
+  return entry.passRun === false ? 'none' : 'run';
 }
 
 function stringValue(value: unknown, fallback: string): string {
@@ -185,9 +266,8 @@ export function normalizeSettings(value: unknown): AppSettings {
     telemetry: 'none',
     snapshotPersistence: input.snapshotPersistence === true,
     snapshotRedactionTier: snapshotRedactionTier(input.snapshotRedactionTier, defaults.snapshotRedactionTier),
-    archiveScript: stringValue(input.archiveScript, defaults.archiveScript).trim(),
-    archiveLabel: stringValue(input.archiveLabel, defaults.archiveLabel).trim(),
-    archiveConfirm: input.archiveConfirm !== false,
+    customActions: customActions(input as Record<string, unknown>),
+    singleInstance: input.singleInstance !== false,
     presentation: normalizePresentation(input.presentation, defaults.presentation),
     centerSurface: centerSurface(input.centerSurface, defaults.centerSurface),
   };
