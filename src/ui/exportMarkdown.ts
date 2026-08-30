@@ -1,4 +1,5 @@
 import { AI_PROVIDERS, CHAT_MODES } from '../../shared/constants';
+import { PROVIDER_LOGOS } from '../assets/providers/logos';
 import type { ChatMode } from '../../shared/types';
 import { formatLocalTimestamp, localFilenameStamp, localTimezoneLabel } from '../formatTime';
 import type { ExecutionSnapshot } from '../workflow/snapshot/types';
@@ -48,20 +49,31 @@ export function buildMarkdown(
   if (provenance.appVersion) lines.push(`> App version: ${provenance.appVersion}`);
   if (provenance.snapshot) appendSnapshotProvenance(lines, provenance.snapshot);
   lines.push('', '---', '');
+  const marks = new Set<keyof typeof AI_PROVIDERS>();
   for (const msg of messages) {
     if (msg.role === 'user') {
       lines.push('## 👤 User', '');
       lines.push(...msg.content.split('\n').map((line) => `> ${line}`));
     } else {
-      const providerName = msg.provider
-        ? (AI_PROVIDERS[msg.provider as keyof typeof AI_PROVIDERS]?.name ?? msg.provider)
-        : 'AI';
+      const provider =
+        msg.provider && msg.provider in AI_PROVIDERS
+          ? (msg.provider as keyof typeof AI_PROVIDERS)
+          : undefined;
+      const providerName = provider ? AI_PROVIDERS[provider].name : (msg.provider ?? 'AI');
       const roleLabel = msg.modeRole ? ` (${msg.modeRole})` : '';
-      lines.push(`## 🤖 ${providerName}${roleLabel}`, '');
+      // The provider's own mark where there is one; the robot stays for anything else that speaks
+      // in a conversation, such as the app's own "system" notices.
+      if (provider) marks.add(provider);
+      lines.push(`## ${provider ? `![][${provider}]` : '🤖'} ${providerName}${roleLabel}`, '');
       lines.push(msg.content);
     }
     lines.push('', '---', '');
   }
+  // Reference-style, defined once at the end: the marks are base64 data and a brainstorm export
+  // carries 48 answers, so spelling one out inline in every heading would bury the conversation.
+  // Data rather than a link because the .md is read away from the app, offline, with no assets folder.
+  for (const provider of marks) lines.push(`[${provider}]: ${PROVIDER_LOGOS[provider]}`);
+  if (marks.size > 0) lines.push('');
   return { title, content: lines.join('\n') };
 }
 

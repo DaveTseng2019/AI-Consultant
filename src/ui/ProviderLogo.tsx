@@ -1,15 +1,5 @@
 import type { AIProvider } from '../../shared/types';
-import chatgptLogo from '../assets/providers/chatgpt.png';
-import claudeLogo from '../assets/providers/claude.png';
-import geminiLogo from '../assets/providers/gemini.png';
-import grokLogo from '../assets/providers/grok.png';
-
-const PROVIDER_LOGOS: Record<AIProvider, string> = {
-  chatgpt: chatgptLogo,
-  claude: claudeLogo,
-  gemini: geminiLogo,
-  grok: grokLogo,
-};
+import { PROVIDER_LOGOS } from '../assets/providers/logos';
 
 // The provider name is always rendered next to the mark, so the image is decorative: an alt text
 // here would make a screen reader announce every provider twice.

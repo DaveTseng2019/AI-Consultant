@@ -32,13 +32,20 @@ describe('M4c share export helpers', () => {
     expect(content).toContain('## 👤 User\n\n> first line\n> second line');
   });
 
-  it('renders provider names and mode role labels for AI messages', () => {
+  // The mark is what tells a reader whose turn this is without reading the name, which is the point
+  // of exporting a four-way conversation. It has to travel WITH the file -- these are read offline,
+  // away from the app -- so the definition carries the image data itself, and one definition serves
+  // every answer a provider gave rather than a blob per heading.
+  it('heads each answer with the provider mark, embedded once for the whole file', () => {
     const messages: ExportMessage[] = [
       { role: 'ai', provider: 'chatgpt', modeRole: 'pro', content: 'answer' },
+      { role: 'ai', provider: 'chatgpt', content: 'more' },
     ];
     const { content } = buildMarkdown(messages, 'debate', fixedDate);
 
-    expect(content).toContain(`## 🤖 ${AI_PROVIDERS.chatgpt.name} (pro)\n\nanswer`);
+    expect(content).toContain(`## ![][chatgpt] ${AI_PROVIDERS.chatgpt.name} (pro)\n\nanswer`);
+    expect(content.match(/^\[chatgpt\]: data:image\/png;base64,/gm)).toHaveLength(1);
+    expect(content).not.toContain('[claude]:');
   });
 
   it('falls back to the raw provider string for unknown providers', () => {

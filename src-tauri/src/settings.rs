@@ -490,22 +490,64 @@ pub async fn export_markdown(
     crate::webviews::ensure_control_webview(&webview)?;
 
     let (tx, rx) = tokio::sync::oneshot::channel();
-    app.dialog()
+    let mut dialog = app
+        .dialog()
         .file()
         .set_file_name(&suggested_name)
-        .add_filter("Markdown", &["md"])
-        .save_file(move |chosen| {
-            let _ = tx.send(chosen);
-        });
+        .add_filter("Markdown", &["md"]);
+    // Opens where the last export went, so both export buttons keep filing into one folder. A
+    // default only: the dialog still saves anywhere else that is picked, and that becomes the new
+    // remembered folder.
+    if let Some(folder) = export_dir(&app) {
+        dialog = dialog.set_directory(folder);
+    }
+    dialog.save_file(move |chosen| {
+        let _ = tx.send(chosen);
+    });
 
     match rx.await.map_err(|error| error.to_string())? {
         Some(file_path) => {
             let path = file_path.into_path().map_err(|error| error.to_string())?;
             std::fs::write(&path, content).map_err(|error| error.to_string())?;
+            remember_export_dir(&app, &path);
             Ok(Some(path.to_string_lossy().into_owned()))
         }
         None => Ok(None),
     }
+}
+
+// Where exported conversations live: the folder the last export was saved to, or a default under
+// Documents on the first run. The folder is created so both the dialog and the markdown handoff
+// below can count on it. None only when neither that folder nor Documents can be made.
+//
+// notes: kept in a sidecar file rather than a settings.json key. settings_set rewrites settings.json
+//        wholesale from what the frontend sends and neither normalizer knows this key, so a key put
+//        there would be dropped the next time the Settings screen is saved.
+fn export_dir(app: &AppHandle) -> Option<PathBuf> {
+    let remembered = export_dir_marker(app)
+        .and_then(|marker| std::fs::read_to_string(marker).ok())
+        .map(|text| PathBuf::from(text.trim()))
+        .filter(|path| path.is_dir());
+    if remembered.is_some() {
+        return remembered;
+    }
+    let folder = app.path().document_dir().ok()?.join("AI Consultant 匯出");
+    std::fs::create_dir_all(&folder).ok()?;
+    Some(folder)
+}
+
+fn export_dir_marker(app: &AppHandle) -> Option<PathBuf> {
+    settings_path(app)
+        .ok()
+        .map(|path| path.with_file_name("last-export-dir.txt"))
+}
+
+fn remember_export_dir(app: &AppHandle, saved_file: &Path) {
+    let (Some(marker), Some(folder)) = (export_dir_marker(app), saved_file.parent()) else {
+        return;
+    };
+    // Best effort: failing to remember costs the next dialog its starting folder, nothing more.
+    let _ = std::fs::write(marker, folder.to_string_lossy().as_bytes());
 }
 
 // Native picker for the archive script, so the path never has to be typed. Returns None when the
@@ -592,10 +634,17 @@ pub async fn run_custom_action(
 
     // Written before the script starts and left there: the script hands the file to whatever the
     // user opens .md with, and deleting it out from under that program is how you get an empty
-    // window. The OS temp directory is the one place that cleans up after us.
+    // window.
+    //
+    // It goes to the export folder, not to temp: the file name is keyed to the conversation, so
+    // pressing this twice rewrites one file in the same place the "export .md" dialog saves to,
+    // rather than scattering a fresh copy through a directory that is swept behind your back.
+    // Rewritten rather than skipped when it is already there -- a conversation that has grown since
+    // the last press should open showing what it says now.
     let markdown_path = match (markdown_name, markdown_content) {
         (Some(name), Some(content)) => {
-            let path = std::env::temp_dir().join(safe_export_name(&name));
+            let folder = export_dir(&app).unwrap_or_else(std::env::temp_dir);
+            let path = folder.join(safe_export_name(&name));
             std::fs::write(&path, content).map_err(|error| error.to_string())?;
             Some(path.to_string_lossy().into_owned())
         }

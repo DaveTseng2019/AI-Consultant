@@ -1770,7 +1770,11 @@ export default function App() {
           }
         : undefined;
     const { content } = buildMarkdown(messages, mode, now, { appVersion, snapshot, preset: exportPreset });
-    return { name: exportFilename(mode, now, exportPreset?.id), content };
+    // The name is stamped with when the CONVERSATION started, not when the button was pressed, so
+    // exporting the same conversation twice rewrites one file instead of leaving a trail of copies
+    // that differ only in their timestamp.
+    const startedAt = sessions.find((session) => session.id === activeSessionId)?.createdAt;
+    return { name: exportFilename(mode, startedAt === undefined ? now : new Date(startedAt), exportPreset?.id), content };
   };
 
   const exportConversation = async () => {
@@ -2279,18 +2283,25 @@ export default function App() {
                 </button>
                 {/* One button per configured action, in the saved order. The note is the tooltip:
                     a caption short enough for a toolbar cannot also say what the script does. */}
-                {appSettings.customActions.map((action) => (
-                  <button
-                    key={action.id}
-                    type="button"
-                    className="border border-zinc-300 dark:border-zinc-700 px-2 py-1 text-xs hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50"
-                    title={action.note || undefined}
-                    onClick={() => void runCustomAction(action)}
-                    disabled={sharing || (action.payload !== 'none' && messages.length === 0)}
-                  >
-                    {action.name || translate('settings.customActionUnnamed')}
-                  </button>
-                ))}
+                {appSettings.customActions.map((action) => {
+                  // An action that wants the run cannot do anything without one, and the run lives in
+                  // memory only: restoring a conversation from history, or restarting, leaves none.
+                  // Saying so on a greyed-out button beats letting the press fail.
+                  const missingRun =
+                    action.payload === 'run' && !matchingSnapshotForConversation(messages, getLastSnapshot());
+                  return (
+                    <button
+                      key={action.id}
+                      type="button"
+                      className="border border-zinc-300 dark:border-zinc-700 px-2 py-1 text-xs hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50"
+                      title={missingRun ? translate('archive.noSnapshot') : action.note || undefined}
+                      onClick={() => void runCustomAction(action)}
+                      disabled={sharing || missingRun || (action.payload !== 'none' && messages.length === 0)}
+                    >
+                      {action.name || translate('settings.customActionUnnamed')}
+                    </button>
+                  );
+                })}
                 <button
                   type="button"
                   className={`flex h-7 w-7 items-center justify-center border text-xs text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 ${
