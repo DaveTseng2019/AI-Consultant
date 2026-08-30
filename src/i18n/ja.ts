@@ -285,7 +285,7 @@ export const ja: Record<I18nKey, string> = {
   'settings.customActionPayloadRun': '今回の実行記録（-SnapshotId）',
   'settings.customActionPayloadMarkdown': '今回の会話の .md（-MarkdownPath）',
   'settings.customActionPayloadDescription': 
-    '実行記録を渡すと、スクリプトは質問と各社の回答を読めます。.md は「.mdを書き出す」と同じ内容を一時フォルダーに書き出したもので、どのアプリで開くかはスクリプトが決めます。Windows には .md の既定のプログラムがないため、判断できるのはスクリプトだけです。「渡さない」は引数なしの実行で、会話と関係のないユーティリティ向けです。後の 2 つは、質問が完了していないとボタンを押せません。',
+    '実行記録を渡すと、スクリプトは質問と各社の回答を読めます。.md は「.mdを書き出す」と同じ内容を同じフォルダーに書き出したもので、どのアプリで開くかはスクリプトが決めます。Windows には .md の既定のプログラムがないため、判断できるのはスクリプトだけです。「渡さない」は引数なしの実行で、会話と関係のないユーティリティ向けです。後の 2 つは、質問が完了していないとボタンを押せません。実行記録はメモリー上にしかないため、以前の会話を復元した後やアプリの再起動後は、もう一度質問するまで使えません。',
   'settings.customActionAdd': 'ボタンを追加',
   'settings.customActionMoveUp': '上へ',
   'settings.customActionMoveDown': '下へ',

@@ -52,14 +52,14 @@ describe('M4c share export helpers', () => {
     const messages: ExportMessage[] = [{ role: 'ai', provider: 'system', content: 'notice' }];
     const { content } = buildMarkdown(messages, 'free', fixedDate);
 
-    expect(content).toContain('## 🤖 system\n\nnotice');
+    expect(content).toContain('## 🧠 system\n\nnotice');
   });
 
   it('renders an empty export as only the header block', () => {
     const { content } = buildMarkdown([], 'consult', fixedDate);
 
     expect(content).not.toContain('## 👤 User');
-    expect(content).not.toContain('## 🤖');
+    expect(content).not.toContain('## 🧠');
     expect(content.split('\n')).toHaveLength(5);
   });
 

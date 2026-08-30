@@ -273,7 +273,7 @@ export const zhTW: Record<I18nKey, string> = {
   'settings.customActionPayloadRun': '本次執行紀錄（-SnapshotId）',
   'settings.customActionPayloadMarkdown': '本次對話的 .md（-MarkdownPath）',
   'settings.customActionPayloadDescription': 
-    '執行紀錄讓腳本讀得到問題與各家回答。.md 是跟「匯出 .md」同一份檔案，寫進暫存資料夾交給腳本，由腳本決定用什麼程式打開——Windows 沒有 .md 的預設程式，只有腳本知道你要用哪一個。選「不傳」就是直接執行，適合與對話無關的工具。後兩者要先問完一題，按鈕才按得下去。',
+    '執行紀錄讓腳本讀得到問題與各家回答。.md 是跟「匯出 .md」同一份檔案，也寫進同一個資料夾，由腳本決定用什麼程式打開——Windows 沒有 .md 的預設程式，只有腳本知道你要用哪一個。選「不傳」就是直接執行，適合與對話無關的工具。後兩者要先問完一題，按鈕才按得下去；執行紀錄只留在記憶體裡，還原舊對話或重開 app 之後要重問一次才有。',
   'settings.customActionAdd': '新增一顆按鈕',
   'settings.customActionMoveUp': '上移',
   'settings.customActionMoveDown': '下移',

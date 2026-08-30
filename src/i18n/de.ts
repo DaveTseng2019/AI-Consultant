@@ -285,7 +285,7 @@ export const de: Record<I18nKey, string> = {
   'settings.customActionPayloadRun': 'Diesen Lauf (-SnapshotId)',
   'settings.customActionPayloadMarkdown': 'Diese Unterhaltung als .md (-MarkdownPath)',
   'settings.customActionPayloadDescription': 
-    'Mit dem Lauf kann das Skript die Frage und alle Antworten lesen. Die .md ist dieselbe Datei wie beim Export, im Temp-Ordner abgelegt, damit das Skript sie mit dem Programm öffnet, das Sie für Markdown verwenden - Windows hat kein Standardprogramm für .md, nur das Skript kann das wissen. Nichts führt das Skript ohne Argument aus, passend für ein Werkzeug ohne Bezug zur Unterhaltung. Die letzten beiden brauchen eine abgeschlossene Frage, bevor sich die Schaltfläche drücken lässt.',
+    'Mit dem Lauf kann das Skript die Frage und alle Antworten lesen. Die .md ist dieselbe Datei wie beim Export und liegt im selben Ordner, damit das Skript sie mit dem Programm öffnet, das Sie für Markdown verwenden - Windows hat kein Standardprogramm für .md, nur das Skript kann das wissen. Nichts führt das Skript ohne Argument aus, passend für ein Werkzeug ohne Bezug zur Unterhaltung. Die letzten beiden brauchen eine abgeschlossene Frage, bevor sich die Schaltfläche drücken lässt; ein Lauf liegt nur im Arbeitsspeicher, nach dem Wiederherstellen einer älteren Unterhaltung oder einem Neustart müssen Sie erneut fragen.',
   'settings.customActionAdd': 'Schaltfläche hinzufügen',
   'settings.customActionMoveUp': 'Nach oben',
   'settings.customActionMoveDown': 'Nach unten',

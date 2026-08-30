@@ -61,10 +61,10 @@ export function buildMarkdown(
           : undefined;
       const providerName = provider ? AI_PROVIDERS[provider].name : (msg.provider ?? 'AI');
       const roleLabel = msg.modeRole ? ` (${msg.modeRole})` : '';
-      // The provider's own mark where there is one; the robot stays for anything else that speaks
-      // in a conversation, such as the app's own "system" notices.
+      // The provider's own mark where there is one; the brain covers anything else that speaks in a
+      // conversation, such as the app's own "system" notices.
       if (provider) marks.add(provider);
-      lines.push(`## ${provider ? `![][${provider}]` : '🤖'} ${providerName}${roleLabel}`, '');
+      lines.push(`## ${provider ? `![][${provider}]` : '🧠'} ${providerName}${roleLabel}`, '');
       lines.push(msg.content);
     }
     lines.push('', '---', '');

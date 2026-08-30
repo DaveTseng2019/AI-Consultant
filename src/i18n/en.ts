@@ -283,7 +283,7 @@ export const en: Record<I18nKey, string> = {
   'settings.customActionPayloadRun': 'This run (-SnapshotId)',
   'settings.customActionPayloadMarkdown': 'This conversation as .md (-MarkdownPath)',
   'settings.customActionPayloadDescription': 
-    'The run lets the script read the question and every answer. The .md is the same file the export writes, put in the temp folder for the script to open with whatever you use for Markdown - Windows has no default program for .md, so the script is the only place that can know. Nothing runs the script bare, for a utility with no business in the conversation. The last two need a finished question before the button will press.',
+    'The run lets the script read the question and every answer. The .md is the same file the export writes, kept in the same folder, for the script to open with whatever you use for Markdown - Windows has no default program for .md, so the script is the only place that can know. Nothing runs the script bare, for a utility with no business in the conversation. The last two need a finished question before the button will press, and a run is held in memory only: restoring an older conversation or restarting leaves none until you ask again.',
   'settings.customActionAdd': 'Add a button',
   'settings.customActionMoveUp': 'Move up',
   'settings.customActionMoveDown': 'Move down',

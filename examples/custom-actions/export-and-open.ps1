@@ -1,7 +1,7 @@
 # Example: open this conversation in VS Code.
 #
 # Set the button's "what the button hands the script" to "this conversation as .md". The app writes
-# the conversation into the temp folder and passes the file here; deciding what opens it is this
+# the conversation into its export folder and passes the file here; deciding what opens it is this
 # file's whole job, because Windows ships no default program for .md.
 #
 # Nothing here needs .md to be associated with anything: `code` is called by name, so the file
@@ -20,5 +20,5 @@ if (-not (Get-Command $code -ErrorAction SilentlyContinue)) {
 Start-Process -FilePath $code -ArgumentList @('-r', "`"$MarkdownPath`"") -WindowStyle Hidden
 
 # The app shows this script's last line of output next to its "done" message, so say where the file
-# went. The temp copy stays until Windows cleans it up; copy it somewhere yourself to keep it.
+# went. The file is kept, not swept: exporting this conversation again rewrites that same path.
 Write-Output $MarkdownPath
