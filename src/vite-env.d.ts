@@ -3,6 +3,9 @@
 import type { BridgeMessage } from '../shared/types';
 
 declare global {
+  /** `git describe` at bundle time; '' when git could not answer. See vite.config.ts. */
+  const __GIT_DESCRIBE__: string;
+
   interface Window {
     __MAC_PROVIDER__?: string;
     __MAC_APP_HOSTS__?: string[];

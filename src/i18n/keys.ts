@@ -285,6 +285,7 @@ export const I18N_KEYS = [
   'settings.checking',
   'settings.checkForUpdates',
   'settings.upToDate',
+  'settings.localBuildNoUpdate',
   'settings.newVersionAvailable',
   'settings.downloadPage',
   'settings.downloadPortable',

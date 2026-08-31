@@ -1,5 +1,14 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { compareVersions, fetchLatestRelease } from '../ui/updateCheck';
+import { compareVersions, fetchLatestRelease, isLocalBuild } from '../ui/updateCheck';
+
+describe('local build detection', () => {
+  it('recognises the pinned placeholder version only', () => {
+    expect(isLocalBuild('0.0.0')).toBe(true);
+    expect(isLocalBuild(' 0.0.0 ')).toBe(true);
+    expect(isLocalBuild('0.0.13')).toBe(false);
+    expect(isLocalBuild('v0.0.13-1-g5e59721')).toBe(false);
+  });
+});
 
 describe('update version comparison', () => {
   it('treats equal versions as not newer', () => {

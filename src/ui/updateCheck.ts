@@ -1,9 +1,14 @@
-// notes: the repo pins 0.0.0 and only CI injects a real version from the tag, so a locally
-//        built exe always reads as older than the newest release and Settings always offers an
-//        update. That is the same trade-off the source project makes, and why build-local.mjs
-//        stamps the commit beside the exe -- read build-info.json, not the version, to know
-//        which build you are holding. Settings now shows that stamp itself (app_version_label),
-//        so the answer is on screen; the comparison below still uses the pinned version.
+// The repo pins 0.0.0 and only CI injects a real version from the tag, so a locally built exe
+// carries no comparable number. build-local.mjs stamps the commit beside the exe for that, and
+// Settings shows the stamp (app_version_label). isLocalBuild keeps the pinned version out of the
+// comparison entirely: such a build reports the newest release but is never offered an update.
+/** The pinned placeholder only CI replaces, so a package version still reading it is a local build. */
+const PINNED_LOCAL_VERSION = '0.0.0';
+
+export function isLocalBuild(version: string): boolean {
+  return version.trim() === PINNED_LOCAL_VERSION;
+}
+
 export const DEFAULT_RELEASE_REPO = 'DaveTseng2019/AI-Consultant';
 
 export interface LatestRelease {

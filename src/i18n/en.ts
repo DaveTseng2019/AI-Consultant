@@ -307,6 +307,7 @@ export const en: Record<I18nKey, string> = {
   'settings.checking': 'Checking...',
   'settings.checkForUpdates': 'Check for updates',
   'settings.upToDate': "You're up to date ({version}).",
+  'settings.localBuildNoUpdate': 'Local build: updates are off. Latest release is {version}.',
   'settings.newVersionAvailable': 'New version {version} available',
   'settings.downloadPage': 'download page',
   'settings.downloadPortable': 'download the portable zip',

@@ -22,7 +22,7 @@ import {
   assignModeRole,
   type ModeRoleAssignments,
 } from './modeRoleAssignment';
-import { compareVersions, fetchLatestRelease } from './updateCheck';
+import { compareVersions, fetchLatestRelease, isLocalBuild } from './updateCheck';
 import { host } from '../host';
 import {
   filterEventLogByProvider,
@@ -46,6 +46,7 @@ type UpdateCheckState =
   | { status: 'idle' }
   | { status: 'checking' }
   | { status: 'up-to-date'; version: string }
+  | { status: 'local-build'; tagName: string }
   | { status: 'available'; tagName: string; htmlUrl: string; portableAssetUrl?: string }
   | { status: 'unavailable' }
   | { status: 'error'; message: string };
@@ -119,7 +120,10 @@ export function SettingsModal({
     let disposed = false;
     void (async () => {
       const stamped = await host.app.versionLabel().catch(() => '');
-      const label = stamped || (await host.app.version().catch(() => ''));
+      // A dev run has no stamp file, so the label comes back as the pinned version. The bundle
+      // carries the same describe for that case.
+      const local = isLocalBuild(stamped) ? __GIT_DESCRIBE__ : '';
+      const label = local || stamped || (await host.app.version().catch(() => ''));
       if (!disposed) setVersionLabel(label.trim());
     })();
     return () => {
@@ -410,6 +414,13 @@ export function SettingsModal({
       if (!isCurrent()) return;
       if (!latest) {
         setUpdateCheck({ status: 'unavailable' });
+        return;
+      }
+      // A local build carries the pinned version, so it always compares as older than the newest
+      // release and would be offered an update that overwrites the build under test. Report what is
+      // out there and stop -- the version stamp above already says which build is in hand.
+      if (isLocalBuild(currentVersion)) {
+        setUpdateCheck({ status: 'local-build', tagName: latest.tagName });
         return;
       }
       if (compareVersions(currentVersion, latest.tagName)) {
@@ -807,6 +818,9 @@ export function SettingsModal({
                   </button>
                   {updateCheck.status === 'up-to-date' ? (
                     <span className="text-xs text-zinc-600 dark:text-zinc-400">{t('settings.upToDate').replace('{version}', updateCheck.version)}</span>
+                  ) : null}
+                  {updateCheck.status === 'local-build' ? (
+                    <span className="text-xs text-zinc-600 dark:text-zinc-400">{t('settings.localBuildNoUpdate').replace('{version}', updateCheck.tagName)}</span>
                   ) : null}
                   {updateCheck.status === 'available' ? (
                     <span className="text-xs text-sky-700 dark:text-sky-300">

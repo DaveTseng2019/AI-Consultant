@@ -309,6 +309,7 @@ export const ja: Record<I18nKey, string> = {
   'settings.checking': '確認中...',
   'settings.checkForUpdates': 'アップデートを確認',
   'settings.upToDate': '最新版です（{version}）。',
+  'settings.localBuildNoUpdate': 'ローカルビルドのため更新しません。最新リリースは {version} です。',
   'settings.newVersionAvailable': '新しいバージョン{version}を利用できます',
   'settings.downloadPage': 'ダウンロードページ',
   'settings.downloadPortable': 'ポータブル版 zip をダウンロード',

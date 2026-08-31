@@ -309,6 +309,7 @@ export const de: Record<I18nKey, string> = {
   'settings.checking': 'Wird geprüft...',
   'settings.checkForUpdates': 'Nach Updates suchen',
   'settings.upToDate': 'Du verwendest die aktuelle Version ({version}).',
+  'settings.localBuildNoUpdate': 'Lokaler Build: keine Updates. Neueste Version ist {version}.',
   'settings.newVersionAvailable': 'Neue Version {version} verfügbar',
   'settings.downloadPage': 'Downloadseite',
   'settings.downloadPortable': 'Portable-ZIP herunterladen',

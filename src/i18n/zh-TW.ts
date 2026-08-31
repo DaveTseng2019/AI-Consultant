@@ -297,6 +297,7 @@ export const zhTW: Record<I18nKey, string> = {
   'settings.checking': '檢查中...',
   'settings.checkForUpdates': '檢查更新',
   'settings.upToDate': '目前已是最新版（{version}）。',
+  'settings.localBuildNoUpdate': '本機建置版本不提供更新，最新發佈為 {version}。',
   'settings.newVersionAvailable': '有新版本 {version}',
   'settings.downloadPage': '下載頁',
   'settings.downloadPortable': '下載可攜版 zip',
