@@ -8,9 +8,10 @@ export interface WorkflowPresetStorage {
   setItem(key: string, value: string): void;
 }
 
-// A start that opens a new conversation resets the mode to free, which loses the one the user works
-// in every day. Remember the last mode they picked and put it back on that start only: a new
-// conversation asked for by hand still resets, because that is what the button is for.
+// What is stored here is the mode to come back up in, and it is read on startup only. It is written
+// from one place -- the user picking a mode off the catalog -- so the mode a conversation carries
+// can be shown when that conversation is opened from the history without becoming the mode the app
+// starts in tomorrow. Being shown a mode is not choosing one.
 export function loadWorkflowPreset(
   storage: WorkflowPresetStorage | undefined = defaultStorage(),
 ): WorkflowPresetId | undefined {
