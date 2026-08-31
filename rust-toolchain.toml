@@ -1,0 +1,15 @@
+# The single place the Rust version is decided, for this machine and for CI alike.
+#
+# It used to be decided twice and agreed by luck: the workflows asked for the `stable`
+# channel, which resolves to whatever stable is on the day the job runs, while a developer
+# machine sat on whatever `rustup update` last fetched. On 2026-08-31 those were 1.98 and
+# 1.96, `clippy::useless_borrows_in_formatting` had landed in between, and `cargo clippy
+# -D warnings` was green locally and red on all three CI platforms with nothing to show for
+# it locally. Pinning here means a new lint arrives when this number is changed -- on a
+# developer's screen, in a reviewable commit -- and never on a tag that is already pushed.
+#
+# To move forward: bump `channel`, run `cargo clippy --all-targets -- -D warnings` and
+# `cargo fmt`, fix what the new release complains about, commit it as its own change.
+[toolchain]
+channel = "1.98.0"
+components = ["clippy", "rustfmt"]

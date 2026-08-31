@@ -180,7 +180,7 @@ fn base64_url_decode_to_string(value: &str) -> Result<String, String> {
 
 fn base64_url_decode(value: &str) -> Result<Vec<u8>, String> {
     let mut input = value.replace('-', "+").replace('_', "/");
-    while input.len() % 4 != 0 {
+    while !input.len().is_multiple_of(4) {
         input.push('=');
     }
     let mut output = Vec::new();

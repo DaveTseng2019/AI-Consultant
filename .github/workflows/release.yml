@@ -50,8 +50,8 @@ jobs:
           node-version: 24
           cache: pnpm
 
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable 2026-07-16
+      # No toolchain step: rustup is on the runner and installs the version and components
+      # that rust-toolchain.toml names, the moment the first cargo command runs.
 
       - name: Install Linux WebKitGTK build deps
         if: matrix.platform == 'linux'
