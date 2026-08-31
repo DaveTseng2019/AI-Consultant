@@ -41,8 +41,8 @@ macOS 只有 ad-hoc 簽章，不是 Developer ID 簽章、也沒有公證；Wind
 沒有逐項重跑。
 
 **可攜版不會隔離資料。** `PORTABLE` 標記（`src-tauri/src/settings.rs` 的 `portable_marker_exists`）
-只用來認出這是可攜版：更新檢查的「下載」會指向 release 的可攜版 zip 而不是安裝檔頁面，
-debug bundle 也會記下這一欄。設定與登入狀態仍走 `app_data_dir()`，跟安裝版共用同一份。
+只用來認出這是可攜版：更新檢查會就地安裝（下載 release 的可攜版 zip、覆蓋這個資料夾、重開），
+而不是把人送到安裝檔頁面；debug bundle 也會記下這一欄。設定與登入狀態仍走 `app_data_dir()`，跟安裝版共用同一份。
 換一台電腦不會帶著登入狀態走，也會在原本那台留下痕跡。
 
 ## Agent 原始碼啟動通道
@@ -124,8 +124,9 @@ v0.0.2 只跑了上面 Windows 實測那一節列出的項目。
 4. 跑一次自由模式與一個串行模式，並取消一次進行中的執行。
 5. 在支援的 provider 上生成一張圖，確認流程不靠純文字輸出也能走完。
 6. 匯出 Markdown 檢查出處；開一個新的 app session，確認歷史彼此隔離。
-7. 安裝版：開設定、檢查更新、切換主題與介面語言、看作者／贊助連結。可攜版：確認更新介面隱藏，
-   且 `README-portable.txt` 連到最新的 GitHub Release。回應語言設為 Auto 時，確認英文問題得到
+7. 安裝版：開設定、檢查更新、切換主題與介面語言、看作者／贊助連結。可攜版：確認「下載並自動更新」
+   會關掉 app、換掉資料夾並重新開啟；失敗時要看到舊版被叫回來並跳出 `update-log.txt`。
+   `README-portable.txt` 也要連到最新的 GitHub Release。回應語言設為 Auto 時，確認英文問題得到
    英文、正體中文問題得到正體中文，與介面語言無關；再驗一次固定語言的選擇。特別確認 Grok 是
    回答問題，而不是把內部的 `<response-language-policy>` 區塊照抄出來。
 8. 只有在失敗時才匯出經過清理的 debug bundle；絕不附上機密或原始的 provider 頁面內容。

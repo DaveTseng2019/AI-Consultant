@@ -1693,8 +1693,6 @@ export default function App() {
     setActiveSessionId(transition.active.id);
     replayContextSessionRef.current = undefined;
     setMessages([]);
-    setMode('free');
-    setPresetId('free');
     setPresetDetailsId(undefined);
     setWorkflowStatus('');
     setProcessTrace(undefined);

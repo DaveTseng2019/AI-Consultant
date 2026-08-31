@@ -46,6 +46,10 @@ export const host = {
     /** What to show the user: the local build stamp when there is one, else the package version. */
     versionLabel: (): Promise<string> => invoke('app_version_label'),
     openExternal: (url: string): Promise<void> => invoke('open_external_url', { url }),
+    /** Portable builds only: swap this folder for the release zip and relaunch. Resolves without
+        doing anything when the user cancels the confirmation; on approval the app exits instead. */
+    portableUpdate: (url: string, confirm: string): Promise<void> =>
+      invoke('portable_update_start', { url, confirm }),
   },
   onNavBlocked: async (handler: (payload: NavBlockedPayload) => void): Promise<() => void> => {
     const unlisten = await listen<NavBlockedPayload>('nav://blocked', (event) => handler(event.payload));

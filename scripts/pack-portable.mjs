@@ -17,8 +17,10 @@ Requirements:
 
 Portable notes:
 - Keep the PORTABLE marker file next to the .exe.
-- Settings > Check for updates works here. When a newer release exists it links straight to
-  that release's portable zip; unzip it over this folder, keeping the PORTABLE marker.
+- Settings > Check for updates installs the update for you. When a newer release exists, press
+  "download and update": the app closes, replaces this folder with that release, and reopens
+  itself. Nothing to unzip by hand. If it fails, it reopens the build you have now and shows
+  update-log.txt, written next to the .exe.
   Releases are also listed at:
   https://github.com/DaveTseng2019/AI-Consultant/releases/latest
 `;
@@ -67,7 +69,7 @@ Options:
   --out <path>     Output .zip path or output directory. Default: ${DEFAULT_OUT_DIR}
   --name <file>    Zip filename when --out is a directory.
   --exe <file>     App executable filename when multiple .exe files are present.
-  --prefix <dir>   Top-level folder inside the zip. Default: inferred product/version.
+  --prefix <dir>   Top-level folder inside the zip. Default: <product>-windows-portable.
   --no-prefix      Put files at the zip root.
 
 Equivalent env vars are MAC_PORTABLE_INPUT, MAC_PORTABLE_OUT, MAC_PORTABLE_NAME,
@@ -298,10 +300,10 @@ function main() {
 
   const metadata = inferMetadata();
   const exeName = findExe(inputDir, options.exe);
-  const prefix =
-    options.prefix === undefined
-      ? `${metadata.slug}${metadata.version ? `-${metadata.version}` : ''}-windows-portable`
-      : options.prefix;
+  // No version in the folder name, on purpose: an update unzips over the folder that is already
+  // there, and a versioned name turns every update into a second copy beside the first. The zip
+  // file itself still carries the version, which is where it is useful.
+  const prefix = options.prefix === undefined ? `${metadata.slug}-windows-portable` : options.prefix;
   const zipPath = resolveZipPath(options.out, options.name, metadata);
   const now = new Date();
   const files = collectFiles(inputDir, exeName).map((file) => ({

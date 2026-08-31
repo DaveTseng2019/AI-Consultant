@@ -151,6 +151,7 @@ describe('conversation sessions', () => {
       createdAt: 10,
       updatedAt: 20,
       mode: 'free',
+      presetId: 'brainstorm',
       messages: [],
     });
   });
@@ -168,7 +169,8 @@ describe('conversation sessions', () => {
     });
 
     expect(result.sessions).toHaveLength(2);
-    expect(result.active).toMatchObject({ mode: 'free', messages: [] });
+    // The new conversation continues in the mode the user is working in, not the default.
+    expect(result.active).toMatchObject({ mode: 'consult', messages: [] });
     expect(result.active.id).not.toBe(existing.id);
     expect(result.sessions.find((entry) => entry.id === existing.id)).toMatchObject({
       title: 'How should this be fixed?',
@@ -197,7 +199,7 @@ describe('conversation sessions', () => {
       title: DEFAULT_CONVERSATION_SESSION_TITLE,
       createdAt: 15,
       updatedAt: 20,
-      mode: 'free',
+      mode: 'consult',
       messages: [],
     });
   });

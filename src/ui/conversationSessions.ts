@@ -105,12 +105,15 @@ export function beginNewConversationSession({
   const normalizedMessages = normalizeConversationMessages(messages);
   const existing = normalizedSessions.find((session) => session.id === activeSessionId);
 
+  const normalizedPresetId = normalizePresetId(presetId, mode);
+
   if (normalizedMessages.length === 0) {
-    const active = existing ? resetToBlankSession(existing, timestamp) : createConversationSession({ now: timestamp });
+    const active = existing
+      ? resetToBlankSession(existing, timestamp, mode, normalizedPresetId)
+      : createConversationSession({ now: timestamp, mode, presetId: normalizedPresetId });
     return { sessions: upsertConversationSession(normalizedSessions, active), active };
   }
 
-  const normalizedPresetId = normalizePresetId(presetId, mode);
   const base = existing ?? createConversationSession({ id: activeSessionId, now: timestamp });
   let archived = normalizedSessions;
   if (sessionContentChanged(base, normalizedMessages, mode, normalizedPresetId)) {
@@ -128,17 +131,25 @@ export function beginNewConversationSession({
   // A blank conversation is already the thing the button asks for, so a second one only adds a
   // duplicate "New conversation" row to the history. Reuse the one that is there and bump its time.
   const blank = archived.find((session) => session.messages.length === 0);
-  const active = blank ? resetToBlankSession(blank, timestamp) : createConversationSession({ now: timestamp });
+  const active = blank
+    ? resetToBlankSession(blank, timestamp, mode, normalizedPresetId)
+    : createConversationSession({ now: timestamp, mode, presetId: normalizedPresetId });
   return { sessions: upsertConversationSession(archived, active), active };
 }
 
-function resetToBlankSession(existing: ConversationSession, timestamp: number): ConversationSession {
+function resetToBlankSession(
+  existing: ConversationSession,
+  timestamp: number,
+  mode: ChatMode,
+  presetId?: WorkflowPresetId,
+): ConversationSession {
   return {
     id: existing.id,
     title: DEFAULT_CONVERSATION_SESSION_TITLE,
     createdAt: existing.createdAt,
     updatedAt: Math.max(existing.createdAt, timestamp),
-    mode: 'free',
+    mode,
+    ...(presetId ? { presetId } : {}),
     messages: [],
   };
 }

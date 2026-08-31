@@ -83,6 +83,15 @@ describe('FocusPane provider header', () => {
     expect(renderHeader('logged_in')).not.toContain(label);
   });
 
+  it('warns about the Grok gates while it is logged out, and only there', () => {
+    // 關卡 app 都看不見：登入方式由 x.ai 帳號頁決定，年齡那題是對話訊息、卡住的登入是標題訊號競態。
+    // 這個測試守的是「說明出現在還沒登入的 Grok 上」，登入後或別家不該再佔畫面。
+    const notes = t('provider.grokSignInNotes', 'en');
+    expect(renderFocusPane({ centeredProvider: 'grok', stateOverrides: { grok: { login: 'logged_out' } } })).toContain(notes);
+    expect(renderFocusPane({ centeredProvider: 'grok', stateOverrides: { grok: { login: 'logged_in' } } })).not.toContain(notes);
+    expect(renderFocusPane({ centeredProvider: 'chatgpt', stateOverrides: { chatgpt: { login: 'logged_out' } } })).not.toContain(notes);
+  });
+
   it('renders a four-provider status strip with login and thinking states', () => {
     const html = renderFocusPane({
       presentation: setProviderPresentation(defaultPresentation(), 'chatgpt', 'center'),

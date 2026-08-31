@@ -380,6 +380,24 @@ export function SettingsModal({
     }
   };
 
+  // The portable lane installs; every other lane can only be pointed at the release page. A failure
+  // has to land back in this panel: the update runs after the app exits, so a swallowed error here
+  // would look exactly like a successful update that changed nothing.
+  const startUpdate = async (portableAssetUrl: string | undefined, htmlUrl: string) => {
+    if (!draft?.portable || !portableAssetUrl) {
+      await host.app.openExternal(htmlUrl);
+      return;
+    }
+    try {
+      await host.app.portableUpdate(portableAssetUrl, t('settings.portableUpdateConfirm'));
+    } catch (reason) {
+      setUpdateCheck({
+        status: 'error',
+        message: `${t('settings.portableUpdateFailed')} ${reason instanceof Error ? reason.message : String(reason)}`,
+      });
+    }
+  };
+
   const checkForUpdates = async () => {
     const modalSession = modalSessionRef.current;
     const updateCheckSeq = ++updateCheckSeqRef.current;
@@ -406,7 +424,10 @@ export function SettingsModal({
       }
     } catch (reason) {
       if (!isCurrent()) return;
-      setUpdateCheck({ status: 'error', message: reason instanceof Error ? reason.message : String(reason) });
+      setUpdateCheck({
+        status: 'error',
+        message: `${t('settings.updateCheckFailed')} ${reason instanceof Error ? reason.message : String(reason)}`,
+      });
     }
   };
 
@@ -790,18 +811,15 @@ export function SettingsModal({
                   {updateCheck.status === 'available' ? (
                     <span className="text-xs text-sky-700 dark:text-sky-300">
                       {t('settings.newVersionAvailable').replace('{version}', updateCheck.tagName)} {'->'}{' '}
-                      {/* A portable install replaces itself by unzipping, so send it straight at the
-                          zip rather than at a page listing installers it must not run. */}
+                      {/* A portable install replaces itself by unzipping, so it does that itself
+                          rather than sending the user to a page and a manual copy over this folder.
+                          Anything else goes to the release page, which lists the installer. */}
                       <button
                         type="button"
                         className="underline hover:text-sky-800 dark:hover:text-sky-200"
-                        onClick={() =>
-                          void host.app.openExternal(
-                            draft.portable && updateCheck.portableAssetUrl ? updateCheck.portableAssetUrl : updateCheck.htmlUrl,
-                          )
-                        }
+                        onClick={() => void startUpdate(updateCheck.portableAssetUrl, updateCheck.htmlUrl)}
                       >
-                        {t(draft.portable && updateCheck.portableAssetUrl ? 'settings.downloadPortable' : 'settings.downloadPage')}
+                        {t(draft.portable && updateCheck.portableAssetUrl ? 'settings.installPortableUpdate' : 'settings.downloadPage')}
                       </button>
                     </span>
                   ) : null}
@@ -809,7 +827,7 @@ export function SettingsModal({
                     <span className="text-xs text-amber-700 dark:text-amber-300">{t('settings.releasesUnavailable')}</span>
                   ) : null}
                   {updateCheck.status === 'error' ? (
-                    <span className="text-xs text-red-700 dark:text-red-300">{t('settings.updateCheckFailed')} {updateCheck.message}</span>
+                    <span className="text-xs text-red-700 dark:text-red-300">{updateCheck.message}</span>
                   ) : null}
                 </div>
             </section>

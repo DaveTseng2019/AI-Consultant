@@ -66,6 +66,7 @@ pub fn run() {
             settings::run_custom_action,
             settings::pick_archive_script,
             settings::open_external_url,
+            settings::portable_update_start,
             snapshots::snapshot_save,
             snapshots::snapshot_list,
             snapshots::snapshot_load,

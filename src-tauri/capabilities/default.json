@@ -30,6 +30,7 @@
     "allow-run-custom-action",
     "allow-pick-archive-script",
     "allow-open-external-url",
+    "allow-portable-update-start",
     "allow-snapshot-save",
     "allow-snapshot-list",
     "allow-snapshot-load",

@@ -86,11 +86,15 @@ pnpm build:local --stamp-only   # 只補蓋章，前提是 HEAD 沒動過
 - 純執行檔：`src-tauri/target/release/*.exe`
 - NSIS 安裝檔：`src-tauri/target/release/bundle/nsis/*-setup.exe`
 
-portable zip（含 `PORTABLE` 標記；更新檢查照常可用，只是「下載」會直接指向可攜版 zip）：
+portable zip（含 `PORTABLE` 標記；更新檢查在這裡會直接安裝——`portable_update_start`
+下載 release 的可攜版 zip、由一支 PowerShell 腳本等 app 退出後覆蓋資料夾再重開）：
 
 ```sh
 pnpm pack:portable    # 從 src-tauri/target/release 打包到 dist/portable/
 ```
+
+zip 檔名帶版號，但**裡面的資料夾固定叫 `ai-consultant-windows-portable`**（不帶版號）——
+更新是就地覆蓋同一個資料夾，資料夾名字帶版號會讓每次更新都變成多一份拷貝。
 
 注意：本機 build 版本號固定為 `0.0.0`；正式版本號由 CI 從 git tag 注入。
 

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-portable-update-start"
+description = "Enables the portable_update_start command without any pre-configured scope."
+commands.allow = ["portable_update_start"]
+
+[[permission]]
+identifier = "deny-portable-update-start"
+description = "Denies the portable_update_start command without any pre-configured scope."
+commands.deny = ["portable_update_start"]

@@ -775,11 +775,160 @@ pub async fn open_external_url(
         .map_err(|error| error.to_string())
 }
 
+/// The self-update swap for portable builds, as a script rather than in-process work: the files it
+/// replaces include this very exe, so whoever does the copying cannot be this process.
+///
+/// Windows PowerShell 5.1 is the floor, so no `-UseBasicParsing` extras and no Zip64 concerns --
+/// `Expand-Archive` ships from 5.0 on. ASCII only: a `.ps1` with no BOM is decoded in the ANSI
+/// codepage by 5.1, so anything non-ASCII here would arrive as mojibake.
+#[cfg(windows)]
+const PORTABLE_UPDATE_SCRIPT: &str = r#"param([int]$AppPid, [string]$Url, [string]$Dest, [string]$Exe)
+$ErrorActionPreference = 'Stop'
+# Invoke-WebRequest on 5.1 spends most of a download repainting its progress bar.
+$ProgressPreference = 'SilentlyContinue'
+$log = Join-Path $Dest 'update-log.txt'
+$app = Join-Path $Dest $Exe
+function Write-Step($message) {
+  "{0} {1}" -f (Get-Date -Format s), $message | Add-Content -LiteralPath $log -Encoding UTF8
+}
+try {
+  Write-Step "waiting for pid $AppPid to exit"
+  try { Wait-Process -Id $AppPid -Timeout 120 } catch {}
+  $work = Join-Path $env:TEMP "ai-consultant-update-$AppPid"
+  if (Test-Path -LiteralPath $work) { Remove-Item -LiteralPath $work -Recurse -Force }
+  New-Item -ItemType Directory -Path $work | Out-Null
+  $zip = Join-Path $work 'update.zip'
+  Write-Step "downloading $Url"
+  Invoke-WebRequest -Uri $Url -OutFile $zip
+  $unpacked = Join-Path $work 'unpacked'
+  Write-Step "extracting"
+  Expand-Archive -LiteralPath $zip -DestinationPath $unpacked -Force
+  # The zip carries one top-level folder; tolerate a flat one in case that ever changes.
+  $source = $unpacked
+  if (-not (Test-Path -LiteralPath (Join-Path $source $Exe))) {
+    $inner = Get-ChildItem -LiteralPath $source -Directory | Select-Object -First 1
+    if ($inner) { $source = $inner.FullName }
+  }
+  if (-not (Test-Path -LiteralPath (Join-Path $source $Exe))) { throw "$Exe is not in the downloaded package" }
+  Write-Step "copying into $Dest"
+  Copy-Item -Path (Join-Path $source '*') -Destination $Dest -Recurse -Force
+  Remove-Item -LiteralPath $work -Recurse -Force -ErrorAction SilentlyContinue
+  Write-Step "done"
+  Start-Process -FilePath $app
+} catch {
+  # The app is already gone by now, so a silent failure would look like the update worked. Put the
+  # old build back and push the log in the user's face.
+  Write-Step ("failed: " + $_.Exception.Message)
+  Start-Process -FilePath $app
+  Start-Process -FilePath notepad.exe -ArgumentList $log
+}
+"#;
+
+/// Release assets only. The URL reaches us from the GitHub API response, but this is what the app
+/// is about to download and run as itself, so it gets checked here rather than trusted.
+fn is_release_asset_url(url: &str) -> bool {
+    url.starts_with("https://github.com/") && url.contains("/releases/download/")
+}
+
+/// Download the portable zip, unpack it over this folder, and come back up on the new build.
+/// Returns only on refusal -- on success the app exits and the script takes over.
+#[tauri::command]
+pub async fn portable_update_start(
+    app: AppHandle,
+    webview: tauri::Webview,
+    url: String,
+    confirm: String,
+) -> Result<(), String> {
+    use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
+
+    crate::webviews::ensure_control_webview(&webview)?;
+    if !portable_marker_exists() {
+        return Err("this build is not portable".to_string());
+    }
+    if !is_release_asset_url(&url) {
+        return Err("only a GitHub release asset may be installed".to_string());
+    }
+
+    let exe = std::env::current_exe().map_err(|error| error.to_string())?;
+    let dest = exe
+        .parent()
+        .ok_or("cannot resolve the app folder")?
+        .to_path_buf();
+    let exe_name = exe
+        .file_name()
+        .ok_or("cannot resolve the app executable")?
+        .to_string_lossy()
+        .into_owned();
+
+    let (tx, rx) = tokio::sync::oneshot::channel();
+    app.dialog()
+        .message(confirm)
+        .kind(MessageDialogKind::Warning)
+        .buttons(MessageDialogButtons::OkCancel)
+        .show(move |approved| {
+            let _ = tx.send(approved);
+        });
+    if !rx.await.map_err(|error| error.to_string())? {
+        return Ok(());
+    }
+
+    start_portable_update(&url, &dest, &exe_name)?;
+    app.exit(0);
+    Ok(())
+}
+
+#[cfg(windows)]
+fn start_portable_update(url: &str, dest: &Path, exe_name: &str) -> Result<(), String> {
+    use std::os::windows::process::CommandExt;
+    const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+
+    let script = std::env::temp_dir().join(format!(
+        "ai-consultant-update-{}.ps1",
+        std::process::id()
+    ));
+    std::fs::write(&script, PORTABLE_UPDATE_SCRIPT).map_err(|error| error.to_string())?;
+
+    let mut missing = None;
+    for shell in ["pwsh.exe", "powershell.exe"] {
+        let attempt = std::process::Command::new(shell)
+            .args([
+                "-NoProfile",
+                "-NonInteractive",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+            ])
+            .arg(&script)
+            .args(["-AppPid", &std::process::id().to_string()])
+            .args(["-Url", url])
+            .arg("-Dest")
+            .arg(dest)
+            .args(["-Exe", exe_name])
+            .creation_flags(CREATE_NO_WINDOW)
+            .spawn();
+        match attempt {
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => missing = Some(error),
+            Err(error) => return Err(error.to_string()),
+            Ok(_) => return Ok(()),
+        }
+    }
+    Err(missing
+        .expect("loop records the last NotFound before falling through")
+        .to_string())
+}
+
+// notes: Windows-only. The portable zip is a Windows artifact; the mac/linux lanes ship a DMG and
+//        an AppImage, which update through their own installers.
+#[cfg(not(windows))]
+fn start_portable_update(_url: &str, _dest: &Path, _exe_name: &str) -> Result<(), String> {
+    Err("the portable updater runs on Windows only".to_string())
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
-        build_stamp_from_json, normalize_settings_value, read_settings, write_settings,
-        ARCHIVE_LABEL_MAX_CHARS,
+        build_stamp_from_json, is_release_asset_url, normalize_settings_value, read_settings,
+        write_settings, ARCHIVE_LABEL_MAX_CHARS,
     };
     use serde_json::{json, Value};
     use std::path::PathBuf;
@@ -1120,5 +1269,20 @@ mod tests {
             .get("focusPaneWidth"),
             Some(&json!(874))
         );
+    }
+
+    /// The updater downloads this URL and runs what comes out of it as the app itself, so anything
+    /// that is not a release asset on github.com has to be refused, redirects included.
+    #[test]
+    fn only_github_release_assets_may_be_installed() {
+        assert!(is_release_asset_url(
+            "https://github.com/DaveTseng2019/AI-Consultant/releases/download/v0.0.12/ai-consultant-0.0.12-windows-portable.zip"
+        ));
+        assert!(!is_release_asset_url(
+            "http://github.com/DaveTseng2019/AI-Consultant/releases/download/v0.0.12/x.zip"
+        ));
+        assert!(!is_release_asset_url("https://github.com.evil.example/releases/download/v1/x.zip"));
+        assert!(!is_release_asset_url("https://example.com/releases/download/v1/x.zip"));
+        assert!(!is_release_asset_url("https://github.com/DaveTseng2019/AI-Consultant/raw/main/x.zip"));
     }
 }

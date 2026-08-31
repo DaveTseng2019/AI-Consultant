@@ -411,6 +411,22 @@ function FocusStage({
           </button>
         </div>
       ) : null}
+      {/* Both of Grok's gates are invisible to the app: which sign-in buttons exist is decided on the
+          x.ai account page, and the age question arrives as a chat message the status detectors read
+          as a normal ready page. Said here, while the user is still logged out, because that is the
+          moment before they walk into either one. */}
+      {provider === 'grok' && state.login === 'logged_out' ? (
+        <div className="flex items-start justify-between gap-2 border-b border-sky-300 dark:border-sky-900 bg-sky-50 dark:bg-sky-950 px-3 py-2 text-xs text-sky-800 dark:text-sky-200">
+          <span>{t('provider.grokSignInNotes')}</span>
+          <button
+            type="button"
+            className="shrink-0 border border-sky-300 dark:border-sky-700 px-2 py-1 hover:bg-sky-100 dark:hover:bg-sky-900"
+            onClick={() => void host.app.openExternal('https://accounts.x.ai/account')}
+          >
+            {t('provider.grokAccountPage')}
+          </button>
+        </div>
+      ) : null}
       {state.webview !== 'loaded' ? (
         <div className="grid flex-1 place-items-center p-6 text-center" role="status" aria-live="polite">
           {opening || state.webview === 'creating' ? (
