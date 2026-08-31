@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AI_PROVIDERS, CHAT_MODES, DEFAULT_FREE_TARGET_PROVIDERS } from '../shared/constants';
 import type { AIProvider, BridgeMessage, ChatMode, ProviderState, WorkflowPresetId } from '../shared/types';
-import { startBridgePull, resetProviderBootState } from './bridge/pull';
+import { startBridgePull, resetProviderBootState, resetProviderPullState } from './bridge/pull';
 import { isRenderableResponseMessage } from './bridge/render';
 import { publishBridgeMessage } from './bridge/bus';
 import { getRuntimeAppVersion } from './appVersion';
@@ -1565,7 +1565,9 @@ export default function App() {
       setWorkflowStatus(translate('input.preparingSession'));
       try {
         await ensureFreshProviderSessions(providersToFreshen, {
-          resetBootState: resetProviderBootState,
+          // The provider may start the new chat in-page now, keeping its document and bootId.
+          // Clearing the boot state there would re-deliver outbox entries already consumed.
+          resetBootState: resetProviderPullState,
           newSession: (provider) => host.provider.newSession(provider),
         });
         if (providerSessionResetAttemptRef.current !== resetAttempt) return false;

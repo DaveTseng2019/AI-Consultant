@@ -32,6 +32,8 @@ const CHALLENGE_SIGNALS_JSON: &str = include_str!(concat!(
 const PROVIDER_BROWSER_ARGS: &str = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --autoplay-policy=no-user-gesture-required --disable-background-timer-throttling --disable-renderer-backgrounding --disable-backgrounding-occluded-windows";
 const NEW_SESSION_READY_TIMEOUT_SECS: u64 = 30;
 const NEW_SESSION_READY_POLL_MS: u64 = 150;
+const IN_PAGE_NEW_CHAT_TIMEOUT_MS: u64 = 3000;
+const IN_PAGE_NEW_CHAT_POLL_MS: u64 = 100;
 const GROK_POPUP_RECOVERY_DELAY_MS: u64 = 500;
 const GROK_NAVIGATION_START_LEASE_MS: u64 = 15_000;
 
@@ -1576,6 +1578,70 @@ pub async fn provider_reload(
     reload_provider_document_after_prepare(&app, &provider, prepared_epoch)
 }
 
+// notes: the in-page "new chat" controls live here rather than in adapters/*.json, whose
+//        selector set is frozen by scripts/check-adapters.mjs. Sampled live on 2026-08-31.
+//        A stale entry costs a reload, not a broken new conversation, because
+//        provider_new_session falls back to navigating the webview.
+fn in_page_new_chat_selector(provider: &str) -> Option<&'static str> {
+    Some(match provider {
+        "chatgpt" => "a[data-testid=\"create-new-chat-button\"]",
+        "claude" => "a[href=\"/new\"]",
+        "gemini" => "[data-test-id=\"new-chat-button\"] a[href=\"/app\"]",
+        "grok" => "a[data-testid=\"new-chat\"]",
+        _ => return None,
+    })
+}
+
+// Paths a provider is on when no conversation has started yet; every provider moves to a
+// per-conversation path on the first send, so this doubles as "the new chat is still empty".
+fn new_session_paths(provider: &str) -> &'static [&'static str] {
+    match provider {
+        "chatgpt" => &["/", "/new"],
+        "claude" => &["/new"],
+        "gemini" => &["/app"],
+        "grok" => &["/"],
+        _ => &[],
+    }
+}
+
+async fn start_new_chat_in_page(app: &AppHandle, provider: &str) -> bool {
+    let Some(selector) = in_page_new_chat_selector(provider) else {
+        return false;
+    };
+    let paths = new_session_paths(provider);
+    let (Ok(selector_json), Ok(paths_json)) = (
+        serde_json::to_string(selector),
+        serde_json::to_string(paths),
+    ) else {
+        return false;
+    };
+    let click = format!(
+        "(() => {{ const el = document.querySelector({selector_json}); if (!el) return false; el.click(); return true; }})()"
+    );
+    if !eval_reports_true(app, provider, &click).await {
+        return false;
+    }
+    let at_new_session = format!(
+        "(() => {{ let path = location.pathname; while (path.length > 1 && path.endsWith('/')) path = path.slice(0, -1); return {paths_json}.includes(path); }})()"
+    );
+    let deadline = tokio::time::Instant::now() + Duration::from_millis(IN_PAGE_NEW_CHAT_TIMEOUT_MS);
+    loop {
+        if eval_reports_true(app, provider, &at_new_session).await {
+            return true;
+        }
+        if tokio::time::Instant::now() >= deadline {
+            return false;
+        }
+        tokio::time::sleep(Duration::from_millis(IN_PAGE_NEW_CHAT_POLL_MS)).await;
+    }
+}
+
+async fn eval_reports_true(app: &AppHandle, provider: &str, js: &str) -> bool {
+    eval_provider_with_callback(app, provider, js)
+        .await
+        .is_ok_and(|raw| eval_callback_reports_true(&raw))
+}
+
 #[tauri::command]
 pub async fn provider_new_session(
     app: AppHandle,
@@ -1587,6 +1653,12 @@ pub async fn provider_new_session(
         return Err(format!("provider webview is not open: {provider}"));
     }
     let adapter = adapters::get_adapter(&provider)?;
+    // Prefer the site's own "new chat" control. An in-page route change keeps the document,
+    // the injected bridge and the login state; the reload below throws all three away and has
+    // to reconnect, which is what the user sees as a provider dropping out on "new conversation".
+    if start_new_chat_in_page(&app, &provider).await {
+        return Ok(());
+    }
     let app_url = tauri::Url::parse(&adapter.urls.app)
         .map_err(|error| format!("invalid provider app URL: {error}"))?;
     let prepared_epoch = prepare_grok_navigation(&provider)?;
@@ -2333,8 +2405,8 @@ mod tests {
         grok_bridge_drive_allowed, grok_bridge_host_action, grok_bridge_install_ready,
         grok_bridge_result_is_current, grok_challenge_title_active, grok_document_title_signal,
         grok_popup_recovery_claim_is_current, grok_popup_recovery_needed,
-        parse_grok_bridge_drive_outcome, physical_bounds, popup_initial_title,
-        prepare_grok_navigation, prepare_grok_popup_recovery,
+        in_page_new_chat_selector, new_session_paths, parse_grok_bridge_drive_outcome,
+        physical_bounds, popup_initial_title, prepare_grok_navigation, prepare_grok_popup_recovery,
         provider_document_allows_generic_eval, provider_show_should_focus,
         provider_state_allows_control_eval, provider_uses_document_start_bridge,
         provider_uses_permission_shim, record_grok_bridge_challenge, reset_state_for_page_load,
@@ -3025,6 +3097,26 @@ mod tests {
             grok_bridge_host_action(GrokBridgeDriveOutcome::Challenge, 4, 4, &ready),
             GrokBridgeHostAction::Ignore
         );
+    }
+
+    #[test]
+    fn every_provider_can_start_a_new_chat_without_reloading() {
+        // A provider missing either half silently falls back to the reload path, which is the
+        // exact behaviour this feature exists to avoid.
+        for provider in crate::adapters::all_provider_states() {
+            let selector = in_page_new_chat_selector(&provider)
+                .unwrap_or_else(|| panic!("{} has no in-page new chat selector", &provider));
+            assert!(
+                selector.contains('['),
+                "{} selector looks unspecific",
+                &provider
+            );
+            assert!(
+                !new_session_paths(&provider).is_empty(),
+                "{} has no new session paths",
+                &provider
+            );
+        }
     }
 
     #[test]
