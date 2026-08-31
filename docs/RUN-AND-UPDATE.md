@@ -96,6 +96,16 @@ pnpm pack:portable    # 從 src-tauri/target/release 打包到 dist/portable/
 zip 檔名帶版號，但**裡面的資料夾固定叫 `ai-consultant-windows-portable`**（不帶版號）——
 更新是就地覆蓋同一個資料夾，資料夾名字帶版號會讓每次更新都變成多一份拷貝。
 
+**更新寫進哪個資料夾：exe 自己所在的那一個，跟名字無關。**
+目標是 `std::env::current_exe()` 的父目錄（`portable_update_start`），所以使用者把 zip 解到
+`D:\AI-Consultant-0.0.13-windows-portable\` 也照樣更新得動——那個資料夾會留著原本的名字、
+裡面換成新版，程式不會另建資料夾也不會搬家。**資料夾名稱因此不能拿來判斷版本**，
+要看設定頁的版號或 `build-info.json`。
+
+兩個延伸後果：解壓位置必須是不用管理員權限就寫得進去的地方（`Program Files` 不是），
+因為 app 要覆蓋自己那個資料夾；設定與登入不在那個資料夾裡（在 `%APPDATA%`），所以更新不會動到，
+但把資料夾搬到另一台電腦也帶不走。這些都寫在 zip 裡的 `README-portable.txt`。
+
 注意：本機 build 版本號固定為 `0.0.0`；正式版本號由 CI 從 git tag 注入。
 
 ### 版號追蹤：這支 exe 是哪個 commit 建的

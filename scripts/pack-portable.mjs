@@ -8,7 +8,9 @@ const DEFAULT_INPUT = path.join('src-tauri', 'target', 'release');
 const DEFAULT_OUT_DIR = path.join('dist', 'portable');
 const README_PORTABLE = `AI Consultant portable build
 
-Unzip this folder and run the .exe directly.
+Unzip this folder and run the .exe directly. Put it where you want it to live: an update
+replaces the folder the .exe is sitting in, so wherever you unpack it now is where every later
+version lands.
 
 Requirements:
 - Windows 10/11.
@@ -23,6 +25,15 @@ Portable notes:
   update-log.txt, written next to the .exe.
   Releases are also listed at:
   https://github.com/DaveTseng2019/AI-Consultant/releases/latest
+- The update writes into the folder the .exe is in, whatever that folder is called. It never
+  creates a second folder and never moves the app, so a folder you named yourself -- or one
+  carrying an old version number -- keeps its name and gets the new build inside it. The name
+  says nothing about the version: Settings shows the version you are actually running.
+- Because the app replaces its own folder, unpack it somewhere you can write to without
+  administrator rights. Program Files is not such a place; a folder under your user profile, or
+  a USB drive, is.
+- Your settings and sign-ins are not in this folder (they live under %APPDATA%), so an update
+  keeps them. Moving this folder to another PC does not take them along.
 `;
 
 function parseArgs(argv) {
