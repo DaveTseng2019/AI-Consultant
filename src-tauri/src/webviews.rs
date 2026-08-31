@@ -3105,16 +3105,14 @@ mod tests {
         // exact behaviour this feature exists to avoid.
         for provider in crate::adapters::all_provider_states() {
             let selector = in_page_new_chat_selector(&provider)
-                .unwrap_or_else(|| panic!("{} has no in-page new chat selector", &provider));
+                .unwrap_or_else(|| panic!("{provider} has no in-page new chat selector"));
             assert!(
                 selector.contains('['),
-                "{} selector looks unspecific",
-                &provider
+                "{provider} selector looks unspecific"
             );
             assert!(
                 !new_session_paths(&provider).is_empty(),
-                "{} has no new session paths",
-                &provider
+                "{provider} has no new session paths"
             );
         }
     }
