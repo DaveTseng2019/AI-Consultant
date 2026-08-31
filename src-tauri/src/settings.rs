@@ -781,6 +781,14 @@ pub async fn open_external_url(
 /// Windows PowerShell 5.1 is the floor, so no `-UseBasicParsing` extras and no Zip64 concerns --
 /// `Expand-Archive` ships from 5.0 on. ASCII only: a `.ps1` with no BOM is decoded in the ANSI
 /// codepage by 5.1, so anything non-ASCII here would arrive as mojibake.
+///
+/// The folder it writes into is wherever this exe already lives, whatever it is called -- a user
+/// who unpacked the zip into a version-named folder keeps that name and gets the new build inside
+/// it.
+///
+/// notes: copy-over, not sync. A file the old build had and the new one dropped stays behind. Every
+///        release so far ships the same file list, so nothing is stranded yet; mirror the folder
+///        (or delete what the manifest no longer names) the first time a release removes a file.
 #[cfg(windows)]
 const PORTABLE_UPDATE_SCRIPT: &str = r#"param([int]$AppPid, [string]$Url, [string]$Dest, [string]$Exe)
 $ErrorActionPreference = 'Stop'
