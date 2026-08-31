@@ -57,14 +57,33 @@ pnpm tauri dev        # 第一次 Rust 編譯較久
 
 ## 現況
 
-repo 裡的版號永遠是 `0.0.0`，真正的版號由 CI 從 tag 注入。app 可以檢查有沒有新版，
-但不會自己下載或安裝。
+repo 裡的版號永遠是 `0.0.0`，真正的版號由 CI 從 tag 注入。app 可以檢查有沒有新版。
+安裝版只會把你帶到下載頁；可攜版可以就地更新自己——下載新版、蓋掉自己那個資料夾、重新開啟。
 
 Windows x64 是實機驗證過的平台；macOS Apple Silicon 只有部分驗證（ad-hoc 簽章，Grok 曾卡在
 Cloudflare 驗證）；Linux 目前只有 CI 建置，沒有實機回報。詳見
 [`docs/COMPATIBILITY.md`](../docs/COMPATIBILITY.md)。
 
 回報漏洞請走 GitHub Security 的私人表單，不要開公開 issue：[`SECURITY.md`](../SECURITY.md)。
+
+## Grok 的特殊狀況
+
+Grok 有四件事是 app 看不到、因此也幫不上忙的，第一次用容易卡住：
+
+1. **登入頁那四顆按鈕（Google／X／Apple／郵箱）一定都在，但不代表都走得通。**
+   只有你在 [x.ai 帳號頁](https://accounts.x.ai/account) 的「登入方法」啟用（連接）過的那幾種，
+   才進得了你原本的帳號。每個人啟用的不一樣，所以「我用 Google 登不進去」不是 app 的問題。
+2. **選 X 登入時，中間會多一頁 X 自己的授權畫面**（`xAI Single Sign-On wants to access…`），
+   要按 `Authorize app` 才會回到 Grok。那一頁長得不像 Grok，容易以為走錯地方。
+3. **登入或註冊完成後，Grok 會在對話裡問一次出生年份。** 不是彈窗、不是驗證頁，就是一則訊息，
+   所以 app 分不出來：卡片照樣顯示「就緒」，但你送出的問題換回來的會是那句年齡詢問，
+   而且串行的模式會把它當材料往下傳。把 Grok 置中、切到**真實頁面**答完那一題就好；
+   換新 profile 或重新登入要再答一次。
+4. **卡片停在「開啟中…」不動，代表這一頁還沒回報過登入狀態，不代表你沒登入。**
+   按卡片上方的「前往登入」，或把 app 關掉重開，多半就會轉成就緒。
+
+未登入的 Grok 被放到中央舞台時，畫面上會直接顯示第 1、3、4 點；
+完整說明在 [`docs/BASICS.md`](../docs/BASICS.md)。
 
 ## 版本異動
 

@@ -71,8 +71,9 @@ profile for each of the four providers.
 ## Where it stands
 
 The version number in the repo is always `0.0.0`; the real one is injected by CI from the
-tag. The app can check whether a newer version exists, but it never downloads or installs
-one by itself.
+tag. The app can check whether a newer version exists. An installed build only points you at
+the download page; a portable build replaces itself in place -- it downloads the new
+release, unpacks it over its own folder and reopens.
 
 Windows x64 is verified on real hardware. macOS Apple Silicon is only partly verified
 (ad-hoc signature; Grok once got stuck on a Cloudflare check). Linux is built by CI only,
@@ -81,6 +82,29 @@ with no report from real hardware. See
 
 Report a vulnerability through the private form in GitHub Security, not a public issue:
 [`SECURITY.md`](../SECURITY.md).
+
+## Grok's rough edges
+
+Four things about Grok are invisible to the app, and all four catch first-time users:
+
+1. **The sign-in page always lists all four methods (Google, X, Apple, email), which does not
+   mean all four work.** Only the ones you enabled under Sign-in methods on your
+   [x.ai account page](https://accounts.x.ai/account) reach the account you already have.
+   Everyone enables a different set, so "Google will not let me in" is not an app fault.
+2. **Signing in with X detours through an authorization page of X's own**
+   (`xAI Single Sign-On wants to access...`); press `Authorize app` to come back to Grok.
+   That page does not look like Grok, which is why it reads as a wrong turn.
+3. **Right after you sign in or register, Grok asks for your birth year inside the chat.**
+   Not a dialog, not a challenge page - a message. The app cannot tell: the card still says
+   Ready, but what comes back to your question is that age question, and the sequential modes
+   feed it to the next step as material. Put Grok on the stage, switch to the real page and
+   answer it once; a new profile or a fresh sign-in asks again.
+4. **A card sitting at "Opening..." means the page has not reported a sign-in state yet, not
+   that you are signed out.** Press Sign in above the card, or close and reopen the app, and
+   it usually settles into ready.
+
+A signed-out Grok on the stage says 1, 3 and 4 on screen. The long version is in
+[`docs/BASICS.md`](../docs/BASICS.md).
 
 ## Changes by version
 
