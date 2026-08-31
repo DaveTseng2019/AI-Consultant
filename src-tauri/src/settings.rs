@@ -882,10 +882,8 @@ fn start_portable_update(url: &str, dest: &Path, exe_name: &str) -> Result<(), S
     use std::os::windows::process::CommandExt;
     const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
-    let script = std::env::temp_dir().join(format!(
-        "ai-consultant-update-{}.ps1",
-        std::process::id()
-    ));
+    let script =
+        std::env::temp_dir().join(format!("ai-consultant-update-{}.ps1", std::process::id()));
     std::fs::write(&script, PORTABLE_UPDATE_SCRIPT).map_err(|error| error.to_string())?;
 
     let mut missing = None;
@@ -1281,8 +1279,14 @@ mod tests {
         assert!(!is_release_asset_url(
             "http://github.com/DaveTseng2019/AI-Consultant/releases/download/v0.0.12/x.zip"
         ));
-        assert!(!is_release_asset_url("https://github.com.evil.example/releases/download/v1/x.zip"));
-        assert!(!is_release_asset_url("https://example.com/releases/download/v1/x.zip"));
-        assert!(!is_release_asset_url("https://github.com/DaveTseng2019/AI-Consultant/raw/main/x.zip"));
+        assert!(!is_release_asset_url(
+            "https://github.com.evil.example/releases/download/v1/x.zip"
+        ));
+        assert!(!is_release_asset_url(
+            "https://example.com/releases/download/v1/x.zip"
+        ));
+        assert!(!is_release_asset_url(
+            "https://github.com/DaveTseng2019/AI-Consultant/raw/main/x.zip"
+        ));
     }
 }
