@@ -68,6 +68,9 @@ export interface AppSettings {
   /** Render the whole app in a monospace stack. Code and tabular answers line up; prose does not. */
   monospaceFont: boolean;
   autoNewConversationOnStart: boolean;
+  /** Maximize the window at launch. Read in Rust before the window is painted, so a change only
+   *  takes effect at the next launch. */
+  startMaximized: boolean;
   /** Collapse the conversation history list when the New conversation button is pressed. */
   collapseHistoryOnNewConversation: boolean;
   layoutMode: 'focus';
@@ -107,6 +110,7 @@ export function defaultSettings(): AppSettings {
     readingFontSize: DEFAULT_READING_FONT_SIZE,
     monospaceFont: false,
     autoNewConversationOnStart: false,
+    startMaximized: false,
     collapseHistoryOnNewConversation: false,
     layoutMode: 'focus',
     focusPaneWidth: DEFAULT_FOCUS_PANE_WIDTH,
@@ -253,6 +257,7 @@ export function normalizeSettings(value: unknown): AppSettings {
     readingFontSize: fontSize(input.readingFontSize, DEFAULT_READING_FONT_SIZE),
     monospaceFont: input.monospaceFont === true,
     autoNewConversationOnStart: input.autoNewConversationOnStart === true,
+    startMaximized: input.startMaximized === true,
     collapseHistoryOnNewConversation: input.collapseHistoryOnNewConversation === true,
     layoutMode: 'focus',
     focusPaneWidth: focusPaneWidth(input.focusPaneWidth, input.columnWidths, defaults.focusPaneWidth),

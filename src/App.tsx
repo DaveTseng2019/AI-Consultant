@@ -149,6 +149,11 @@ interface Bubble {
 }
 
 const PROVIDERS = Object.keys(AI_PROVIDERS) as AIProvider[];
+/** What tells a dev window from an installed one in the taskbar. Rides along on whatever the
+ *  title currently says, because the running step replaces the name outright. */
+const BUILD_TAG = import.meta.env.DEV ? ' DEV' : '';
+/** Mirrors `app.windows[0].title` in tauri.conf.json. Shown only while nothing is running. */
+const APP_WINDOW_TITLE = `AI Consultant${BUILD_TAG}`;
 
 function initialConversationState(): { sessions: ConversationSession[]; active: ConversationSession } {
   const loaded = loadConversationSessions();
@@ -2057,6 +2062,16 @@ export default function App() {
     : noSendableProviders
       ? translate(providersOpening ? 'input.connectingProviders' : 'input.connectProvider')
       : modeBlockedMessage;
+
+  // The taskbar button is the only thing visible while the app is minimised, and both connecting
+  // and a run take minutes. Whatever the app is currently busy with takes the title over entirely
+  // -- a taskbar button is a few characters wide, and the app name is the half you already know.
+  // Same two lines the user reads on screen, in the same order: the running step wins, and before
+  // anything can run at all it is the reason the composer is blocked. The name comes back on idle.
+  const titleStatus = workflowStatus || sendBlockedNotice;
+  useEffect(() => {
+    void host.window.setTitle(titleStatus ? `${titleStatus}${BUILD_TAG}` : APP_WINDOW_TITLE);
+  }, [titleStatus]);
 
   return (
     <main className="app-shell h-screen overflow-hidden bg-white text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">

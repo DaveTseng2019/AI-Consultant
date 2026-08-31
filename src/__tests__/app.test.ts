@@ -16,6 +16,10 @@ vi.mock('@tauri-apps/api/event', () => ({
   listen: vi.fn(),
 }));
 
+vi.mock('@tauri-apps/api/window', () => ({
+  getCurrentWindow: vi.fn(),
+}));
+
 import { bubbleAuthorLabel } from '../bubbleAuthorLabel';
 import App, { ChatArea, presentationHiddenProvidersForCenterSurface } from '../App';
 import { I18nProvider } from '../i18n/context';

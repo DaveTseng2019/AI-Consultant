@@ -12,7 +12,9 @@ pub fn run() {
     // the second process -- once it is in, there is no later point at which to change our mind.
     // The callback runs in the FIRST instance: raise the window that is already there, so a second
     // double-click reads as "here it is" rather than as nothing happening at all.
-    if settings::single_instance_preference() {
+    // Skipped in debug builds: the mutex is keyed on the bundle identifier, which dev and release
+    // share, so with the plugin in a dev launch would only raise the installed window and exit.
+    if !cfg!(debug_assertions) && settings::single_instance_preference() {
         builder = builder.plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
             use tauri::Manager;
             if let Some(window) = app.get_webview_window("main") {
@@ -28,6 +30,13 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         // The feature-frozen edition intentionally uses GitHub Releases instead of a self-updater.
         .setup(|app| {
+            use tauri::Manager;
+            if settings::start_maximized_preference(app.handle()) {
+                if let Some(window) = app.get_webview_window("main") {
+                    let _ = window.maximize();
+                }
+            }
+
             // Hot-update: refresh adapters at startup and every 6h (best-effort, off the UI thread).
             let handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {

@@ -262,6 +262,8 @@ export const zhTW: Record<I18nKey, string> = {
   'settings.monospaceFontDescription': '整個介面改用等寬字型，程式碼與表格會對齊。',
   'settings.autoNewConversationOnStart': '啟動時自動開啟新對話',
   'settings.autoNewConversationOnStartDescription': '開啟後，程式一啟動就會建立新對話，之前的對話仍保留在歷史紀錄中。',
+  'settings.startMaximized': '啟動時視窗最大化',
+  'settings.startMaximizedDescription': '開啟後，程式一啟動就會把視窗放到最大。改了要下次啟動才生效。',
   'settings.collapseHistoryOnNewConversation': '按下新對話時收起對話紀錄',
   'settings.collapseHistoryOnNewConversationDescription': '開啟後，按下新對話會同時把左側的對話紀錄清單收起來。關閉時清單維持原狀。',
   'settings.adapterBaseUrl': 'Adapter base URL',

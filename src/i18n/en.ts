@@ -272,6 +272,8 @@ export const en: Record<I18nKey, string> = {
   'settings.monospaceFontDescription': 'Show the whole app in a fixed-width font, so code and tables line up.',
   'settings.autoNewConversationOnStart': 'Start a new conversation automatically',
   'settings.autoNewConversationOnStartDescription': 'When enabled, a fresh conversation opens every time the app starts. Earlier conversations stay in history.',
+  'settings.startMaximized': 'Start maximized',
+  'settings.startMaximizedDescription': 'When enabled, the window opens maximized every time the app starts. Takes effect at the next launch.',
   'settings.collapseHistoryOnNewConversation': 'Collapse the history list on New conversation',
   'settings.collapseHistoryOnNewConversationDescription': 'When enabled, pressing New conversation also collapses the conversation history list. When off, the list stays as it was.',
   'settings.adapterBaseUrl': 'Adapter base URL',

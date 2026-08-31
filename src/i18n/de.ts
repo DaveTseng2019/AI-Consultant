@@ -274,6 +274,8 @@ export const de: Record<I18nKey, string> = {
   'settings.monospaceFontDescription': 'Zeigt die ganze App in fester Zeichenbreite, damit Code und Tabellen bündig stehen.',
   'settings.autoNewConversationOnStart': 'Beim Start automatisch neue Unterhaltung öffnen',
   'settings.autoNewConversationOnStartDescription': 'Bei Aktivierung wird bei jedem Start eine neue Unterhaltung angelegt. Frühere Unterhaltungen bleiben im Verlauf erhalten.',
+  'settings.startMaximized': 'Beim Start maximieren',
+  'settings.startMaximizedDescription': 'Bei Aktivierung öffnet sich das Fenster bei jedem Start maximiert. Wirkt ab dem nächsten Start.',
   'settings.collapseHistoryOnNewConversation': 'Verlaufsliste bei Neue Unterhaltung einklappen',
   'settings.collapseHistoryOnNewConversationDescription': 'Bei Aktivierung klappt Neue Unterhaltung auch die Verlaufsliste ein. Andernfalls bleibt die Liste unverändert.',
   'settings.adapterBaseUrl': 'Adapter-Basis-URL',

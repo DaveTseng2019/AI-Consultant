@@ -2,6 +2,7 @@ import type { AIProvider, BridgeMessage, ProviderState } from '../../shared/type
 import { getVersion } from '@tauri-apps/api/app';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
+import { getCurrentWindow } from '@tauri-apps/api/window';
 import { onBridgeMessage } from '../bridge/bus';
 import type { AdapterNotice } from '../ui/reportBroken';
 
@@ -50,6 +51,10 @@ export const host = {
         doing anything when the user cancels the confirmation; on approval the app exits instead. */
     portableUpdate: (url: string, confirm: string): Promise<void> =>
       invoke('portable_update_start', { url, confirm }),
+  },
+  window: {
+    /** The taskbar shows the window title, so the running step stays readable while minimised. */
+    setTitle: (title: string): Promise<void> => getCurrentWindow().setTitle(title),
   },
   onNavBlocked: async (handler: (payload: NavBlockedPayload) => void): Promise<() => void> => {
     const unlisten = await listen<NavBlockedPayload>('nav://blocked', (event) => handler(event.payload));

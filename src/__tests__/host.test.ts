@@ -15,6 +15,10 @@ vi.mock('@tauri-apps/api/event', () => ({
   listen: listenMock,
 }));
 
+vi.mock('@tauri-apps/api/window', () => ({
+  getCurrentWindow: vi.fn(),
+}));
+
 import { host } from '../host';
 
 describe('host snapshot bindings', () => {

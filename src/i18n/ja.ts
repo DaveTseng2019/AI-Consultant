@@ -274,6 +274,8 @@ export const ja: Record<I18nKey, string> = {
   'settings.monospaceFontDescription': 'アプリ全体を等幅フォントで表示します。コードと表の桁がそろいます。',
   'settings.autoNewConversationOnStart': '起動時に新しい会話を自動的に開く',
   'settings.autoNewConversationOnStartDescription': '有効にすると、起動のたびに新しい会話が作成されます。以前の会話は履歴に残ります。',
+  'settings.startMaximized': '起動時にウィンドウを最大化',
+  'settings.startMaximizedDescription': '有効にすると、起動のたびにウィンドウが最大化された状態で開きます。次回の起動から有効です。',
   'settings.collapseHistoryOnNewConversation': '新しい会話を押したときに履歴を折りたたむ',
   'settings.collapseHistoryOnNewConversationDescription': '有効にすると、新しい会話を押したときに会話履歴の一覧も折りたたみます。無効の場合、一覧はそのままです。',
   'settings.adapterBaseUrl': 'アダプターのベースURL',

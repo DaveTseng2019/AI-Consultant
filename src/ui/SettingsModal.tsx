@@ -565,6 +565,18 @@ export function SettingsModal({
               <label className="mt-3 flex items-start gap-3 text-xs text-zinc-600 dark:text-zinc-400">
                 <input
                   type="checkbox"
+                  checked={draft.startMaximized}
+                  onChange={(event) => void persistDraftFieldImmediately('startMaximized', event.target.checked)}
+                  className="mt-0.5 h-4 w-4 accent-sky-700"
+                />
+                <span>
+                  <span className="block font-medium text-zinc-700 dark:text-zinc-300">{t('settings.startMaximized')}</span>
+                  <span className="mt-1 block leading-relaxed">{t('settings.startMaximizedDescription')}</span>
+                </span>
+              </label>
+              <label className="mt-3 flex items-start gap-3 text-xs text-zinc-600 dark:text-zinc-400">
+                <input
+                  type="checkbox"
                   checked={draft.collapseHistoryOnNewConversation}
                   onChange={(event) => void persistDraftFieldImmediately('collapseHistoryOnNewConversation', event.target.checked)}
                   className="mt-0.5 h-4 w-4 accent-sky-700"

@@ -252,6 +252,8 @@ export const I18N_KEYS = [
   'settings.monospaceFontDescription',
   'settings.autoNewConversationOnStart',
   'settings.autoNewConversationOnStartDescription',
+  'settings.startMaximized',
+  'settings.startMaximizedDescription',
   'settings.collapseHistoryOnNewConversation',
   'settings.collapseHistoryOnNewConversationDescription',
   'settings.adapterBaseUrl',

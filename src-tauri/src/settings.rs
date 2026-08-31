@@ -298,6 +298,20 @@ fn custom_action_script(settings: &Value, action_id: &str) -> String {
 ///        two can drift. They agree as long as the bundle identifier below matches
 ///        `tauri.conf.json` and Tauri keeps its platform conventions. An unreadable file means ON,
 ///        which is the same answer as a fresh install.
+/// Read straight from the file rather than from the frontend: the window has to be maximised
+/// before it is first painted, which is well before the UI has loaded its settings.
+pub fn start_maximized_preference(app: &AppHandle) -> bool {
+    settings_path(app)
+        .ok()
+        .and_then(|path| read_settings(&path).ok())
+        .and_then(|settings| {
+            settings
+                .get("startMaximized")
+                .and_then(|value| value.as_bool())
+        })
+        .unwrap_or(false)
+}
+
 pub fn single_instance_preference() -> bool {
     const IDENTIFIER: &str = "tw.micasa.aiconsultant";
 
