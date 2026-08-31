@@ -56,6 +56,7 @@ export const de: Record<I18nKey, string> = {
   'header.followRunPaused': 'Folgen aktiv (pausiert – manueller Fokus)',
   'header.followRunHelp': 'Fokussiert automatisch die KI, die gerade antwortet.',
   'layout.resizeFocusPane': 'Fokusbereich skalieren',
+  'layout.resizeSidebar': 'Verlaufsleiste skalieren',
   'share.exported': 'Exportiert: {path}',
   'share.exportFailed': 'Die Unterhaltung konnte nicht exportiert werden. Bitte erneut versuchen.',
   'archive.noRunArgument': '(ohne Lauf)',

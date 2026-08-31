@@ -48,6 +48,7 @@ export const I18N_KEYS = [
   'header.followRunPaused',
   'header.followRunHelp',
   'layout.resizeFocusPane',
+  'layout.resizeSidebar',
   'share.exported',
   'share.exportFailed',
   'archive.noSnapshot',

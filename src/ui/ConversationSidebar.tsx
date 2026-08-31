@@ -13,6 +13,7 @@ export interface ConversationSidebarLabels {
 
 export function ConversationSidebar({
   collapsed,
+  width,
   sessions,
   activeSessionId,
   disabled,
@@ -24,6 +25,8 @@ export function ConversationSidebar({
   onDeleteSession,
 }: {
   collapsed: boolean;
+  /** Ignored while collapsed, where the rail is icon-width. */
+  width: number;
   sessions: readonly ConversationSession[];
   activeSessionId: string;
   disabled: boolean;
@@ -48,7 +51,8 @@ export function ConversationSidebar({
   return (
     <nav
       aria-label={labels.history}
-      className={`${collapsed ? 'w-14' : 'w-48'} flex min-h-0 shrink-0 flex-col border-r border-zinc-200 bg-zinc-50 transition-[width] dark:border-zinc-800 dark:bg-zinc-900`}
+      style={collapsed ? undefined : { width }}
+      className={`${collapsed ? 'w-14 transition-[width]' : ''} flex min-h-0 shrink-0 flex-col border-r border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900`}
     >
       <div className="flex items-center gap-2 border-b border-zinc-200 p-2 dark:border-zinc-800">
         <button

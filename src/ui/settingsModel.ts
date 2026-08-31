@@ -1,7 +1,7 @@
 import type { AIProvider } from '../../shared/types';
 import { AI_PROVIDERS } from '../../shared/constants';
 import { DEFAULT_COLUMN_WIDTHS, type ColumnWidths, clampColumnWidths } from './dockLayout';
-import { DEFAULT_FOCUS_PANE_WIDTH, clampFocusPaneWidth } from './focusLayout';
+import { DEFAULT_FOCUS_PANE_WIDTH, DEFAULT_SIDEBAR_WIDTH, clampFocusPaneWidth, clampSidebarWidth } from './focusLayout';
 import {
   DEFAULT_SLOT_ASSIGNMENT,
   SLOT_IDS,
@@ -72,6 +72,8 @@ export interface AppSettings {
   collapseHistoryOnNewConversation: boolean;
   layoutMode: 'focus';
   focusPaneWidth: number;
+  /** Width of the conversation history rail, when it is not collapsed. */
+  sessionSidebarWidth: number;
   columnWidths: ColumnWidths;
   slotAssignment: SlotAssignment;
   modeRoles: ModeRoleAssignments;
@@ -108,6 +110,7 @@ export function defaultSettings(): AppSettings {
     collapseHistoryOnNewConversation: false,
     layoutMode: 'focus',
     focusPaneWidth: DEFAULT_FOCUS_PANE_WIDTH,
+    sessionSidebarWidth: DEFAULT_SIDEBAR_WIDTH,
     columnWidths: { ...DEFAULT_COLUMN_WIDTHS },
     slotAssignment: { ...DEFAULT_SLOT_ASSIGNMENT },
     modeRoles: normalizeModeRoleAssignments(undefined),
@@ -253,6 +256,9 @@ export function normalizeSettings(value: unknown): AppSettings {
     collapseHistoryOnNewConversation: input.collapseHistoryOnNewConversation === true,
     layoutMode: 'focus',
     focusPaneWidth: focusPaneWidth(input.focusPaneWidth, input.columnWidths, defaults.focusPaneWidth),
+    sessionSidebarWidth: clampSidebarWidth(
+      typeof input.sessionSidebarWidth === 'number' ? input.sessionSidebarWidth : defaults.sessionSidebarWidth,
+    ),
     columnWidths: normalizedColumnWidths,
     slotAssignment: normalizeSlotAssignment(input.slotAssignment, defaults.slotAssignment),
     modeRoles:

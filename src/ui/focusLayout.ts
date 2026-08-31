@@ -2,6 +2,18 @@ import { DEFAULT_DOCK_CONSTRAINTS, clamp } from './dockLayout';
 
 export const DEFAULT_FOCUS_PANE_WIDTH = 560;
 
+/** The conversation history rail. Its own width, so widening it eats the stage beside it, not the
+ *  transcript column. w-48 was the fixed value it replaces. */
+export const DEFAULT_SIDEBAR_WIDTH = 192;
+export const MIN_SIDEBAR_WIDTH = 160;
+export const MAX_SIDEBAR_WIDTH = 400;
+
+export function clampSidebarWidth(width: number, containerWidth = Infinity): number {
+  // Never so wide that the stage beside it has nothing left; 240px is a readable stage floor.
+  const max = Math.max(MIN_SIDEBAR_WIDTH, Math.min(MAX_SIDEBAR_WIDTH, containerWidth - 240));
+  return clamp(Math.round(width), MIN_SIDEBAR_WIDTH, max);
+}
+
 export const DEFAULT_FOCUS_LAYOUT_CONSTRAINTS = {
   minFocusPaneWidth: 420,
   minCenterWidth: DEFAULT_DOCK_CONSTRAINTS.minCenterWidth,

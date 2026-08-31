@@ -1,7 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   DEFAULT_FOCUS_PANE_WIDTH,
+  DEFAULT_SIDEBAR_WIDTH,
+  MAX_SIDEBAR_WIDTH,
+  MIN_SIDEBAR_WIDTH,
   clampFocusPaneWidth,
+  clampSidebarWidth,
   dragFocusPaneWidth,
   driveCenteredProviderToStage,
   focusGridTemplateColumns,
@@ -164,5 +168,24 @@ describe('focus layout helpers', () => {
     const legacy = normalizeSettings({ fontSize: 18 });
     expect(legacy.fontSize).toBe(18);
     expect(legacy.readingFontSize).toBe(DEFAULT_READING_FONT_SIZE);
+  });
+});
+
+describe('conversation sidebar width', () => {
+  it('keeps the rail between its bounds', () => {
+    expect(clampSidebarWidth(DEFAULT_SIDEBAR_WIDTH)).toBe(DEFAULT_SIDEBAR_WIDTH);
+    expect(clampSidebarWidth(10)).toBe(MIN_SIDEBAR_WIDTH);
+    expect(clampSidebarWidth(9000)).toBe(MAX_SIDEBAR_WIDTH);
+  });
+
+  it('leaves room for the stage beside it, and never inverts when the column is tiny', () => {
+    // The rail lives inside the focus column, so dragging it must not squeeze the stage away.
+    expect(clampSidebarWidth(9000, 560)).toBe(320);
+    expect(clampSidebarWidth(9000, 300)).toBe(MIN_SIDEBAR_WIDTH);
+  });
+
+  it('survives a round trip through saved settings', () => {
+    expect(normalizeSettings({ sessionSidebarWidth: 9000 }).sessionSidebarWidth).toBe(MAX_SIDEBAR_WIDTH);
+    expect(normalizeSettings({}).sessionSidebarWidth).toBe(DEFAULT_SIDEBAR_WIDTH);
   });
 });

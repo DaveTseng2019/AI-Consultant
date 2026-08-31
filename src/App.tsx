@@ -63,7 +63,10 @@ import { TargetChips } from './ui/TargetChips';
 import { findScrollActiveProvider, isTranscriptNearEnd, scrollTranscriptToEnd, scrollTranscriptToProviderMessage } from './ui/transcriptScroll';
 import {
   DEFAULT_FOCUS_LAYOUT_CONSTRAINTS,
+  MAX_SIDEBAR_WIDTH,
+  MIN_SIDEBAR_WIDTH,
   clampFocusPaneWidth,
+  clampSidebarWidth,
   dragFocusPaneWidth,
   driveCenteredProviderToStage as driveCenteredProviderToStageCommand,
   focusGridTemplateColumns,
@@ -327,10 +330,13 @@ export default function App() {
   const [initialRestoreComplete, setInitialRestoreComplete] = useState(false);
   const [connectionSnapshotLoaded, setConnectionSnapshotLoaded] = useState(false);
   const [focusPaneWidth, setFocusPaneWidth] = useState(() => defaultSettings().focusPaneWidth);
+  const [sidebarWidth, setSidebarWidth] = useState(() => defaultSettings().sessionSidebarWidth);
   // Why the stage grew matters to the mode picker below it: a stage the app expanded on its own
   // (a signed-out provider) must not take the picker away, a stage the user asked for gets it.
+  // So only 'manual' counts as expanded here -- the button reads "collapse" exactly when a press
+  // would give the picker back, and one press from any state covers the picker.
   const [stageExpand, setStageExpand] = useState<'none' | 'auto' | 'manual'>('none');
-  const stageExpanded = stageExpand !== 'none';
+  const stageExpanded = stageExpand === 'manual';
   const [messagesMaximized, setMessagesMaximized] = useState(false);
   const [scrollFocusedProvider, setScrollFocusedProvider] = useState<AIProvider | undefined>();
   const [presentation, setPresentation] = useState<PresentationByProvider>(() => defaultPresentation());
@@ -372,6 +378,7 @@ export default function App() {
   const overlayGuardOpenRef = useRef(false);
   const pendingRestore = useRef<Set<AIProvider>>(new Set());
   const dragStartFocusPaneWidth = useRef(defaultSettings().focusPaneWidth);
+  const dragStartSidebarWidth = useRef(defaultSettings().sessionSidebarWidth);
   const activeResponses = useRef(new Map<AIProvider, ActiveProviderResponse>());
   const replayContextSessionRef = useRef<string | undefined>(
     initialConversation.active.messages.length > 0 ? initialConversation.active.id : undefined,
@@ -690,6 +697,7 @@ export default function App() {
         setAppSettings(loaded);
         setLanguage(loaded.language);
         setFocusPaneWidth(loaded.focusPaneWidth);
+        setSidebarWidth(loaded.sessionSidebarWidth);
         // Start on the remembered face so the stage does not flip once the login report lands.
         setCenterSurfaceMode(loaded.centerSurface);
         setPresentation(loaded.presentation);
@@ -1466,7 +1474,7 @@ export default function App() {
 
   useEffect(() => {
     syncAllBounds();
-  }, [conversationCollapsed, focusPaneWidth, presentation, syncAllBounds]);
+  }, [conversationCollapsed, focusPaneWidth, sidebarWidth, presentation, syncAllBounds]);
 
   useEffect(() => {
     const container = transcriptRef.current;
@@ -1909,6 +1917,16 @@ export default function App() {
     if (phase === 'end') void persistSettingsPatch({ focusPaneWidth: nextWidth });
   };
 
+  const dragSidebar = (deltaX: number, phase: 'start' | 'move' | 'end') => {
+    if (phase === 'start') {
+      dragStartSidebarWidth.current = sidebarWidth;
+      return;
+    }
+    const nextWidth = clampSidebarWidth(dragStartSidebarWidth.current + deltaX, focusPaneWidth);
+    setSidebarWidth(nextWidth);
+    if (phase === 'end') void persistSettingsPatch({ sessionSidebarWidth: nextWidth });
+  };
+
   const enlargeCenter = useCallback(() => {
     const provider = centerPresentationProvider(presentationRef.current);
     setCenterSurfaceMode('native');
@@ -1975,6 +1993,7 @@ export default function App() {
     setAppSettings(settings);
     setLanguage(settings.language);
     setFocusPaneWidth(settings.focusPaneWidth);
+    setSidebarWidth(settings.sessionSidebarWidth);
     setPresentation(settings.presentation);
   };
 
@@ -2062,6 +2081,7 @@ export default function App() {
         >
           <ConversationSidebar
             collapsed={sessionSidebarCollapsed}
+            width={sidebarWidth}
             sessions={sessions}
             activeSessionId={activeSessionId}
             disabled={isProcessing}
@@ -2082,22 +2102,34 @@ export default function App() {
             onSelectSession={selectConversationSession}
             onDeleteSession={deleteConversationSession}
           />
+          {!sessionSidebarCollapsed ? (
+            <div className="shrink-0" style={{ width: DEFAULT_FOCUS_LAYOUT_CONSTRAINTS.resizerWidth }}>
+              <Resizer
+                label={translate('layout.resizeSidebar')}
+                onDrag={dragSidebar}
+                value={sidebarWidth}
+                min={MIN_SIDEBAR_WIDTH}
+                max={MAX_SIDEBAR_WIDTH}
+              />
+            </div>
+          ) : null}
           <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-            {/* Hidden while a run is in flight: the mode is locked in by then,
-                and the height is worth more to the process trace and the transcript. It comes back
-                when the run settles, which is when the next mode choice is made.
+            {/* The mode is chosen before the conversation, so this shelf lives only while the
+                transcript is empty: the first message settles the mode, the badge in the
+                conversation header keeps saying which one, and New conversation brings the picker
+                back. Hidden for the same reason while a run is in flight.
                 Also hidden when the user presses Expand on the stage: that press asks for the whole
-                column, and this shelf is the room it asks for. Only the user's press -- the stage
-                also expands on its own at start-up, while the providers still report signed-out,
-                and hiding then took the picker away exactly when the empty transcript was asking
-                for a mode to be picked.
+                column, and this shelf is the room it asks for -- which is how a provider sign-in
+                gets the full height on first run. Only the user's press: the stage also expands on
+                its own at start-up, while the providers still report signed-out, and hiding then
+                took the picker away exactly when the empty transcript was asking for a mode.
                 A checkpoint renders inline here and needs its input and buttons, so it stays open
                 even mid-run. */}
             <section
               id="workflow-control-shelf"
               aria-label={translate('preset.catalog.aria')}
               className={`shrink-0 overflow-auto border-b border-zinc-200 bg-zinc-50/80 p-3 dark:border-zinc-800 dark:bg-zinc-900/70 ${
-                (isProcessing || stageExpand === 'manual') && !checkpoint ? 'hidden' : 'max-h-[42vh]'
+                (isProcessing || stageExpand === 'manual' || messages.length > 0) && !checkpoint ? 'hidden' : 'max-h-[42vh]'
               }`}
             >
               <PresetCatalog
@@ -2213,7 +2245,7 @@ export default function App() {
                 else chipExpandRequestRef.current = provider;
               }}
               stageExpanded={stageExpanded}
-              onToggleStageExpanded={() => setStageExpand((current) => (current === 'none' ? 'manual' : 'none'))}
+              onToggleStageExpanded={() => setStageExpand((current) => (current === 'manual' ? 'none' : 'manual'))}
               onOpenSettings={() => setSettingsOpen(true)}
             />
           </div>

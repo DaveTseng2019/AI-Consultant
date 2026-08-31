@@ -50,6 +50,7 @@ export const zhTW: Record<I18nKey, string> = {
   'header.followRunPaused': '跟隨中（已暫停：手動焦點）',
   'header.followRunHelp': '自動切換訊息焦點到目前正在回應的 AI。',
   'layout.resizeFocusPane': '調整焦點窗格寬度',
+  'layout.resizeSidebar': '調整對話紀錄寬度',
   'share.exported': '已匯出：{path}',
   'share.exportFailed': '無法匯出這段對話，請再試一次。',
   'archive.noRunArgument': '（不帶入執行紀錄）',

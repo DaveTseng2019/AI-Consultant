@@ -56,6 +56,7 @@ export const en: Record<I18nKey, string> = {
   'header.followRunPaused': 'Following (paused - manual focus)',
   'header.followRunHelp': 'Automatically focus the AI that is currently responding.',
   'layout.resizeFocusPane': 'Resize focus pane',
+  'layout.resizeSidebar': 'Resize conversation history',
   'share.exported': 'Exported: {path}',
   'share.exportFailed': "Couldn't export this conversation. Please try again.",
   'archive.noRunArgument': '(no run passed)',
