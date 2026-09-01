@@ -70,9 +70,9 @@ Cloudflare 驗證）；Linux 目前只有 CI 建置，沒有實機回報。詳�
 
 Grok 有四件事是 app 看不到、因此也幫不上忙的，第一次用容易卡住：
 
-1. **登入頁那四顆按鈕（Google／X／Apple／郵箱）一定都在，但不代表都走得通。**
+1. **Grok 登入選項（Google／X／Apple／郵箱）必需經過啟用，才會生效。**
    只有你在 [x.ai 帳號頁](https://accounts.x.ai/account) 的「登入方法」啟用（連接）過的那幾種，
-   才進得了你原本的帳號。每個人啟用的不一樣，所以「我用 Google 登不進去」不是 app 的問題。
+   才進得了你原本的帳號。每個人啟用的不一樣，所以「我用 Google 登不進去」不一定是 app 的問題。
 2. **選 X 登入時，中間會多一頁 X 自己的授權畫面**（`xAI Single Sign-On wants to access…`），
    要按 `Authorize app` 才會回到 Grok。那一頁長得不像 Grok，容易以為走錯地方。
 3. **登入或註冊完成後，Grok 會在對話裡問一次出生年份。** 不是彈窗、不是驗證頁，就是一則訊息，
