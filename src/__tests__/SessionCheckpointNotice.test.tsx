@@ -84,13 +84,40 @@ describe('SessionCheckpointNotice', () => {
   it('loads a startup checkpoint and same-graph replay snapshot', async () => {
     vi.mocked(host.sessionCheckpoint.load).mockResolvedValueOnce(JSON.stringify(notice().checkpoint));
     vi.mocked(host.snapshot.list).mockResolvedValueOnce([
-      { id: 'snapshot-free', graphId: 'free' },
-      { id: 'snapshot-debate', graphId: 'debate' },
+      { id: 'snapshot-free', graphId: 'free', createdAt: '2026-07-06T00:00:30.000Z' },
+      { id: 'snapshot-debate', graphId: 'debate', createdAt: '2026-07-06T00:00:01.000Z' },
     ]);
 
     await expect(loadStartupSessionCheckpointNotice()).resolves.toMatchObject({
       checkpoint: { graphId: 'debate', questionHash: 'hash-only' },
       replaySnapshot: { id: 'snapshot-debate' },
+    });
+  });
+
+  // Killing the app mid-run leaves the checkpoint behind but no snapshot: the executor only writes
+  // one on its way out. Offering Replay then would replay whatever that graph ran last time, which
+  // is not what the notice says it is -- so the run has to own the snapshot, not just the graph.
+  it('offers no replay when the interrupted run never wrote a snapshot', async () => {
+    vi.mocked(host.sessionCheckpoint.load).mockResolvedValueOnce(JSON.stringify(notice().checkpoint));
+    vi.mocked(host.snapshot.list).mockResolvedValueOnce([
+      { id: 'snapshot-debate-earlier', graphId: 'debate', createdAt: '2026-07-05T23:00:00.000Z' },
+    ]);
+
+    await expect(loadStartupSessionCheckpointNotice()).resolves.toMatchObject({
+      checkpoint: { graphId: 'debate' },
+      replaySnapshot: undefined,
+    });
+  });
+
+  it('takes the newest snapshot the interrupted run itself wrote', async () => {
+    vi.mocked(host.sessionCheckpoint.load).mockResolvedValueOnce(JSON.stringify(notice().checkpoint));
+    vi.mocked(host.snapshot.list).mockResolvedValueOnce([
+      { id: 'snapshot-debate-this-run', graphId: 'debate', createdAt: '2026-07-06T00:00:02.000Z' },
+      { id: 'snapshot-debate-earlier', graphId: 'debate', createdAt: '2026-07-05T23:00:00.000Z' },
+    ]);
+
+    await expect(loadStartupSessionCheckpointNotice()).resolves.toMatchObject({
+      replaySnapshot: { id: 'snapshot-debate-this-run' },
     });
   });
 
