@@ -99,7 +99,7 @@ Four things about Grok are invisible to the app, and all four catch first-time u
    Ready, but what comes back to your question is that age question, and the sequential modes
    feed it to the next step as material. Put Grok on the stage, switch to the real page and
    answer it once; a new profile or a fresh sign-in asks again.
-4. **A card sitting at "Opening..." means the page has not reported a sign-in state yet, not
+4. **The Firsting Time A card sitting at "Opening..." means the page has not reported a sign-in state yet, not
    that you are signed out.** Press Sign in above the card, or close and reopen the app, and
    it usually settles into ready.
 
