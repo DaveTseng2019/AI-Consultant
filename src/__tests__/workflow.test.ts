@@ -628,6 +628,9 @@ describe('workflow engine', () => {
     unsubscribe();
     expect(vi.mocked(host.provider.send).mock.calls.length).toBe(sendCount);
     expect(seen.filter((message) => message.action === 'ROLE_ASSIGNMENT')).toHaveLength(1);
+    // A cancel must not leave an error bubble behind: it would land in the conversation the user
+    // switched to, not the one they cancelled.
+    expect(seen.filter((message) => String(message.provider) === 'system')).toHaveLength(0);
   });
 
   it('teardown bumps the turn epoch and clears active turns', async () => {

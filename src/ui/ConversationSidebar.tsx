@@ -76,7 +76,6 @@ export function ConversationSidebar({
           type="button"
           className={`${collapsed ? 'grid h-9 w-9 place-items-center p-0' : 'flex w-full items-center gap-2 px-3 py-2'} rounded-md border border-sky-300 bg-white text-sm font-medium text-sky-800 hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-sky-800 dark:bg-zinc-950 dark:text-sky-200 dark:hover:bg-sky-950`}
           onClick={onNewConversation}
-          disabled={disabled}
           aria-label={labels.newConversation}
           title={labels.newConversation}
         >

@@ -1669,7 +1669,7 @@ export default function App() {
     }
   }, [sessionCheckpointNotice]);
 
-  const cancelWorkflow = () => {
+  const cancelWorkflow = useCallback(() => {
     providerSessionResetAttemptRef.current += 1;
     publishBridgeMessage({ v: 1, action: 'CANCEL_WORKFLOW', transport: 'local' });
     setManualFocusLock(undefined);
@@ -1681,10 +1681,10 @@ export default function App() {
     activeResponses.current.clear();
     clearRunImages();
     setProcessTrace((current) => (current ? settleProcessTrace(current) : current));
-  };
+  }, [setManualFocusLock]);
 
   const startNewConversation = useCallback(() => {
-    if (isProcessing) return;
+    if (isProcessing) cancelWorkflow();
     const now = Date.now();
     const transition = beginNewConversationSession({
       sessions,
@@ -1704,10 +1704,20 @@ export default function App() {
     setReplayDrawerOpen(false);
     setTargetSelection({ targets: [...DEFAULT_FREE_TARGET_PROVIDERS], defaultsInitialized: true, userTouched: false });
     activeResponses.current.clear();
-    pendingProviderResetRef.current = new Set(
-      PROVIDERS.filter((provider) => statesRef.current[provider].webview === 'loaded'),
-    );
-  }, [activeSessionId, isProcessing, messages, mode, presetId, sessions]);
+    const providersToClear = PROVIDERS.filter((provider) => statesRef.current[provider].webview === 'loaded');
+    pendingProviderResetRef.current = new Set(providersToClear);
+    // Clear the provider panes now instead of at the next send. They stay in the pending set
+    // until the fresh pages are sendable again, so a send during the reload still waits for them.
+    void ensureFreshProviderSessions(providersToClear, {
+      resetBootState: resetProviderPullState,
+      newSession: (provider) => host.provider.newSession(provider),
+    })
+      .then(() => waitForProvidersSendable(providersToClear, () => statesRef.current))
+      .then(() => {
+        for (const provider of providersToClear) pendingProviderResetRef.current.delete(provider);
+      })
+      .catch(() => undefined);
+  }, [activeSessionId, cancelWorkflow, isProcessing, messages, mode, presetId, sessions]);
 
   const autoNewConversationAppliedRef = useRef(false);
   useEffect(() => {

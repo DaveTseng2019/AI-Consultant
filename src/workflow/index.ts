@@ -3,7 +3,7 @@ import { CHAT_MODES, DEFAULT_FREE_TARGET_PROVIDERS } from '../../shared/constant
 import { getRuntimeAppVersion } from '../appVersion';
 import { host } from '../host';
 import type { Locale } from '../i18n/resolve';
-import { getInFlightProviders } from './cancel';
+import { getInFlightProviders, WORKFLOW_CANCELLED } from './cancel';
 import { emitSystemError, sendWorkflowStatus } from './events';
 import { executeGraph, preflightGraph, workflowGraphs } from './graph';
 import type { PreflightResult } from './preflight';
@@ -89,7 +89,10 @@ export async function runWorkflow({
     return { ok: true };
   } catch (error) {
     await tearDownWaiters(getInFlightProviders(), { stopClick: true });
-    emitSystemError((error as Error).message);
+    // A user cancel is not a failure to report: the bubble would land in whatever conversation
+    // is on screen by then, which after "new conversation" is the fresh, unrelated one.
+    const message = (error as Error).message;
+    if (message !== WORKFLOW_CANCELLED) emitSystemError(message);
     sendWorkflowStatus('');
     return { ok: true };
   }
