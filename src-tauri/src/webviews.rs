@@ -10,7 +10,7 @@ use std::{
 };
 use tauri::{
     utils::config::BackgroundThrottlingPolicy,
-    webview::{NewWindowResponse, PageLoadEvent, WebviewBuilder},
+    webview::{DownloadEvent, NewWindowResponse, PageLoadEvent, WebviewBuilder},
     AppHandle, Emitter, Manager, PhysicalPosition, PhysicalSize, WebviewUrl,
 };
 use tauri_plugin_opener::OpenerExt;
@@ -382,6 +382,17 @@ fn trace_grok(provider: &str, event: &str, detail: &str) {
 
 #[cfg(not(debug_assertions))]
 fn trace_grok(_provider: &str, _event: &str, _detail: &str) {}
+
+/// A download that goes nowhere looks exactly like a dead button, and the provider's own save
+/// button is the only way some answers leave the app. Debug builds narrate every request and its
+/// destination; release builds carry none of this.
+#[cfg(debug_assertions)]
+fn trace_download(provider: &str, event: &str, detail: &str) {
+    eprintln!("[download-trace] {provider} {event}: {detail}");
+}
+
+#[cfg(not(debug_assertions))]
+fn trace_download(_provider: &str, _event: &str, _detail: &str) {}
 
 /// The signal only carries when the document it was observed on is the one being reloaded.
 fn carried_app_title_epoch(
@@ -1079,6 +1090,7 @@ pub async fn provider_open(
     let title_delayed_grok_script = delayed_grok_script.clone();
     let load_app = app.clone();
     let load_provider = provider.clone();
+    let download_provider = provider.clone();
     let load_delayed_grok_script = delayed_grok_script;
     let builder = WebviewBuilder::new(&label, WebviewUrl::External(url));
     // Grok's Cloudflare challenge must see a stock document from its first instruction.
@@ -1102,6 +1114,26 @@ pub async fn provider_open(
         .data_directory(profile_dir)
         .background_throttling(BackgroundThrottlingPolicy::Disabled)
         .additional_browser_args(PROVIDER_BROWSER_ARGS)
+        // Without a handler nothing accepts a download, so a provider's own save button did
+        // nothing at all: Claude hands its artifact over that way, and so do ChatGPT's "Download
+        // PNG" and Gemini's exports. The runtime has already filled in the destination it would
+        // use, and keeping it is what makes the file land where the browser would have put it.
+        .on_download(move |_webview, event| {
+            match event {
+                DownloadEvent::Requested { url, destination } => {
+                    trace_download(&download_provider, "requested", &format!("{url} -> {destination:?}"));
+                }
+                DownloadEvent::Finished { url, path, success } => {
+                    trace_download(
+                        &download_provider,
+                        "finished",
+                        &format!("{url} -> {path:?} success={success}"),
+                    );
+                }
+                _ => (),
+            }
+            true
+        })
         .on_document_title_changed(move |webview, title| {
             let document_epoch = current_grok_document_epoch(&title_provider);
             handle_provider_document_title(&title_app, &title_provider, &title);

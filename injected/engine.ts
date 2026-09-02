@@ -66,6 +66,9 @@ const SEND_FINAL_VERIFY_DELAY_MS = 1500;
 // notes: a fixed wait, not a signal that the upload finished -- every provider shows that
 //        differently. Watch the composer for the thumbnail if a slow connection drops images.
 const IMAGE_PASTE_SETTLE_MS = 2000;
+// The panel Claude opens beside the conversation to show a file it just wrote.
+const FILE_VIEWER_SELECTOR = '[data-skill-file-viewer="true"]';
+
 const USER_MESSAGE_ANCESTOR_SELECTOR = [
   '[data-message-author-role="user"]',
   '[data-testid="user-message"]',
@@ -942,9 +945,25 @@ class InactiveSendOperationError extends Error {
       if (waitingForResponse && responseBaselineEls.has(response)) continue;
       if (isUserMessageElement(response)) continue;
       const text = extractResponseText(response);
-      if (text && !isLikelyPromptEcho(text, pendingPromptText)) return text;
+      if (text && !isLikelyPromptEcho(text, pendingPromptText)) return withOpenFileViewer(text);
     }
     return null;
+  }
+
+  // Claude puts the substance of an answer in a file it opens beside the conversation: the message
+  // itself carries only a tool summary and a card, so capturing the message alone lost the whole
+  // document. The viewer opens itself when the file is created, so this reads what is already on
+  // screen instead of driving the provider's own interface.
+  // notes: appends whatever the viewer currently shows, with nothing tying that file to this
+  //        answer -- a viewer left open from an earlier question would be appended again. The card
+  //        naming the file carries no id, class or test attribute to match against, so there is
+  //        nothing to bind them with today. A file rendered into a sandboxed iframe (Claude's .html
+  //        artifacts) stays unreachable from this document whatever happens here.
+  function withOpenFileViewer(text: string): string {
+    const viewer = document.querySelector(FILE_VIEWER_SELECTOR);
+    if (!viewer) return text;
+    const viewerText = extractResponseText(viewer)?.trim();
+    return viewerText ? `${text}\n\n${viewerText}` : text;
   }
 
   function isUserMessageElement(response: Element): boolean {

@@ -66,6 +66,7 @@ function serializeNode(node: Node, context: SerializationContext): string {
   if (isMathRoot(element, tag)) return mathText(element, tag);
   if (tag === 'BR') return '\n';
   if (tag === 'HR') return block('---');
+  if (isRenderedDiagram(element, tag)) return block(protectRenderedMermaid(element, context));
   if (tag === 'PRE') return block(protectCodeBlock(element, context));
   if (tag === 'TABLE') return block(tableToMarkdown(element));
   if (tag === 'UL' || tag === 'OL') return block(serializeList(element, tag === 'OL', context, 0));
@@ -221,14 +222,140 @@ function serializeTableCellChildren(element: Element): string {
 }
 
 function protectCodeBlock(element: Element, context: SerializationContext): string {
+  // A block the provider renders as a picture holds no <code>, so the fallback below would fence
+  // the surrounding chrome instead: ChatGPT's mermaid block is an <img> plus a menu button, and
+  // every diagram in an export came out as the button's own label ("Diagram options").
+  const diagram = renderedDiagram(element);
+  if (diagram && !diagram.code) return '';
   const codeElement = firstDescendantByTag(element, 'CODE');
-  const code = preformattedText(codeElement ?? element).replace(/\r\n?/g, '\n');
-  const language = codeLanguage(codeElement ?? element);
+  const code = (diagram?.code ?? preformattedText(codeElement ?? element)).replace(/\r\n?/g, '\n');
+  const language = (diagram ? diagram.language : codeLanguage(codeElement ?? element)) || mermaidLanguage(code);
+  return protectFence(code, language, context);
+}
+
+// Grok draws a diagram directly into the answer with no <pre> and no <code>: the block is a
+// container div holding an SVG, and OMITTED_TAGS drops that SVG, so every Grok diagram reached the
+// export as nothing at all -- not even an empty fence.
+const MERMAID_CONTAINER_CLASS = 'mermaid';
+const MERMAID_MARKER_ATTRIBUTE = 'data-mermaid';
+
+// Claude marks both forms of a diagram with the same attribute: a <pre> that still holds its source
+// (which is what a block that failed to render leaves behind), and a <div> whose SVG lives in a
+// shadow root once it has rendered. Only the second one needs the source dug out, so a <pre> is
+// left to the code-block path that can simply read it.
+function isRenderedDiagram(element: Element, tag: string): boolean {
+  if (tag === 'PRE') return false;
+  return (
+    classList(element).includes(MERMAID_CONTAINER_CLASS) ||
+    attribute(element, MERMAID_MARKER_ATTRIBUTE) === 'true'
+  );
+}
+
+function protectRenderedMermaid(element: Element, context: SerializationContext): string {
+  const code = reactFiberMermaidSource(element).replace(/\r\n?/g, '\n').replace(/\s+$/, '');
+  return code ? protectFence(code, MERMAID_CONTAINER_CLASS, context) : '';
+}
+
+function protectFence(code: string, language: string, context: SerializationContext): string {
   const longestFence = Math.max(0, ...Array.from(code.matchAll(/`+/g), (match) => match[0].length));
   const fence = '`'.repeat(Math.max(3, longestFence + 1));
   const blockText = `${fence}${language ? language : ''}\n${code}${code.endsWith('\n') ? '' : '\n'}${fence}`;
   const index = context.protectedBlocks.push(blockText) - 1;
   return protectedToken(index);
+}
+
+interface ReactFiber {
+  memoizedProps?: unknown;
+  pendingProps?: unknown;
+  return?: ReactFiber;
+}
+
+// notes: reads React's own `__reactFiber$<id>` expando and climbs it, which is private and
+//        unversioned -- the provider can rename it or move the source to another ancestor, and the
+//        diagram is then dropped, exactly as it is dropped today. Nothing in the DOM holds the
+//        source: the container has only the rendered SVG. Prefer a DOM attribute if one appears.
+//        The opening keyword is what identifies the right prop, so no prop name is hard-coded.
+function reactFiberMermaidSource(node: Element): string {
+  try {
+    const fiberKey = Object.keys(node).find((name) => name.startsWith('__reactFiber$'));
+    if (!fiberKey) return '';
+    let fiber = (node as unknown as Record<string, ReactFiber | undefined>)[fiberKey];
+    for (let depth = 0; depth < 8 && fiber; depth += 1) {
+      for (const props of [fiber.memoizedProps, fiber.pendingProps]) {
+        if (typeof props !== 'object' || props === null) continue;
+        for (const value of Object.values(props)) {
+          if (typeof value === 'string' && mermaidLanguage(value)) return value;
+        }
+      }
+      fiber = fiber.return;
+    }
+    return '';
+  } catch {
+    return '';
+  }
+}
+
+// Every keyword Mermaid accepts as the opening word of a diagram. A block that starts with one of
+// these is Mermaid whatever the provider called it, which is what makes the guess below safe.
+const MERMAID_OPENING_KEYWORDS =
+  /^(architecture|block|packet|radar|sankey|xychart)-beta\b|^(flowchart|graph|sequenceDiagram|classDiagram|stateDiagram(-v2)?|erDiagram|journey|gantt|pie|quadrantChart|requirementDiagram|gitGraph|mindmap|timeline|kanban|zenuml|C4Context)\b/;
+
+// Gemini publishes no language at all: the <code> carries none, the header reads "Code snippet"
+// rather than the language, and nothing in the block's subtree names it -- it survives only inside
+// Angular's component state. Reading the first line back is smaller and steadier than reaching for
+// a framework's internals, and a block opening with "flowchart TD" is Mermaid beyond doubt.
+// notes: recognises Mermaid only. Any other unlabelled language still exports as a bare fence,
+//        which renders as plain code -- the same as before, never worse.
+function mermaidLanguage(code: string): string {
+  const firstLine = code.split('\n').find((line) => line.trim().length > 0) ?? '';
+  return MERMAID_OPENING_KEYWORDS.test(firstLine.trim()) ? 'mermaid' : '';
+}
+
+// The pane that replaces a code block with its rendered picture. The attribute value is the
+// language, which is the only part of the block still readable from the DOM.
+const RENDERED_PANE_ATTRIBUTE = 'data-code-block-preview-pane';
+
+interface RenderedDiagram {
+  language: string;
+  code: string;
+}
+
+// An empty `code` means the pane was found but its source could not be read, which drops the block
+// rather than fencing the button label that reading the DOM would otherwise produce.
+function renderedDiagram(element: Element): RenderedDiagram | undefined {
+  const pane = firstDescendantByAttribute(element, RENDERED_PANE_ATTRIBUTE);
+  if (!pane) return undefined;
+  const language = attribute(pane, RENDERED_PANE_ATTRIBUTE) ?? '';
+  return {
+    language: /^[\w+-]+$/.test(language) ? language : '',
+    code: reactSourceProp(pane).replace(/\s+$/, ''),
+  };
+}
+
+// notes: reads React's own `__reactProps$<id>` expando, which is private and unversioned -- the
+//        provider can rename it or reshape the props at any time, and the block is then dropped
+//        instead of exported. The source is nowhere in the DOM (no text node, no alt, no title;
+//        only a data: URI image), so nothing else can recover it today. Prefer a DOM attribute
+//        the moment the provider exposes one.
+function reactSourceProp(node: Element): string {
+  try {
+    const propsKey = Object.keys(node).find((name) => name.startsWith('__reactProps$'));
+    if (!propsKey) return '';
+    const seen = new Set<object>();
+    const search = (value: unknown, depth: number): string => {
+      if (typeof value !== 'object' || value === null || depth > 10 || seen.has(value)) return '';
+      seen.add(value);
+      for (const [name, child] of Object.entries(value)) {
+        if (name === 'source' && typeof child === 'string') return child;
+        const found = search(child, depth + 1);
+        if (found) return found;
+      }
+      return '';
+    };
+    return search((node as unknown as Record<string, unknown>)[propsKey], 0);
+  } catch {
+    return '';
+  }
 }
 
 // A highlighter that gives every code line its own element leaves no newline character behind,
@@ -276,6 +403,15 @@ function codeLanguage(element: Element): string {
   const classMatch = className.match(/(?:^|\s)language-([\w+-]+)/i);
   const candidate = classMatch?.[1] ?? attribute(element, 'data-language') ?? '';
   return /^[\w+-]+$/.test(candidate) ? candidate : '';
+}
+
+function firstDescendantByAttribute(element: Element, wantedAttribute: string): Element | undefined {
+  for (const child of directChildElements(element)) {
+    if (attribute(child, wantedAttribute) !== undefined) return child;
+    const descendant = firstDescendantByAttribute(child, wantedAttribute);
+    if (descendant) return descendant;
+  }
+  return undefined;
 }
 
 function firstDescendantByTag(element: Element, wantedTag: string): Element | undefined {

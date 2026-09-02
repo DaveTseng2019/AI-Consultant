@@ -89,6 +89,70 @@ describe('serializeResponseText', () => {
     expect(serialize(root)).toBe('```\nif x:\n    y()\n```');
   });
 
+  it('labels an unlabelled Mermaid block so it still renders as a diagram', () => {
+    // Gemini names no language anywhere in the block, so the fence came out bare and every diagram
+    // in an export rendered as plain code. The opening keyword is the only evidence left.
+    const root = element('pre', [element('code', [text('flowchart TD\n    A --> B')], { class: 'code-container' })]);
+
+    expect(serialize(root)).toBe('```mermaid\nflowchart TD\n    A --> B\n```');
+  });
+
+  it('leaves a non-Mermaid unlabelled block as a bare fence', () => {
+    const root = element('pre', [element('code', [text('SELECT 1')], { class: 'code-container' })]);
+
+    expect(serialize(root)).toBe('```\nSELECT 1\n```');
+  });
+
+  it('recovers a diagram drawn straight into the answer with no code block around it', () => {
+    // Grok emits a container div holding only the rendered SVG, which is dropped as a graphic, so
+    // the diagram left no trace at all in the export -- not even an empty fence.
+    const container = Object.assign(element('div', [element('svg')], { class: 'mermaid flex' }), {
+      __reactFiber$abc: { return: { memoizedProps: { content: 'graph TD\n    A --> B\n' } } },
+    });
+
+    expect(serialize(element('div', [element('p', [text('here:')]), container]))).toBe(
+      'here:\n\n```mermaid\ngraph TD\n    A --> B\n```',
+    );
+  });
+
+  it('reads the source from a diagram block that never rendered, and digs it out of one that did', () => {
+    // Claude marks both with the same attribute: the <pre> kept its source because the diagram
+    // failed to render, while the rendered one moved its SVG into a shadow root.
+    const failed = element('pre', [text('sankey-beta\n\nA,B,1')], { 'data-mermaid': 'true' });
+    const rendered = Object.assign(element('div', [], { 'data-mermaid': 'true', role: 'img' }), {
+      __reactFiber$abc: { return: { memoizedProps: { source: 'graph TD\n    A --> B\n' } } },
+    });
+
+    expect(serialize(element('div', [failed, rendered]))).toBe(
+      '```mermaid\nsankey-beta\n\nA,B,1\n```\n\n```mermaid\ngraph TD\n    A --> B\n```',
+    );
+  });
+
+  it('drops a rendered diagram whose container hides no readable source', () => {
+    const container = element('div', [element('svg')], { class: 'mermaid' });
+
+    expect(serialize(element('div', [element('p', [text('only text')]), container]))).toBe('only text');
+  });
+
+  it('recovers the source of a diagram the provider rendered as a picture', () => {
+    // ChatGPT replaces a mermaid block with an image and a menu button, so the only text left in
+    // the <pre> is the button's label. Exporting that label as the code block loses every diagram.
+    const pane = Object.assign(
+      element('div', [element('button', [text('Diagram options')])], { 'data-code-block-preview-pane': 'mermaid' }),
+      { __reactProps$abc: { children: [{ props: { children: { props: { source: 'flowchart LR\n    A --> B\n' } } } }] } },
+    );
+
+    expect(serialize(element('pre', [pane]))).toBe('```mermaid\nflowchart LR\n    A --> B\n```');
+  });
+
+  it('drops a rendered diagram whose source cannot be read instead of exporting the button label', () => {
+    const pane = element('div', [element('button', [text('Diagram options')])], {
+      'data-code-block-preview-pane': 'mermaid',
+    });
+
+    expect(serialize(element('div', [element('p', [text('before')]), element('pre', [pane])]))).toBe('before');
+  });
+
   it('recovers code-block line breaks from the rendered layout when the markup has none', () => {
     // A highlighter that wraps every line in its own element leaves no newline character in the
     // markup. textContent then joins the lines into one run-on string that still carries their
