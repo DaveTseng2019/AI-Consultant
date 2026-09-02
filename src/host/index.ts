@@ -20,6 +20,14 @@ export interface NavBlockedPayload {
   host: string;
 }
 
+export interface DownloadSavedPayload {
+  provider: string;
+  name: string;
+  path: string;
+  /** The file's own bytes when it is text. Absent for an image or an archive. */
+  text: string | null;
+}
+
 // CSS px × devicePixelRatio = 實體像素。dpr 已包含 WebView2 頁面縮放
 // （Windows「文字大小」會變成 ZoomFactor），Logical 座標會少乘這個縮放而錯位。
 const toBounds = (rect: DOMRectReadOnly) => {
@@ -58,6 +66,10 @@ export const host = {
   },
   onNavBlocked: async (handler: (payload: NavBlockedPayload) => void): Promise<() => void> => {
     const unlisten = await listen<NavBlockedPayload>('nav://blocked', (event) => handler(event.payload));
+    return unlisten;
+  },
+  onDownloadSaved: async (handler: (payload: DownloadSavedPayload) => void): Promise<() => void> => {
+    const unlisten = await listen<DownloadSavedPayload>('download://saved', (event) => handler(event.payload));
     return unlisten;
   },
   provider: {

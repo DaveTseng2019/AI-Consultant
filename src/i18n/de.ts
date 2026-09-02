@@ -58,6 +58,7 @@ export const de: Record<I18nKey, string> = {
   'layout.resizeFocusPane': 'Fokusbereich skalieren',
   'layout.resizeSidebar': 'Verlaufsleiste skalieren',
   'share.exported': 'Exportiert: {path}',
+  'download.saved': 'Heruntergeladen: {path}',
   'share.exportFailed': 'Die Unterhaltung konnte nicht exportiert werden. Bitte erneut versuchen.',
   'archive.noRunArgument': '(ohne Lauf)',
   'archive.noSnapshot': 'Zu dieser Frage gibt es keine Aufzeichnung. Ein Lauf wird beim Abschluss im Arbeitsspeicher gehalten; stellen Sie die Frage erneut und drücken Sie dann hier.',

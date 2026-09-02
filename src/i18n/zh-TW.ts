@@ -52,6 +52,7 @@ export const zhTW: Record<I18nKey, string> = {
   'layout.resizeFocusPane': '調整焦點窗格寬度',
   'layout.resizeSidebar': '調整對話紀錄寬度',
   'share.exported': '已匯出：{path}',
+  'download.saved': '已下載：{path}',
   'share.exportFailed': '無法匯出這段對話，請再試一次。',
   'archive.noRunArgument': '（不帶入執行紀錄）',
   'archive.noSnapshot': '這一題沒有可用的執行紀錄。紀錄是在問題跑完時留在記憶體裡的，請重新問一次再按一次。',

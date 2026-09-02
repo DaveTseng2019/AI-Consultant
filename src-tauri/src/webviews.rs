@@ -394,6 +394,24 @@ fn trace_download(provider: &str, event: &str, detail: &str) {
 #[cfg(not(debug_assertions))]
 fn trace_download(_provider: &str, _event: &str, _detail: &str) {}
 
+/// A file the provider saved is its real answer whenever it is text: Claude answers a long
+/// request by writing a document instead of typing it, and the conversation then holds only a
+/// viewer panel. Reading the bytes back is the ground truth that panel only approximates.
+/// notes: caps at 512 KB and rejects anything that is not valid UTF-8, so an image or an archive
+///        is reported by path alone. Raise the cap if a real answer ever exceeds it.
+const DOWNLOAD_TEXT_LIMIT: u64 = 512 * 1024;
+
+fn downloaded_text(path: &std::path::Path) -> Option<String> {
+    if std::fs::metadata(path).ok()?.len() > DOWNLOAD_TEXT_LIMIT {
+        return None;
+    }
+    let bytes = std::fs::read(path).ok()?;
+    if bytes.contains(&0) {
+        return None;
+    }
+    String::from_utf8(bytes).ok()
+}
+
 /// The signal only carries when the document it was observed on is the one being reloaded.
 fn carried_app_title_epoch(
     pending: &GrokNavigationPreparation,
@@ -1091,6 +1109,7 @@ pub async fn provider_open(
     let load_app = app.clone();
     let load_provider = provider.clone();
     let download_provider = provider.clone();
+    let download_app = app.clone();
     let load_delayed_grok_script = delayed_grok_script;
     let builder = WebviewBuilder::new(&label, WebviewUrl::External(url));
     // Grok's Cloudflare challenge must see a stock document from its first instruction.
@@ -1129,6 +1148,24 @@ pub async fn provider_open(
                         "finished",
                         &format!("{url} -> {path:?} success={success}"),
                     );
+                    if let (true, Some(path)) = (success, path.as_ref()) {
+                        let text = downloaded_text(path);
+                        let sent = download_app.emit_to(
+                            "main",
+                            "download://saved",
+                            serde_json::json!({
+                                "provider": &download_provider,
+                                "name": path.file_name().map(|name| name.to_string_lossy()),
+                                "path": path.to_string_lossy(),
+                                "text": &text,
+                            }),
+                        );
+                        trace_download(
+                            &download_provider,
+                            "emitted",
+                            &format!("bytes={:?} sent={sent:?}", text.as_ref().map(String::len)),
+                        );
+                    }
                 }
                 _ => (),
             }

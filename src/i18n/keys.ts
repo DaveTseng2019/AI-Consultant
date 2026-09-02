@@ -50,6 +50,7 @@ export const I18N_KEYS = [
   'layout.resizeFocusPane',
   'layout.resizeSidebar',
   'share.exported',
+  'download.saved',
   'share.exportFailed',
   'archive.noSnapshot',
   'archive.running',

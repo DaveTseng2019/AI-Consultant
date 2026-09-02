@@ -58,6 +58,7 @@ export const ja: Record<I18nKey, string> = {
   'layout.resizeFocusPane': 'フォーカスペインのサイズを変更',
   'layout.resizeSidebar': '会話履歴の幅を変更',
   'share.exported': '書き出しました：{path}',
+  'download.saved': 'ダウンロードしました：{path}',
   'share.exportFailed': '会話を書き出せませんでした。もう一度お試しください。',
   'archive.noRunArgument': '（実行記録なし）',
   'archive.noSnapshot': 'この質問には実行記録がありません。記録は実行の完了時にメモリーへ保持されるため、もう一度質問してから押してください。',

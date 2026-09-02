@@ -58,6 +58,7 @@ export const en: Record<I18nKey, string> = {
   'layout.resizeFocusPane': 'Resize focus pane',
   'layout.resizeSidebar': 'Resize conversation history',
   'share.exported': 'Exported: {path}',
+  'download.saved': 'Downloaded: {path}',
   'share.exportFailed': "Couldn't export this conversation. Please try again.",
   'archive.noRunArgument': '(no run passed)',
   'archive.noSnapshot': 'This question has no recorded run. A run is kept in memory as it completes, so ask the question again, then press this.',

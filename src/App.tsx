@@ -323,7 +323,7 @@ export default function App() {
   const [preflight, setPreflight] = useState<{ mode: PreflightSubject; result: PreflightResult } | undefined>();
   const [stepTimeout, setStepTimeout] = useState<StepTimeoutDialogState | undefined>();
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [shareNotice, setShareNotice] = useState<{ kind: 'ok' | 'error'; text: string } | undefined>();
+  const [shareNotice, setShareNotice] = useState<{ kind: 'ok' | 'info' | 'error'; text: string } | undefined>();
   const [sessionCheckpointNotice, setSessionCheckpointNotice] = useState<StartupSessionCheckpointNotice | undefined>();
   const [sessionCheckpointReplayBusy, setSessionCheckpointReplayBusy] = useState(false);
   const [reportPreview, setReportPreview] = useState<{ provider: AIProvider; digest: ReportDigest; body: string } | null>(null);
@@ -616,7 +616,9 @@ export default function App() {
 
   useEffect(() => {
     if (!shareNotice) return;
-    const t = window.setTimeout(() => setShareNotice(undefined), 5000);
+    // A download notice names a path the user may want to read off the screen, so it stays up
+    // twice as long as the app's own success messages.
+    const t = window.setTimeout(() => setShareNotice(undefined), shareNotice.kind === 'info' ? 10_000 : 5000);
     return () => window.clearTimeout(t);
   }, [shareNotice]);
 
@@ -670,6 +672,44 @@ export default function App() {
     let unlisten: (() => void) | undefined;
     void host.onNavBlocked((payload) => {
       recordEventLog(eventFromNavBlocked(payload));
+    }).then((fn) => {
+      if (disposed) {
+        fn();
+        return;
+      }
+      unlisten = fn;
+    });
+    return () => {
+      disposed = true;
+      unlisten?.();
+    };
+  }, []);
+
+  // Claude answers a long request by writing a document and offering it for download, leaving the
+  // conversation with only a viewer panel. The saved file is that answer, so it belongs in the
+  // transcript -- and therefore in the export -- rather than only in the Downloads folder.
+  useEffect(() => {
+    let disposed = false;
+    let unlisten: (() => void) | undefined;
+    void host.onDownloadSaved((payload) => {
+      const provider = PROVIDERS.find((known) => known === payload.provider);
+      if (provider && payload.text?.trim()) {
+        setMessages((current) => [
+          ...current,
+          {
+            id: createConversationMessageId('ai'),
+            role: 'ai',
+            provider,
+            authorLabel: `${AI_PROVIDERS[provider].name} · ${payload.name}`,
+            content: payload.text ?? '',
+            final: true,
+          },
+        ]);
+      }
+      setShareNotice({
+        kind: 'info',
+        text: formatI18n(translateKey('download.saved', localeRef.current), { path: payload.path }),
+      });
     }).then((fn) => {
       if (disposed) {
         fn();
@@ -2418,7 +2458,12 @@ export default function App() {
               className={
                 shareNotice.kind === 'error'
                   ? 'mt-3 border border-red-300 dark:border-red-900 bg-red-50 dark:bg-red-950 px-3 py-2 text-xs text-red-800 dark:text-red-200'
-                  : 'mt-3 border border-emerald-300 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950 px-3 py-2 text-xs text-emerald-800 dark:text-emerald-200'
+                  : shareNotice.kind === 'info'
+                    // A file arriving from a provider is not the app reporting its own success, so it
+                    // reads in amber rather than the green the export notice uses. Bright yellow text
+                    // only works on the dark ground; on the light one the yellow has to be the ground.
+                    ? 'mt-3 border border-amber-400 dark:border-amber-500 bg-amber-100 dark:bg-amber-950 px-3 py-2 text-xs font-medium text-amber-900 dark:text-amber-300'
+                    : 'mt-3 border border-emerald-300 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950 px-3 py-2 text-xs text-emerald-800 dark:text-emerald-200'
               }
             >
               {shareNotice.text}
