@@ -33,3 +33,10 @@ tauri-plugin-single-instance = "=2.4.3"
 # the title watcher now uses Tauri's cross-platform WebviewBuilder::on_document_title_changed.
 [target.'cfg(windows)'.dependencies]
 windows = "=0.61.3"
+
+# linux: set_bounds is a no-op there -- wry packs every webview into the window's GtkBox, so GTK
+# decides the geometry and the rectangle we ask for is discarded. Reaching the widget directly is
+# the only way to give a provider a size. Pinned to the version Tauri already resolves, so this
+# adds no second gtk to the tree.
+[target.'cfg(target_os = "linux")'.dependencies]
+gtk = "=0.18.2"

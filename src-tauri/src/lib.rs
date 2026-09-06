@@ -37,6 +37,13 @@ pub fn run() {
                 }
             }
 
+            // Before any provider webview exists, so the window still holds exactly one child to
+            // move. See `webviews::install_provider_layer`.
+            #[cfg(target_os = "linux")]
+            if let Some(window) = app.get_webview_window("main") {
+                webviews::install_provider_layer(&window.as_ref().window());
+            }
+
             // Hot-update: refresh adapters at startup and every 6h (best-effort, off the UI thread).
             let handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {

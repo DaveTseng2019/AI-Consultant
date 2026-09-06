@@ -2163,6 +2163,7 @@ fn provider_label(provider: &str) -> String {
     format!("ai-{provider}")
 }
 
+#[cfg(not(target_os = "linux"))]
 fn set_webview_bounds<R: tauri::Runtime>(
     webview: &tauri::Webview<R>,
     position: PhysicalPosition<i32>,
@@ -2174,6 +2175,107 @@ fn set_webview_bounds<R: tauri::Runtime>(
         .set_bounds(tauri::Rect {
             position: tauri::Position::Physical(position),
             size: tauri::Size::Physical(size),
+        })
+        .map_err(|error| error.to_string())
+}
+
+/// wry packs every webview into the window's GtkBox, and a GtkBox only stacks: it has no
+/// coordinates, so `set_bounds` is discarded and the window turns into horizontal bands. This
+/// rebuilds the window's inside as an overlay -- the app UI underneath, and a `GtkFixed` layer above
+/// it that does have coordinates. Provider webviews move into that layer and can then be placed and
+/// sized exactly where the front end asks, which is the layout every other platform already gets.
+///
+/// Deliberately not wry's own `build_as_child`: that path puts each webview in its own X11 child
+/// window with no event mask, under a GtkWindow the window manager never focuses, and the result
+/// takes neither pointer nor keyboard input. A GtkFixed child stays in the same toplevel, so the
+/// input path is the one that already works.
+///
+/// Must run before the first provider webview is created, while the box still holds exactly one
+/// child: the app's own webview.
+#[cfg(target_os = "linux")]
+pub fn install_provider_layer<R: tauri::Runtime>(window: &tauri::Window<R>) {
+    use gtk::prelude::*;
+
+    let Ok(vbox) = window.default_vbox() else {
+        return;
+    };
+    if provider_layer(&vbox).is_some() {
+        return;
+    }
+    let Some(app_webview) = vbox.children().into_iter().next() else {
+        return;
+    };
+
+    vbox.remove(&app_webview);
+    let overlay = gtk::Overlay::new();
+    overlay.add(&app_webview);
+    let layer = gtk::Fixed::new();
+    overlay.add_overlay(&layer);
+    // Not optional. An overlay child gets its own GdkWindow covering the whole overlay, and that
+    // window swallows every click before the app UI beneath it sees one -- the composer stops
+    // responding while the providers, which have windows of their own, still take input. Pass-
+    // through hands the events back everywhere the layer itself is empty.
+    overlay.set_overlay_pass_through(&layer, true);
+    vbox.pack_start(&overlay, true, true, 0);
+    overlay.show_all();
+}
+
+#[cfg(target_os = "linux")]
+fn provider_layer(vbox: &gtk::Box) -> Option<gtk::Fixed> {
+    use gtk::prelude::*;
+
+    vbox.children()
+        .into_iter()
+        .filter_map(|child| child.downcast::<gtk::Overlay>().ok())
+        .flat_map(|overlay| overlay.children())
+        .find_map(|child| child.downcast::<gtk::Fixed>().ok())
+}
+
+#[cfg(target_os = "linux")]
+fn set_webview_bounds<R: tauri::Runtime>(
+    webview: &tauri::Webview<R>,
+    position: PhysicalPosition<i32>,
+    size: PhysicalSize<u32>,
+) -> Result<(), String> {
+    let width = i32::try_from(size.width).unwrap_or(i32::MAX).max(1);
+    let height = i32::try_from(size.height).unwrap_or(i32::MAX).max(1);
+    webview
+        .with_webview(move |platform| {
+            use gtk::prelude::*;
+
+            let widget = platform.inner();
+            // The layer is found through the widget's own toplevel rather than captured: GTK types
+            // are not Send, and this closure has to be.
+            let layer = widget
+                .toplevel()
+                .and_then(|toplevel| toplevel.downcast::<gtk::Container>().ok())
+                .and_then(|toplevel| {
+                    toplevel
+                        .children()
+                        .into_iter()
+                        .filter_map(|child| child.downcast::<gtk::Box>().ok())
+                        .find_map(|vbox| provider_layer(&vbox))
+                });
+            let Some(layer) = layer else {
+                return;
+            };
+
+            let already_layered = widget.parent().is_some_and(|parent| {
+                parent.as_ptr() == layer.clone().upcast::<gtk::Widget>().as_ptr()
+            });
+            if already_layered {
+                layer.move_(&widget, position.x, position.y);
+            } else {
+                if let Some(parent) = widget
+                    .parent()
+                    .and_then(|parent| parent.downcast::<gtk::Container>().ok())
+                {
+                    parent.remove(&widget);
+                }
+                layer.put(&widget, position.x, position.y);
+            }
+            widget.set_size_request(width, height);
+            widget.show_all();
         })
         .map_err(|error| error.to_string())
 }
