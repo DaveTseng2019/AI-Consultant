@@ -21,5 +21,6 @@ src-tauri/gen
 plans/
 CLAUDE.md
 AGENTS.md
+docs/.local/
 docs/HANDOVER.md
 docs/VISION-ALIGNMENT.md
