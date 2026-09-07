@@ -1,135 +1,151 @@
-# 發佈流程
+**English** | [繁體中文](./RELEASE.zh-TW.md)
 
-> **已發佈的版本從 `v0.0.1`（2026-08-21）開始。** 打新 tag 之前先跑 `git tag -l` 看目前最新是哪一個，
-> 這份文件不逐版更新。
+# Release procedure
 
-發佈是 **tag 驅動**的：你推一個 `v*` tag，CI 建三個平台，開一個 **draft** release 把產物掛上去。
-你檢查完自己按 Publish。**CI 不會建 tag，也不會自己發佈**——tag 推上去之前什麼都不會發生，
-draft 發佈之前什麼都不會公開。
+> **Published versions start at `v0.0.1` (2026-08-21).** Run `git tag -l` to see the current latest
+> before tagging a new one; this document is not updated per version.
 
-## 發佈一次
+Releasing is **tag driven**: you push a `v*` tag, CI builds three platforms, and a **draft** release
+is opened with the artifacts attached. You review it and press Publish yourself. **CI never creates
+a tag and never publishes** — nothing happens before the tag is pushed, and nothing is public
+before the draft is published.
 
-### 1. 停掉正在跑的 app
+## One release
+
+### 1. Stop the running app
 
 ```sh
 node scripts/agent/stop.mjs --json
 ```
 
-> app 開著的話 `pnpm verify` 會失敗。`scripts/agent/tests/commands.test.mjs` 裡的
-> `launch dry-run` 期望拿到 `would_start`，但 app 在跑時它拿到的是 `already_running`。
-> 那不是程式壞了，是環境沒清乾淨——但它會讓 `pnpm verify` 以非零結束，看起來像真的失敗。
+> `pnpm verify` fails while the app is open. The `launch dry-run` case in
+> `scripts/agent/tests/commands.test.mjs` expects `would_start`, but with the app running it gets
+> `already_running`. That is not a broken program, it is an unclean environment — but it makes
+> `pnpm verify` exit non-zero and look like a real failure.
 
-### 2. 本機驗證
+### 2. Verify locally
 
 ```sh
-pnpm verify                                  # build:injected + typecheck + lint + vitest + agent:verify + adapter 檢查
+pnpm verify                                  # build:injected + typecheck + lint + vitest + agent:verify + adapter checks
 cd src-tauri
 cargo test
 cargo fmt -- --check
 cargo clippy --all-targets -- -D warnings
 ```
 
-四項都要過。詳細的發佈前檢查見下面的清單。
+All four must pass. The detailed pre-release checks are in the list below.
 
-### 3. 確認 main 已經推上去
+### 3. Confirm main is pushed
 
 ```sh
 git push origin main
 ```
 
-tag 必須指在 `origin` 已經有的 commit 上，否則 CI checkout 不到。
+The tag must point at a commit `origin` already has, or CI cannot check it out.
 
-### 4. 打 tag 並推上去
+### 4. Tag and push
 
 ```sh
-git tag -a v0.1.0 -m "v0.1.0: 說明這一版做了什麼"
+git tag -a v0.1.0 -m "v0.1.0: say what this version did"
 git push origin v0.1.0
 ```
 
-### 5. 等 CI、審 draft、發佈
+### 5. Wait for CI, review the draft, publish
 
-推上去之後等 **10～20 分鐘**（三個平台各自建置）。到
-<https://github.com/DaveTseng2019/AI-Consultant/releases> 開那個 draft：
+After the push, wait **10–20 minutes** (three platforms building separately). Open the draft at
+<https://github.com/DaveTseng2019/AI-Consultant/releases>:
 
-- 確認 Windows `.exe`／`.zip`、macOS `.dmg`、Linux `.AppImage` 都掛上去了
-- 至少下載 Windows 的產物實際跑一次
-- 檢查自動產生的 release notes
+- Confirm the Windows `.exe` / `.zip`, the macOS `.dmg` and the Linux `.AppImage` are all attached
+- Download at least the Windows artifact and actually run it once
+- Check the auto-generated release notes
 
-沒問題就按 **Publish release**。
+If it is fine, press **Publish release**.
 
-### 6. 重建本機的那一支
+### 6. Rebuild the local executable
 
 ```sh
 pnpm build:local
 ```
 
-CI 發佈**不會**動到 `src-tauri/target/release/ai-consultant.exe`，也就是本機桌面捷徑指的那一支。
-不重建的話，你日常在用的還是發佈前的舊執行檔。`build:local` 會把 commit 寫進旁邊的
-`build-info.json`，之後才查得出手上這支是哪一版。app 開著會鎖住 exe 讓連結失敗，
-加 `--close` 讓它自己關掉。
+A CI release does **not** touch `src-tauri/target/release/ai-consultant.exe`, which is what the
+local desktop shortcut points at. Without a rebuild, the one you use every day is still the old
+pre-release executable. `build:local` writes the commit into the neighbouring `build-info.json`, so
+that the version in your hand can be identified later. An open app locks the exe and makes linking
+fail; add `--close` to let it close the app itself.
 
-### 作廢一次建置
+### Voiding a build
 
-刪掉 draft release，再刪掉 tag：
+Delete the draft release, then delete the tag:
 
 ```sh
 git push origin :refs/tags/v0.1.0
 git tag -d v0.1.0
 ```
 
-發佈之前什麼都不是公開的。
+Nothing is public before publishing.
 
-## 版號來自 tag
+## The version comes from the tag
 
-Release workflow 只對 `v*` tag 觸發。它把開頭的 `v` 去掉，在 CI 的 checkout 裡把版號注入
-`package.json` 與 `src-tauri/tauri.conf.json`，然後才跑 `pnpm tauri build`。
+The release workflow only triggers on a `v*` tag. It strips the leading `v`, injects the version
+into `package.json` and `src-tauri/tauri.conf.json` inside the CI checkout, and only then runs
+`pnpm tauri build`.
 
-**repo 裡的版號永遠是 `0.0.0`**，發佈時不需要改任何檔案。
+**The version in the repo is always `0.0.0`**; releasing requires no file edits.
 
-tag 名稱含 `-pre` 會被標成 prerelease（例如 `v0.2.0-pre.1`）。
+A tag name containing `-pre` is marked as a prerelease (for example `v0.2.0-pre.1`).
 
-## CI 產出什麼
+## What CI produces
 
-| 平台 | 產物 |
+| Platform | Artifact |
 |---|---|
-| Windows | NSIS 安裝檔 `.exe` ＋ 可攜版 `AI-Consultant-<版號>-windows-portable.zip` |
-| macOS | ad-hoc 簽章的 `.dmg`；CI 會掛載它並嚴格驗證內嵌 `.app` 的簽章 |
+| Windows | NSIS installer `.exe` + portable `AI-Consultant-<version>-windows-portable.zip` |
+| macOS | An ad-hoc signed `.dmg`; CI mounts it and strictly verifies the embedded `.app` signature |
 | Linux | `.AppImage` |
 
-可攜版的 `.exe` 旁邊會放一個 `PORTABLE` 標記檔。可攜模式**隱藏 app 內的更新檢查介面**，
-可攜版使用者靠自己到 GitHub Releases 下載新版。安裝版使用者可以用「設定 → 檢查更新」
-偵測新版並開啟下載頁——app 不會自己下載或安裝。
+The portable `.exe` sits next to a `PORTABLE` marker file. Portable mode **hides the in-app update
+check**, and portable users fetch new versions from GitHub Releases themselves. Installed users can
+use "Settings → check for updates" to detect a new version and open the download page — the app
+never downloads or installs anything by itself.
 
-## 發佈前的檢查清單
+## Pre-release checklist
 
-- `pnpm verify`（含 `pnpm agent:verify`）、Rust 測試、`cargo fmt -- --check`、
-  `cargo clippy --all-targets -- -D warnings` 全數通過。
-- `agent-release.json` 通過 schema 驗證；兩份 Skill 內容同步且維持「只能明確呼叫」；
-  `node scripts/agent/launch.mjs --dry-run --json` 沒有任何寫入。source lane 不安裝任何宿主前置，
-  也不建置 release 產物。
-- 預設 capability 只指向 `webviews:["main"]`，沒有 `windows` 或 `remote` 條目；
-  打包後的控制台在正式 CSP 下仍能檢查更新與匯出。
-- 遠端 adapter 測試允許在已內建的 URL 範圍內改選擇器與時序，並拒絕擴張 provider／登入／match／SSO。
-- 用**實際觀察到的證據**更新 [`COMPATIBILITY.md`](./COMPATIBILITY.md)。CI 打包成功不等於使用者啟動成功。
-- 發佈前實測 Windows 產物。Apple Silicon 上要確認首次啟動與四家 provider 登入，
-  特別要求 Grok 能通過 Cloudflare 驗證。Linux 在拿到實機回報之前維持 CI-only。
+- `pnpm verify` (including `pnpm agent:verify`), the Rust tests, `cargo fmt -- --check` and
+  `cargo clippy --all-targets -- -D warnings` all pass.
+- `agent-release.json` validates against the schema; the two Skill bodies are in sync and stay
+  explicit-invocation-only; `node scripts/agent/launch.mjs --dry-run --json` writes nothing. The
+  source lane installs no host prerequisites and builds no release artifacts.
+- The default capability points only at `webviews:["main"]`, with no `windows` or `remote` entries;
+  the packaged control pane can still check for updates and export under the production CSP.
+- The remote adapter tests allow selector and timing changes within the URL scope already built in,
+  and refuse to widen provider / login / match / SSO.
+- Update [`COMPATIBILITY.md`](./COMPATIBILITY.md) with **evidence actually observed**. A successful
+  CI package is not a successful user launch.
+- Test the Windows artifact for real before releasing. On Apple Silicon, confirm the first launch
+  and sign-in on all four providers, specifically requiring Grok to pass the Cloudflare
+  verification. Linux stays CI-only until there is a real-device report.
 
-## 凍結的發佈政策
+## Frozen release policy
 
-- 最終 identifier 是 `tw.micasa.aiconsultant`。
-- GitHub Releases 是唯一的更新管道。app 可以檢查有沒有新版並開啟它的頁面，
-  但**不會自己下載或安裝更新**。
-- release tag 同時帶著 Agent-Ready Source Release 的 manifest 與 Skills，但它們只會從可信的
-  checkout 啟動 `tauri dev`。那不是打包產物、容器、更新器或宿主工具安裝程式。
-  見 [`AGENT-READY-SOURCE-RELEASE.md`](./AGENT-READY-SOURCE-RELEASE.md)。
-- Windows Authenticode 簽章、macOS Developer ID／公證、更新器 manifest、獨立的套件管理器發佈，
-  全部是**關閉的範圍**，不是待辦。macOS 的 ad-hoc 簽章是打包完整性的底線，不是身分認證方案。
-- 每一個 release tag 在 draft 發佈之前，都必須通過 `pnpm verify`、跨平台的
-  `cargo clippy -- -D warnings`，以及三平台的建置 workflow。
+- The final identifier is `tw.micasa.aiconsultant`.
+- GitHub Releases is the only update channel. The app may check whether a new version exists and
+  open its page, but it **never downloads or installs an update by itself**.
+- A release tag also carries the Agent-Ready Source Release manifest and Skills, but they only
+  start `tauri dev` from a trusted checkout. That is not a packaged artifact, a container, an
+  updater, or a host-tool installer. See
+  [`AGENT-READY-SOURCE-RELEASE.md`](./AGENT-READY-SOURCE-RELEASE.md).
+- Windows Authenticode signing, macOS Developer ID / notarisation, an updater manifest, and
+  separate package-manager distribution are all **closed scope**, not to-dos. The macOS ad-hoc
+  signature is a packaging-integrity floor, not an identity scheme.
+- Every release tag must pass `pnpm verify`, cross-platform
+  `cargo clippy -- -D warnings`, and the three-platform build workflow before the draft is
+  published.
 
-## 使用者會遇到的事
+## What users will run into
 
-- **Windows 產物沒有簽章。** SmartScreen 會跳警告，使用者要按「其他資訊 → 仍要執行」。
-- **可攜版需要 Microsoft Edge WebView2 Evergreen Runtime。** Windows 10/11 通常已內建。
-- **macOS 產物只有 ad-hoc 簽章，沒有公證。** 第一次啟動被擋之後，使用者要到
-  「系統設定 → 隱私權與安全性 → 安全性」按「強制開啟」。那個選項通常只出現約一小時。
+- **The Windows artifacts are unsigned.** SmartScreen warns, and the user must press
+  "More info → Run anyway".
+- **The portable build needs the Microsoft Edge WebView2 Evergreen Runtime.** Windows 10/11
+  usually has it already.
+- **The macOS artifact is ad-hoc signed and not notarised.** After the first launch is blocked, the
+  user must go to "System Settings → Privacy & Security → Security" and press "Open Anyway". That
+  option usually only appears for about an hour.

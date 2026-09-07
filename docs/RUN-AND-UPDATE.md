@@ -1,280 +1,280 @@
-# 執行與更新指南
+**English** | [繁體中文](./RUN-AND-UPDATE.zh-TW.md)
 
-本文件整理日常執行與更新流程。詳細背景見 [.github/README.md](../.github/README.md)。
+# Run and update guide
 
-## 前置需求
+This document collects the everyday run and update procedures. For the full background see
+[.github/README.md](../.github/README.md).
+
+## Prerequisites
 
 - Node.js ^22.13.0 || >=24.0.0
-- pnpm（本專案鎖定 `pnpm@11`，可用 Corepack：`corepack enable`）
-- Rust stable toolchain（Windows 需 MSVC + Visual Studio Build Tools「Desktop development with C++」）
-- Windows 10/11 通常已內建 WebView2
+- pnpm (this project pins `pnpm@11`; Corepack works: `corepack enable`)
+- Rust stable toolchain (on Windows, MSVC + Visual Studio Build Tools "Desktop development with C++")
+- Windows 10/11 usually ships WebView2 already
 
-## 執行方法
+## Ways to run it
 
-### 方法一：直接執行（開發模式）
+### Way 1: run it directly (development mode)
 
 ```sh
 pnpm install
-pnpm build:injected   # 產生 src-tauri/gen/injected 的注入腳本
-pnpm tauri dev        # 第一次 Rust 編譯較久，完成後自動開啟視窗
+pnpm build:injected   # produce the injected scripts in src-tauri/gen/injected
+pnpm tauri dev        # the first Rust compile is slow; the window opens by itself when it finishes
 ```
 
-### 方法二：透過 agent 腳本（有稽核與狀態管理）
+### Way 2: through the agent scripts (with audit and state management)
 
 ```sh
-node scripts/agent/doctor.mjs --json     # 檢查前置環境
+node scripts/agent/doctor.mjs --json     # check the prerequisites
 node scripts/agent/launch.mjs --wait --timeout-ms 600000 --json
-node scripts/agent/status.mjs --json --lines 80   # 查狀態，state: "ready" 才算就緒
-node scripts/agent/stop.mjs --json       # 停止
+node scripts/agent/status.mjs --json --lines 80   # check state; only state: "ready" counts as ready
+node scripts/agent/stop.mjs --json       # stop
 ```
 
-在 Claude Code 中可直接執行 `/launch-ai-consultant`，等同上述流程加上前後稽核。
+In Claude Code you can run `/launch-ai-consultant` directly; it is the same flow plus the before
+and after audits.
 
-### 方法三：自己建一支來用
+### Way 3: build one for yourself
 
-本專案沒有發佈任何安裝檔。日常使用的方式是自己建 release 版，桌面捷徑指向
-`src-tauri\target\release\ai-consultant.exe`——見下面的「產生執行檔」。
+This project publishes no installer. The everyday way to use it is to build a release build
+yourself and point a desktop shortcut at
+`src-tauri\target\release\ai-consultant.exe` — see "Producing an executable" below.
 
-## 更新方法
+## Ways to update
 
-### 更新原始碼（開發環境）
+### Update the source (development environment)
 
 ```sh
 git pull
-pnpm install          # lockfile 有變更時同步 dependencies
-pnpm build:injected   # 注入腳本有變更時必須重建
+pnpm install          # sync dependencies when the lockfile changed
+pnpm build:injected   # required whenever the injected scripts changed
 pnpm tauri dev
 ```
 
-### 更新後驗證
+### Verify after updating
 
 ```sh
-pnpm verify   # 一次跑完：build:injected + typecheck + lint + test + agent:verify + adapter 檢查
+pnpm verify   # all in one: build:injected + typecheck + lint + test + agent:verify + adapter checks
 ```
 
-> **跑 `pnpm verify` 之前要先關掉 app。** `agent:verify` 裡的 `launch dry-run` 期望拿到
-> `would_start`，app 在跑的時候它拿到的是 `already_running`，整個 `pnpm verify` 會以非零結束。
-> 那不是程式壞了，但看起來跟真的失敗一模一樣。用 `node scripts/agent/stop.mjs --json` 停掉再跑。
+> **Close the app before running `pnpm verify`.** The `launch dry-run` case inside `agent:verify`
+> expects `would_start`; with the app running it gets `already_running`, and the whole
+> `pnpm verify` exits non-zero. That is not a broken program, but it looks exactly like a real
+> failure. Stop it with `node scripts/agent/stop.mjs --json` and run again.
 
-只想快速檢查可分開跑：
+For a quick check, run the parts separately:
 
 ```sh
 pnpm typecheck
 pnpm test
 ```
 
-### 更新正式版本（安裝版）
+### Update a released version (installed build)
 
-app 內建的更新檢查會比對 GitHub 最新 release，但本專案沒有發佈任何 release，所以那條路在這裡沒有作用。
-更新的方式就是 `git pull` 之後重新 `pnpm build:local`；本機設定與 provider 登入 profile 存在 app data，重建不受影響。
+The app's built-in update check compares against the latest GitHub release, but this project
+publishes no releases, so that path does nothing here. Updating means `git pull` followed by
+another `pnpm build:local`; local settings and provider login profiles live in app data and are
+unaffected by a rebuild.
 
-## 產生執行檔
+## Producing an executable
 
-### 本機打包（開發環境）
-
-```sh
-pnpm build:local            # 建置 + 蓋章（scripts/build-local.mjs）
-pnpm build:local --close    # app 正開著時：先請它關閉，再建置
-pnpm build:local --stamp-only   # 只補蓋章，前提是 HEAD 沒動過
-```
-
-底層仍是 `pnpm tauri build`（tauri.conf 的 `beforeBuildCommand` 會先建前端與注入腳本），
-但直接跑它不會蓋章，理由見下一節。
-
-產物位置：
-
-- 純執行檔：`src-tauri/target/release/*.exe`
-- NSIS 安裝檔：`src-tauri/target/release/bundle/nsis/*-setup.exe`
-
-portable zip（含 `PORTABLE` 標記；更新檢查在這裡會直接安裝——`portable_update_start`
-下載 release 的可攜版 zip、由一支 PowerShell 腳本等 app 退出後覆蓋資料夾再重開）：
+### Local packaging (development environment)
 
 ```sh
-pnpm pack:portable    # 從 src-tauri/target/release 打包到 dist/portable/
+pnpm build:local            # build + stamp (scripts/build-local.mjs)
+pnpm build:local --close    # with the app open: ask it to close first, then build
+pnpm build:local --stamp-only   # stamp only, valid as long as HEAD has not moved
 ```
 
-zip 檔名帶版號，但**裡面的資料夾固定叫 `ai-consultant-windows-portable`**（不帶版號）——
-更新是就地覆蓋同一個資料夾，資料夾名字帶版號會讓每次更新都變成多一份拷貝。
+Underneath it is still `pnpm tauri build` (tauri.conf's `beforeBuildCommand` builds the frontend
+and the injected scripts first), but running that directly does not stamp; the next section says
+why that matters.
 
-**更新寫進哪個資料夾：exe 自己所在的那一個，跟名字無關。**
-目標是 `std::env::current_exe()` 的父目錄（`portable_update_start`），所以使用者把 zip 解到
-`D:\AI-Consultant-0.0.13-windows-portable\` 也照樣更新得動——那個資料夾會留著原本的名字、
-裡面換成新版，程式不會另建資料夾也不會搬家。**資料夾名稱因此不能拿來判斷版本**，
-要看設定頁的版號或 `build-info.json`。
+Where the artifacts land:
 
-兩個延伸後果：解壓位置必須是不用管理員權限就寫得進去的地方（`Program Files` 不是），
-因為 app 要覆蓋自己那個資料夾；設定與登入不在那個資料夾裡（在 `%APPDATA%`），所以更新不會動到，
-但把資料夾搬到另一台電腦也帶不走。這些都寫在 zip 裡的 `README-portable.txt`。
+- Bare executable: `src-tauri/target/release/*.exe`
+- NSIS installer: `src-tauri/target/release/bundle/nsis/*-setup.exe`
 
-注意：本機 build 版本號固定為 `0.0.0`；正式版本號由 CI 從 git tag 注入。
+The portable zip (carries the `PORTABLE` marker; the update check installs in place here —
+`portable_update_start` downloads the release's portable zip, and a PowerShell script waits for the
+app to exit, overwrites the folder and reopens it):
 
-### 版號追蹤：這支 exe 是哪個 commit 建的
+```sh
+pnpm pack:portable    # package from src-tauri/target/release into dist/portable/
+```
 
-本機是實驗性質，桌面捷徑指向自己建的 `src-tauri\target\release\ai-consultant.exe`，
-沒有安裝任何正式版。這是驗證用的版本，版號從 `0.0.0` 起算，沿用來源專案的作法：
-repo 裡釘死 `0.0.0`，真正的號碼由發佈流程從 tag 注入。後果是本機建的 exe 其 FileVersion
-也是 `0.0.0`，完全看不出這支是從哪個 commit 來的。
+The zip filename carries the version, but **the folder inside is always named
+`ai-consultant-windows-portable`** without a version — an update overwrites the same folder in
+place, and a versioned folder name would turn every update into one more copy.
 
-所以改用 `git describe --tags` 當本機版號，在建置時蓋進 exe 旁邊的 `build-info.json`。
-蓋出來的檔案落在 `target/`（repo 的 `.gitignore` 第 3 行已忽略），
-所以碰不到 commit、PR 或 release：
+**Which folder the update writes into: the one the exe itself is in, regardless of its name.**
+The target is the parent directory of `std::env::current_exe()` (`portable_update_start`), so a
+user who unzipped to `D:\AI-Consultant-0.0.13-windows-portable\` still updates fine — that folder
+keeps its original name and gets the new version inside; the program neither creates another folder
+nor moves anything. **A folder name therefore cannot be used to tell the version**; read the
+version on the settings page or in `build-info.json`.
+
+Two consequences follow: the unzip location must be writable without administrator rights
+(`Program Files` is not), because the app has to overwrite its own folder; and settings and logins
+are not in that folder (they are in `%APPDATA%`), so an update leaves them alone — but moving the
+folder to another computer does not carry them along. All of this is written in the
+`README-portable.txt` inside the zip.
+
+Note: a local build's version number is always `0.0.0`; the real version is injected by CI from the
+git tag.
+
+### Version tracking: which commit built this exe
+
+The local setup is experimental. The desktop shortcut points at a self-built
+`src-tauri\target\release\ai-consultant.exe`, with no official build installed. This is a
+verification build, versions start at `0.0.0`, following the source project's practice: the repo
+pins `0.0.0` and the real number is injected from the tag by the release flow. The consequence is
+that a locally built exe also has FileVersion `0.0.0`, and there is no way to see which commit it
+came from.
+
+So `git describe --tags` is used as the local version instead, stamped at build time into a
+`build-info.json` next to the exe. The stamped file lands in `target/` (already ignored by line 3
+of the repo's `.gitignore`), so it can never reach a commit, a PR or a release:
 
 ```powershell
-pnpm build:local     # 建置 + 蓋章（scripts/build-local.mjs）
-pnpm build:local --close   # app 正開著時：先請它關閉，再建置
+pnpm build:local     # build + stamp (scripts/build-local.mjs)
+pnpm build:local --close   # with the app open: ask it to close first, then build
 ```
 
-`build-info.json` 的欄位：`describe` / `commit` / `branch` / `dirty` / `builtAt` / `stampedAt`。
-`dirty` 為真代表建置當下工作區有未提交的改動，`describe` 會低估那支 exe 實際包含的內容。
+The fields in `build-info.json`: `describe` / `commit` / `branch` / `dirty` / `builtAt` /
+`stampedAt`. A true `dirty` means the working tree had uncommitted changes at build time, and
+`describe` then understates what that exe actually contains.
 
-> **建置一律走 `pnpm build:local`。** 直接跑 `pnpm tauri build` 不會蓋章，版號就會失聯——
-> 2026-08-06 就發生過：建置時人在 `fix/collect-late-response-text` 分支，四分鐘後才 checkout 回 main，
-> 日常使用的 exe 因此停在 `v1.8.3-4-ga008c83`，少了 v1.8.4 的 `webviews.rs`（+610 行）與回應完整性修正，
-> 而且只能靠 `.git/logs/HEAD` 的時間戳反推才查得出來。
-> 手動建置後可用 `pnpm build:local --stamp-only` 補蓋，前提是 HEAD 沒動過。
+> **Always build through `pnpm build:local`.** Running `pnpm tauri build` directly does not stamp,
+> and the version is then lost — which happened on 2026-08-06: the build ran while on the
+> `fix/collect-late-response-text` branch, and main was checked back out four minutes later. The
+> exe in everyday use was therefore stuck at `v1.8.3-4-ga008c83`, missing v1.8.4's `webviews.rs`
+> (+610 lines) and the response-integrity fix, and the only way to find out was reconstructing it
+> from the timestamps in `.git/logs/HEAD`.
+> After a manual build you can stamp afterwards with `pnpm build:local --stamp-only`, as long as
+> HEAD has not moved.
 
-> **app 開著就不能建置**——執行中的 exe 鎖住自己，link 階段才會失敗，而且錯誤訊息完全不提真正的原因，
-> 前面幾分鐘的編譯也白花。`build:local` 因此在開始前先用 `tasklist` 檢查，發現有在跑就直接停下來說明。
-> 加 `--close` 才會替你關（用不帶 `/F` 的 `taskkill`，等同按視窗的關閉鈕，設定仍會存檔），
-> 最多等 10 秒。**預設不自動關**：那個視窗可能正在跑一輪對話，為了建置把它殺掉比多打一個參數糟糕。
+> **You cannot build while the app is open** — a running exe locks itself, the failure only comes
+> at the link stage, the error message never mentions the real reason, and the previous few minutes
+> of compilation are wasted. `build:local` therefore checks with `tasklist` before it starts, and
+> stops with an explanation if it finds one running.
+> Only `--close` closes it for you (with `taskkill` without `/F`, equivalent to pressing the
+> window's close button, so settings are still saved), waiting at most 10 seconds. **It never
+> closes anything by default**: that window may be in the middle of a conversation round, and
+> killing it for a build is worse than typing one more argument.
 
-### 正式發佈（三平台，走 CI）
+### Official release (three platforms, through CI)
 
-推 `v*` tag 觸發 Release workflow，CI 產出 Windows `.exe`／`.zip`、macOS `.dmg`、Linux `.AppImage`
-掛在 **draft** Release，人工審核後才 Publish。CI 不會建 tag，也不會自己發佈。
-版號從 tag 取得，repo 裡永遠留 `0.0.0`，發佈時不用改任何檔案。
+Pushing a `v*` tag triggers the release workflow. CI produces the Windows `.exe` / `.zip`, the
+macOS `.dmg` and the Linux `.AppImage`, attaches them to a **draft** release, and only a human
+review leads to Publish. CI never creates a tag and never publishes.
+The version comes from the tag; the repo always keeps `0.0.0`, and releasing requires no file
+edits.
 
-目前的 tag 用 `git tag -l` 查。完整步驟、作廢方式與發佈前檢查清單見
-[RELEASE.md](./RELEASE.md)。
+Check the current tags with `git tag -l`. Full steps, how to void a build and the pre-release
+checklist are in [RELEASE.md](./RELEASE.md).
 
-## `src-tauri/permissions/autogenerated/` 的假異動
+## The phantom changes under `src-tauri/permissions/autogenerated/`
 
-`git status` 常年顯示這底下 29 個 `.toml` 被改過，但 `git diff` 是空的——那是 CRLF 換行差異，
-內容完全相同。**不要 stage 它們**。
+`git status` permanently shows 29 `.toml` files under this directory as modified while `git diff`
+is empty — that is a CRLF line-ending difference with identical content. **Do not stage them.**
 
-## 重播紀錄（Snapshot 重播）
+## Replaying records (snapshot replay)
 
-> 2026-08-12 逐行對照過 `src/ui/ReplayPanel.tsx`、`src/workflow/snapshot/replay.ts`、
-> `src/workflow/snapshot/types.ts`、`src/App.tsx`（基準 commit `5f77ed5`）。
-> 這幾個檔案改動後本節可能失準。
+> Checked line by line against `src/ui/ReplayPanel.tsx`, `src/workflow/snapshot/replay.ts`,
+> `src/workflow/snapshot/types.ts` and `src/App.tsx` on 2026-08-12 (baseline commit `5f77ed5`).
+> This section can go stale when those files change.
 
-標題列的「重播紀錄」開關按鈕（`replay.historyToggle`）會展開 `#replay-history-panel` 抽屜，裡面是 `ReplayPanel`。它把某次執行留下的 snapshot 沿正常 workflow 路徑**重跑一次**，不是回放舊畫面——最後真的會呼叫 `executeGraph`，AI 會重新回答。
+The "Replay records" toggle button in the title bar (`replay.historyToggle`) expands the
+`#replay-history-panel` drawer, which contains `ReplayPanel`. It takes the snapshot left by a run
+and **runs it again** along the normal workflow path; it is not a playback of the old screen — it
+really ends up calling `executeGraph`, and the AI answers afresh.
 
-snapshot 存的是 graph id、graph 版本、角色→provider 對應、原始問題、各步驟輸入/輸出（`ExecutionSnapshot`）。
+A snapshot stores the graph id, the graph version, the role → provider mapping, the original
+question, and each step's input and output (`ExecutionSnapshot`).
 
-### 兩個來源
+### Two sources
 
-- **重播上次執行**：記憶體裡的 `getLastSnapshot()`，重啟就沒了。
-- **已儲存 snapshots**：要開 durable snapshots 才會落地；清單依建立時間新→舊排序，每筆可重播或刪除。
+- **Replay the last run**: `getLastSnapshot()` in memory, gone after a restart.
+- **Saved snapshots**: only persisted when durable snapshots are enabled; the list is sorted newest
+  to oldest by creation time, and each entry can be replayed or deleted.
 
-另有第三個入口：啟動時若偵測到 session checkpoint，`SessionCheckpointNotice` 會提供對應 snapshot 的「重播」按鈕。
+There is a third entry point: if a session checkpoint is detected at startup,
+`SessionCheckpointNotice` offers a "Replay" button for the matching snapshot.
 
-### 重跑前的五道把關（`planReplay` / `replaySnapshot`）
+### Five checks before it re-runs (`planReplay` / `replaySnapshot`)
 
-| 狀況 | `ReplayBlockReason` | 行為 |
+| Situation | `ReplayBlockReason` | Behaviour |
 |---|---|---|
-| snapshot 讀不到（已刪除或 id 錯） | `not-found` | 直接報錯 |
-| graph 已不存在 | `unknown-graph` | 直接擋下，顯示 graphId |
-| graph 版本與當初不同 | `graph-version-mismatch` | 先擋並顯示兩邊版號，按「使用目前 graph 重播」才續跑 |
-| 原始問題未保留 | `question-required` | 要求手動補；判準是 `userQuestion.kind === 'inline'`，`metadata-only` 與 `hashes` 兩層不會保留 |
-| preflight 失敗 | `preflight` | 列出 unavailable 的 provider 各附「開啟登入」按鈕，另外列出被 alias 的角色 |
+| The snapshot cannot be read (deleted, or wrong id) | `not-found` | Reports the error directly |
+| The graph no longer exists | `unknown-graph` | Blocked outright, showing the graphId |
+| The graph version differs from the original | `graph-version-mismatch` | Blocked first, showing both versions; continues only after "Replay with the current graph" |
+| The original question was not kept | `question-required` | Asks for it manually; the criterion is `userQuestion.kind === 'inline'`, and the `metadata-only` and `hashes` tiers do not keep it |
+| Preflight failed | `preflight` | Lists each unavailable provider with an "Open sign-in" button, and separately lists the aliased roles |
 
-### 幾個容易誤解的地方
+### Easy things to get wrong
 
-- **重播會產生新的 snapshot**，不是覆寫舊的；成功後回傳 `newSnapshotId` 並自動刷新清單。
-- **重播的對象不保證跟當初一樣**：free 類 graph 的 targets 會跟「現在可送出的連線」取交集（`replayTargets` + `isSendable`），當初有、現在沒登入的 provider 會被略過。
-- **回應語言政策會被還原**：從 snapshot 各步驟的 prompt 反推（僅 graphVersion ≥ 2），沒有才退回目前設定。
-- **redaction tier 有四層**：`metadata-only`／`hashes`／`prompt-text`／`full-local`，決定 snapshot 裡留下多少東西。
+- **A replay produces a new snapshot**, it does not overwrite the old one; on success it returns
+  `newSnapshotId` and refreshes the list automatically.
+- **The replay targets are not guaranteed to match the original**: for free-style graphs the
+  targets are intersected with "the connections that can send right now" (`replayTargets` +
+  `isSendable`), so a provider that was present then but is signed out now is skipped.
+- **The response-language policy is restored**: it is reconstructed from each step's prompt in the
+  snapshot (graphVersion ≥ 2 only), falling back to the current setting when absent.
+- **There are four redaction tiers**: `metadata-only` / `hashes` / `prompt-text` / `full-local`,
+  deciding how much is kept in a snapshot.
 
-### 用途
+### What it is for
 
-同一題換條件再跑一次做比較（`full-local` 留原文、`hashes` 留 SHA-256，兩者都是給比對用的 `priorOutputs`／`priorHashes`），以及除錯時重現當初那次流程。
+Running the same question again under different conditions for comparison (`full-local` keeps the
+original text and `hashes` keeps SHA-256; both feed the `priorOutputs` / `priorHashes` used for
+comparison), and reproducing a past flow while debugging.
 
-## 自訂功能按鈕
+## Custom action buttons
 
-對話工具列上的按鈕可以自己加：**設定 → 進階與診斷 → 自訂功能按鈕**。一顆按鈕＝一支 PowerShell 腳本，
-按下時把「本次執行紀錄」（`-SnapshotId`）、「本次對話的 .md」（`-MarkdownPath`）或什麼都不傳給它。
+You can add your own buttons to the conversation toolbar: **Settings → Advanced and diagnostics →
+Custom action buttons**. One button = one PowerShell script, and pressing it passes the current
+execution record (`-SnapshotId`), the current conversation's `.md` (`-MarkdownPath`), or nothing at
+all.
 
-可直接使用的範例與完整說明（含把 `.md` 交給 VS Code 開啟的兩種做法）在
-[`examples/custom-actions/`](../examples/custom-actions/README.md)。
+Ready-to-use examples and the full explanation (including two ways to hand the `.md` to VS Code)
+are in [`examples/custom-actions/`](../examples/custom-actions/README.md).
 
-## 排查看不見的宿主端狀態（Grok trace）
+## Debugging invisible host-side state (Grok trace)
 
-> 2026-08-17 建立。起因：Grok 卡在「狀態過期」查了非常久，因為測試時沒有把追蹤細節記下來，
-> 每一輪都是「猜一個原因 → 重現 → 猜錯」。加了追蹤之後，重現**一次**就定案。
+> Written 2026-08-17. The cause: Grok stuck at "state stale" took a very long time to diagnose,
+> because the tracing detail was never recorded during testing, so every round was
+> "guess a cause → reproduce → guess wrong". With tracing added, **one** reproduction settled it.
 
-### 為什麼需要
+### Why it is needed
 
-Grok 的就緒判定靠三個**完全不外顯**的宿主端狀態：document epoch、app-title 訊號、
-三條 drive 路徑（`load-finished`、5 秒看門狗、卡片點擊）各自為何拒絕。
-從畫面上看，卡死與很慢一模一樣——都是「正在確認這個 AI 工作階段…」，而且會一直是。
-沒有追蹤就只能靠推理，而推理在這裡連錯三次：
+Grok's readiness verdict depends on three host-side states that are **completely invisible**:
+the document epoch, the app-title signal, and why each of the three drive paths (`load-finished`,
+the 5-second watchdog, a card click) refused. On screen, stuck and very slow look identical — both
+say "Confirming this AI session…", and both keep saying it. Without tracing there is only
+reasoning, and reasoning got it wrong three times in a row here:
 
-1. 以為是行內 `<code>` 摺掉換行 → 其實是 `<pre>` 走 `textContent`
-2. 以為標題不符 `Grok` 開頭的樣式 → 其實符合
-3. 以為重載回到有標題的舊對話 → 也不是
+1. Assumed inline `<code>` was collapsing newlines → in fact `<pre>` goes through `textContent`
+2. Assumed the title did not match the `Grok` prefix pattern → it did match
+3. Assumed a reload returned to an older titled conversation → also no
 
-真因是**標題訊號競態**：engine 拿 `document.title` 當回報通道，標題持續在 `Grok` ↔ 編碼訊框
-之間跳。導航時若標題剛好停在 `Grok`，新文件的標題也是 `Grok`，兩者相同 → 不觸發
-`on_document_title_changed` → 該 epoch 永遠拿不到授權 → 三條路徑同時死掉。
+The real cause is a **title-signal race**: the engine uses `document.title` as its return channel,
+and the title keeps flipping between `Grok` and an encoded frame. If the title happens to sit at
+`Grok` during navigation and the new document's title is also `Grok`, the two are identical →
+`on_document_title_changed` does not fire → that epoch never gets its grant → all three paths die
+at once.
 
-### 怎麼用
+## Common commands
 
-追蹤在 `src-tauri/src/webviews.rs` 的 `trace_grok()`，用 `#[cfg(debug_assertions)]` 包住，
-**release 建置編譯後是空函式**，所以日常用的那份不受影響。
-
-```
-pnpm tauri dev
-```
-
-輸出到 stdout，四種事件：
-
-| 事件 | 內容 |
+| Command | Purpose |
 |---|---|
-| `title` | 標題事件觸發了沒、標題內容、判定成 App／Challenge／Ignore |
-| `load-started` | 新 epoch 編號、訊號有沒有帶過來 |
-| `load-finished` | 訊號是否有效、網址是否符合、dom 與 login |
-| `watchdog` | 每 5 秒一次，卡住時它看到什麼 |
-
-### 判讀
-
-卡死的樣子（`load-started` 到 `load-finished` 之間**沒有** `signal=App`）：
-
-```
-title:         epoch=1 signal=App title="Grok"     ← 導航前最後一次事件
-load-started:  epoch=2 title_signal_current=false
-load-finished: epoch=2 title_signal_current=false url_matches_app=true login=logged_in
-watchdog:      epoch=2 title_signal_current=false dom=unknown login=logged_in   （每 5 秒重複）
-```
-
-正常的樣子——`load-started` 那一行就是 `true`，代表訊號從上一個 epoch 帶過來了：
-
-```
-load-started:  epoch=2 title_signal_current=true
-load-finished: epoch=2 title_signal_current=true url_matches_app=true login=logged_in
-```
-
-啟動時的第一次載入是 `false`，這是對的：webview 剛建立，沒有前一個 epoch 可帶。
-
-看到 `signal=Challenge` 要特別注意——那是 `carry_grok_app_title_signal()` 上面 `notes:`
-標明的風險真的發生了，升級路徑是把帶過來的訊號標記成暫定、只讓看門狗採用。
-
-### 作法本身
-
-要跑一輪重現時：**先講清楚判讀標準再請人操作**，否則操作的人不知道要看什麼。
-自己不要去點那個視窗（見全域 CLAUDE.md Rule 15）；用背景工作接 stdout，操作與讀 log 分開。
-
-## 常用指令一覽
-
-| 指令 | 用途 |
-|---|---|
-| `pnpm tauri dev` | 開發模式執行 |
-| `pnpm build` | 建置前端（vite） |
-| `pnpm build:injected` | 建置注入腳本 |
-| `pnpm verify` | 完整驗證（提交前建議執行） |
-| `pnpm test` | 跑 vitest 測試 |
-| `pnpm typecheck` | TypeScript 型別檢查 |
+| `pnpm tauri dev` | Run in development mode |
+| `pnpm build` | Build the frontend (vite) |
+| `pnpm build:injected` | Build the injected scripts |
+| `pnpm verify` | Full verification (recommended before committing) |
+| `pnpm test` | Run the vitest tests |
+| `pnpm typecheck` | TypeScript type checking |
 | `pnpm lint` | ESLint |
-| `pnpm build:local` | 建置 release 版並蓋上 commit 印記（本機日常用這個） |
-| `pnpm tauri build` | 底層的 release 建置，不會蓋章 |
-| `pnpm pack:portable` | 打包 portable zip |
+| `pnpm build:local` | Build the release build and stamp the commit (the everyday local one) |
+| `pnpm tauri build` | The underlying release build, without stamping |
+| `pnpm pack:portable` | Package the portable zip |

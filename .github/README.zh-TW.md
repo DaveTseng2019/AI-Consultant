@@ -14,7 +14,7 @@
 所以帳號、額度、模型版本都是你自己的，沒有金鑰要保管。代價是 **provider 改版就會壞**，
 壞掉的地方通常在 `adapters/*.json` 的選擇器。
 
-機制細節（三層構造、bridge、連線狀態、送出路徑）見 [`docs/BASICS.md`](../docs/BASICS.md)。
+機制細節（三層構造、bridge、連線狀態、送出路徑）見 [`docs/BASICS.zh-TW.md`](../docs/BASICS.zh-TW.md)。
 
 ## 六個模式
 
@@ -51,7 +51,7 @@ pnpm tauri dev        # 第一次 Rust 編譯較久
 ```
 
 改完跑 `pnpm verify`（typecheck ＋ lint ＋ test ＋ agent 契約 ＋ adapter 檢查）。
-建 release 版、可攜版、agent 腳本啟動法見 [`docs/RUN-AND-UPDATE.md`](../docs/RUN-AND-UPDATE.md)。
+建 release 版、可攜版、agent 腳本啟動法見 [`docs/RUN-AND-UPDATE.zh-TW.md`](../docs/RUN-AND-UPDATE.zh-TW.md)。
 
 資料目錄在 `%APPDATA%\tw.micasa.aiconsultant`，四家各自獨立的登入 profile 都在裡面。
 
@@ -62,7 +62,7 @@ repo 裡的版號永遠是 `0.0.0`，真正的版號由 CI 從 tag 注入。app 
 
 Windows x64 是實機驗證過的平台；macOS Apple Silicon 只有部分驗證（ad-hoc 簽章，Grok 曾卡在
 Cloudflare 驗證）；Linux 目前只有 CI 建置，沒有實機回報。詳見
-[`docs/COMPATIBILITY.md`](../docs/COMPATIBILITY.md)。
+[`docs/COMPATIBILITY.zh-TW.md`](../docs/COMPATIBILITY.zh-TW.md)。
 
 回報漏洞請走 GitHub Security 的私人表單，不要開公開 issue：[`SECURITY.md`](../SECURITY.md)。
 
@@ -83,7 +83,7 @@ Grok 有四件事是 app 看不到、因此也幫不上忙的，第一次用容�
    按卡片上方的「前往登入」，或把 app 關掉重開，多半就會轉成就緒。
 
 未登入的 Grok 被放到中央舞台時，畫面上會直接顯示第 1、3、4 點；
-完整說明在 [`docs/BASICS.md`](../docs/BASICS.md)。
+完整說明在 [`docs/BASICS.zh-TW.md`](../docs/BASICS.zh-TW.md)。
 
 ## 版本異動
 
@@ -114,11 +114,11 @@ Grok 有四件事是 app 看不到、因此也幫不上忙的，第一次用容�
 
 | 檔案 | 內容 |
 |---|---|
-| [`docs/BASICS.md`](../docs/BASICS.md) | 這個 app 怎麼運作。機制說明，不是操作手冊 |
-| [`docs/RUN-AND-UPDATE.md`](../docs/RUN-AND-UPDATE.md) | 執行、更新、產生執行檔 |
-| [`docs/COMPATIBILITY.md`](../docs/COMPATIBILITY.md) | 各平台實際驗證到哪 |
-| [`docs/RELEASE.md`](../docs/RELEASE.md) | 發佈流程與凍結的發佈政策 |
-| [`docs/AGENT-READY-SOURCE-RELEASE.md`](../docs/AGENT-READY-SOURCE-RELEASE.md) | 讓 agent 從原始碼啟動這支 app 的契約 |
+| [`docs/BASICS.zh-TW.md`](../docs/BASICS.zh-TW.md) | 這個 app 怎麼運作。機制說明，不是操作手冊 |
+| [`docs/RUN-AND-UPDATE.zh-TW.md`](../docs/RUN-AND-UPDATE.zh-TW.md) | 執行、更新、產生執行檔 |
+| [`docs/COMPATIBILITY.zh-TW.md`](../docs/COMPATIBILITY.zh-TW.md) | 各平台實際驗證到哪 |
+| [`docs/RELEASE.zh-TW.md`](../docs/RELEASE.zh-TW.md) | 發佈流程與凍結的發佈政策 |
+| [`docs/AGENT-READY-SOURCE-RELEASE.zh-TW.md`](../docs/AGENT-READY-SOURCE-RELEASE.zh-TW.md) | 讓 agent 從原始碼啟動這支 app 的契約 |
 
 `docs/` 有幾份是從來源專案帶過來的，描述的是**它**的產品，與本專案已經開始不同。
 

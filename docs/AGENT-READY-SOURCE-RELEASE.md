@@ -1,12 +1,12 @@
-# Agent-Ready Source Release Contract / Agent 可操作原始碼發行契約
+**English** | [繁體中文](./AGENT-READY-SOURCE-RELEASE.zh-TW.md)
+
+# Agent-Ready Source Release Contract
 
 > Contract version: **2.0.0**<br>
 > Machine-readable source of truth: [`agent-release.json`](../agent-release.json)<br>
 > Schema: [`agent-release.schema.json`](../agent-release.schema.json)
 
 This document defines a conservative interface through which a local coding agent can audit, launch, verify, inspect, and stop the AI Consultant source app. It is a source-development lane, not a replacement for normal release artifacts.
-
-本文件定義一套保守、可驗證的介面，讓本機 coding agent 能審計、啟動、確認、檢查與停止 AI Consultant 原始碼版。這是「原始碼開發通道」，不是一般安裝版本的替代品。
 
 ## Two Distribution Lanes
 
@@ -16,8 +16,6 @@ This document defines a conservative interface through which a local coding agen
 | Agent-ready source | Developers and users intentionally working with a local agent | Explicit Codex or Claude Code Skill | Required and installed separately | `tauri dev` process from this checkout |
 
 Opening the repository never launches the app. The source Skill is explicit-only. A remote agent can edit or test the repository, but only an agent shell running inside the user's local graphical session can open a desktop window there.
-
-一般使用者應優先下載 Release。只有明確要求本機 Agent 執行 Skill，才會進入原始碼通道。遠端／雲端 Agent 可以修改或測試 repo，但無法把桌面視窗顯示到使用者的本機圖形 session。
 
 ## Contract Surface
 
@@ -155,16 +153,3 @@ Projects adopting an “agent-ready source release” pattern should provide all
 10. Cross-platform tests that prevent manifest, script, package, and Skill drift.
 11. A clear distinction between automated CI evidence and real-device GUI evidence.
 12. Explicit non-goals that keep the source lane from becoming a package manager, daemon, or hidden control plane.
-
-## 繁體中文操作摘要
-
-1. 一般使用者請下載正式 Release；Agent Skill 是需要本機開發環境的原始碼通道。
-2. 打開 repo 不會自動執行。只有使用者明確呼叫 `$launch-ai-consultant` 或 `/launch-ai-consultant` 才能開始。
-3. Skill 會先寫入 before audit、執行 doctor、啟動並等待 React control pane 的 READY 訊號，再寫 after audit。
-4. `accepted`／`building` 不等於 ready；舊 log 的 READY 也不能算新一次啟動成功。
-5. Skill 可以安裝此 repo 的 locked JavaScript dependencies，但不會安裝／移除系統工具、全域套件、PATH 或安全設定。
-6. 若缺少 Node、Rust、MSVC、Xcode tools 或 Linux 套件，Skill 只會精確報告並停止；任何 host 安裝都必須是另一個獨立、明確同意的工作。
-7. Lifecycle script 永遠不讀 provider credential/profile、不自動上傳 log、不自動 rollback host，也不會停止無法驗證身分的 process。
-8. `pnpm agent:verify` 會在三個 OS 的 CI 防止 manifest、script 與兩套 Skill 漂移。
-9. Audit 是可檢查的 repo-level receipt，不是 sandbox 或完整作業系統鑑識。
-10. 不提供 Docker，因為這是需要本機圖形 session、native WebView 與 local provider profile 的桌面程式。
