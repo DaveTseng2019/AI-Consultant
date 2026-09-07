@@ -153,8 +153,8 @@ difference from free mode.
 ## The path a send takes
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="./images/send-flow-dark.svg">
-  <img alt="Execution flow of one question sent to many" src="./images/send-flow.svg">
+  <source media="(prefers-color-scheme: dark)" srcset="./images/send-flow-en-dark.svg">
+  <img alt="Execution flow of one question sent to many" src="./images/send-flow-en.svg">
 </picture>
 
 The diagram is the same path plus the in-page engine detail (filling text, verification, send
