@@ -126,6 +126,13 @@ provider 不會是放大的。內容面則相反，一次置中只決定一次�
 
 ## 送出走的那條路
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="./images/send-flow-dark.svg">
+  <img alt="一題多送的執行流程" src="./images/send-flow.svg">
+</picture>
+
+圖是同一條路加上頁面內 engine 的細節（填字、驗證、送出重試、完成判定）。下面的清單是控制台這一側的檔案分工。
+
 ```
 preflight.ts      檢查誰能送，不能送的先擋下並說明原因
       ↓
