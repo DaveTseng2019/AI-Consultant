@@ -8,6 +8,7 @@ app 只負責把東西交出去、把結果顯示回來——腳本拿它做什�
 | 檔案 | 傳什麼 | 做什麼 |
 | --- | --- | --- |
 | [`export-and-open.ps1`](./export-and-open.ps1) | 本次對話的 `.md` | 用 VS Code 打開這次的問答 |
+| [`export-and-preview.ps1`](./export-and-preview.ps1) | 本次對話的 `.md` | 用 [md-preview](https://github.com/DaveTseng2019/md-preview) 開渲染後的預覽視窗 |
 | [`save-run-as-note.ps1`](./save-run-as-note.ps1) | 本次執行紀錄 | 把問題與各家回答寫成一則 Markdown 筆記 |
 
 ## 怎麼加一顆按鈕
@@ -69,6 +70,21 @@ Start-Process -FilePath 'code.cmd' -ArgumentList @('-r', "`"$MarkdownPath`"")
 
 代價是**雙擊 `.md` 會進 VS Code 的編輯畫面**，不是渲染後的預覽。匯出的對話通常是拿來讀的，
 所以做法一比較不會互相干擾：日常雙擊維持你原本的習慣，按鈕走按鈕的。
+
+**做法三：交給 md-preview，開渲染後的預覽（`export-and-preview.ps1` 用的就是這個）**
+
+```powershell
+Start-Process -FilePath 'powershell.exe' -WindowStyle Hidden -ArgumentList @(
+    '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', "`"$PreviewScript`"", "`"$MarkdownPath`""
+)
+```
+
+[md-preview](https://github.com/DaveTseng2019/md-preview) 是另一個 repo，clone 到本機任一位置，
+再用 `-PreviewScript` 指到它的 `md-preview.ps1`。它用 Edge 的 app 模式開一個沒有網址列、
+沒有分頁的視窗，Mermaid 圖也畫得出來，而且完全離線。要讀就用這個，要改就用做法一。
+
+它同時解掉做法二的代價：md-preview 在 `VSCode.md` 底下新增一個 `preview` 動詞並設為預設，
+所以雙擊 `.md` 是預覽，右鍵「Open with Code」照舊是編輯。
 
 ## 腳本要注意的事
 
