@@ -61,7 +61,9 @@ repo 裡的版號永遠是 `0.0.0`，真正的版號由 CI 從 tag 注入。app 
 安裝版只會把你帶到下載頁；可攜版可以就地更新自己——下載新版、蓋掉自己那個資料夾、重新開啟。
 
 Windows x64 是實機驗證過的平台；macOS Apple Silicon 只有部分驗證（ad-hoc 簽章，Grok 曾卡在
-Cloudflare 驗證）；Linux 目前只有 CI 建置，沒有實機回報。詳見
+Cloudflare 驗證）；Linux 跑得起來：v0.0.17 在真正的 Linux
+桌面 session 裡操作過，但那個 session 是 WSLg，跑的也是本機建置而不是 CI 掛上去的 `.AppImage`——
+實體機器仍然沒有任何回報。詳見
 [`docs/COMPATIBILITY.zh-TW.md`](../docs/COMPATIBILITY.zh-TW.md)。
 
 回報漏洞請走 GitHub Security 的私人表單，不要開公開 issue：[`SECURITY.md`](../SECURITY.md)。

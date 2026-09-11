@@ -2,7 +2,8 @@
 
 # Compatibility and manual test matrix
 
-> Last reviewed: 2026-08-21, against `v0.0.2`.
+> Last reviewed: 2026-09-11. The newest real-device records are `v0.0.2` on Windows and `v0.0.17`
+> on Linux; the versions in between were not re-run item by item.
 >
 > This document records **evidence actually observed**, not guarantees. Provider DOM and sign-in
 > flows can change at any time, and every piece of real-device evidence below comes from the
@@ -12,6 +13,8 @@
 
 - **Verified** — actually run on the named platform, or covered by targeted automated tests.
 - **CI only** — GitHub Actions can build the artifact, but no real-device launch has been reported.
+- **Verified through WSLg only** — run in a real Linux desktop session, but that session was WSLg on
+  the maintainer's Windows machine. Bare metal has still never been reported.
 - **Unverified** — support is not claimed until there is a repeatable manual check.
 
 ## Desktop platforms
@@ -20,7 +23,7 @@
 |---|---|---|---|
 | Windows x64 | NSIS installer and portable build; both local dev and packaged builds succeed | See the v0.0.2 record below | **Verified** |
 | macOS Apple Silicon | CI builds the `.dmg` and mounts it to verify the ad-hoc signature of the embedded `.app` | None | **CI only** |
-| Linux x86_64 | CI builds the `.AppImage` with WebKitGTK dependencies | None | **CI only** |
+| Linux x86_64 | CI builds the `.AppImage` with WebKitGTK dependencies | See the v0.0.17 record below | **Verified through WSLg only** |
 
 macOS is ad-hoc signed only — not Developer ID signed and not notarised; the Windows artifacts are
 not signed at all. Both are [a frozen release policy](./RELEASE.md), not a to-do.
@@ -50,6 +53,25 @@ the user to the installer page, and the debug bundle records this field too. Set
 state still go through `app_data_dir()` and are shared with an installed build.
 Moving to another computer does not carry the login state along, and it leaves traces on the
 original machine.
+
+### v0.0.17 Linux test through WSLg (2026-09-06)
+
+Environment: Ubuntu 24.04.4 LTS on WSL2 (kernel `6.18.35.2-microsoft-standard-WSL2`), displayed
+through WSLg. What was tested is an **AppImage built in that checkout**
+(`AI Consultant_0.0.0_amd64.AppImage` — a local build carries the repo's `0.0.0`), **not the
+`.AppImage` CI attaches to the release**.
+
+| Item | Result |
+|---|---|
+| Launch | Succeeded; WebKitGTK loaded |
+| Window layout | Provider panes sit where the app puts them; before this version they were stacked into horizontal bands and the app UI was left a 78px sliver |
+| Input inside a provider | Typing and clicking inside a provider pane work |
+| Four providers in parallel | One question answered by four providers, three of them parked |
+| Window resize | Provider positions follow the resize |
+
+Not verified: the CI `.AppImage`, bare-metal Linux, sign-in on all four providers, and every item in
+the product-behaviour list below that is not named above. The fix is Linux-only; Windows and macOS
+keep the code path they already had.
 
 ## The agent source-launch lane
 
@@ -106,10 +128,10 @@ challenge.**
 
 ## Product behaviour
 
-Every "automated evidence" entry below comes from this repo's test suites (`pnpm test` 493 checks,
-`pnpm agent:verify` 21 checks, `cargo test` 87 checks, all green on 2026-08-21). "Manual check
-before release" is a checklist, not a record of work done — v0.0.2 only covered the items listed in
-the Windows real-device section above.
+Every "automated evidence" entry below comes from this repo's test suites (`pnpm test` 534 checks,
+`pnpm agent:verify` 21 checks, `cargo test` 91 checks, all green on 2026-09-11). "Manual check
+before release" is a checklist, not a record of work done — the two real-device sections above are
+the record, and they cover only the items they name.
 
 | Area | Automated evidence | Manual check before release |
 |---|---|---|
@@ -126,6 +148,8 @@ the Windows real-device section above.
 | Session quota recovery | Eviction on quota only, transient failures preserved, persisted state outcome | Fill the local history close to the quota and confirm that only the oldest session is removed |
 | Snapshot / replay | Schema, redaction, version mismatch, replay, app version | Enable local snapshot persistence, then save and replay once |
 | Markdown export | Format and provenance | Confirm the UTC time, the app version, the matching latest flow / snapshot and the adapter versions |
+| Diagrams in an export (v0.0.16) | Per-provider source recovery: ChatGPT and Grok from React props, Gemini from the opening keyword, Claude from the response element; each one drops the block rather than exporting the surrounding chrome when the source cannot be read | Ask all four for a Mermaid diagram and confirm the exported `.md` carries the source, not the provider's own UI labels. Measured against a captured run: 121 of 133 diagrams render, the 12 failures being the models' own syntax errors |
+| A file a provider hands you (v0.0.16) | Download acceptance on the provider webviews; a finished download is read back under a 512 KB cap and valid UTF-8 only | Press the provider's own Download and confirm the notice names the saved path; for a text file confirm it is filed in the transcript as "provider - filename" and reaches the exported `.md`. An image or an archive is reported by path alone |
 | Adapter hot update | Rust validation, version gating, cache, URL scope | Use a higher-versioned test adapter within the permitted host scope |
 | Control-pane security | Capability and CSP configuration | Confirm that "Settings → check for updates" and export still work in the packaged build |
 
@@ -143,7 +167,9 @@ the Windows real-device section above.
 5. Generate an image on a provider that supports it, and confirm the flow completes without relying
    on text-only output.
 6. Export Markdown and check the provenance; open a new app session and confirm the histories are
-   isolated from each other.
+   isolated from each other. Ask for a Mermaid diagram and confirm its source reaches the export;
+   press a provider's own Download button and confirm the saved path is reported, and that a text
+   file also enters the transcript.
 7. Installed build: open settings, check for updates, switch theme and interface language, follow
    the author / sponsor links. Portable build: confirm that "download and update automatically"
    closes the app, replaces the folder and reopens it; on failure the old version must be brought

@@ -182,6 +182,15 @@ providerResponse.ts Take the text back, hand it to the next step or into the tra
 - **Replay**: **runs the same path again**. The AI answers afresh; it is not a playback of the old
   screen. Five checks come first: no snapshot, the graph was deleted, the graph version differs,
   the original question was not kept, preflight failed — when it blocks, it says which one.
+- **Diagrams**: a Mermaid diagram's source is usually not in the DOM — each provider draws it as an
+  image, an SVG, or a file beside the conversation. The capture reads each one from where that
+  provider actually keeps the source (React props for ChatGPT and Grok, the opening keyword for
+  Gemini, the response element for Claude), and drops the block when it cannot, rather than
+  exporting a button label as if it were the diagram.
+- **A file a provider hands you**: pressing the provider's own download button saves the file where
+  the browser would have put it and reports the path. A text file is also read back and filed in the
+  conversation as "provider - filename" (512 KB cap, valid UTF-8 only); an image or an archive is
+  reported by path alone.
 - **Export**: Markdown, or the custom script you named in settings.
 
 ## Easy things to get wrong

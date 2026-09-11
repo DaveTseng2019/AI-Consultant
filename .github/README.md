@@ -76,8 +76,9 @@ the download page; a portable build replaces itself in place -- it downloads the
 release, unpacks it over its own folder and reopens.
 
 Windows x64 is verified on real hardware. macOS Apple Silicon is only partly verified
-(ad-hoc signature; Grok once got stuck on a Cloudflare check). Linux is built by CI only,
-with no report from real hardware. See
+(ad-hoc signature; Grok once got stuck on a Cloudflare check). Linux runs: v0.0.17 was driven in a real
+Linux desktop session, but that session was WSLg, and the binary was a local build rather than the
+`.AppImage` CI attaches -- bare metal has still never been reported. See
 [`docs/COMPATIBILITY.md`](../docs/COMPATIBILITY.md).
 
 Report a vulnerability through the private form in GitHub Security, not a public issue:
