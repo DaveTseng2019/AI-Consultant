@@ -70,6 +70,20 @@ CI 發佈**不會**動到 `src-tauri/target/release/ai-consultant.exe`，也就�
 `build-info.json`，之後才查得出手上這支是哪一版。app 開著會鎖住 exe 讓連結失敗，
 加 `--close` 讓它自己關掉。
 
+### 7. 更新說明文件
+
+說明文件 CI 也不會動。發佈之後照這張清單走一遍：
+
+- 在 [`.github/README.md`](../.github/README.md) 與
+  [`.github/README.zh-TW.md`](../.github/README.zh-TW.md) 的版本異動表各加一列。
+  寫**使用者看得到的改變**，不是 commit 清單。
+- 重讀這一版動到的頁面，把跟實際 app 不符的地方改掉：[`BASICS.zh-TW.md`](./BASICS.zh-TW.md)、
+  [`COMPATIBILITY.zh-TW.md`](./COMPATIBILITY.zh-TW.md)、
+  [`RUN-AND-UPDATE.zh-TW.md`](./RUN-AND-UPDATE.zh-TW.md)，以及這一份。
+- 每一份文件都有一份 `.zh-TW.md` 對照版。改一邊就在同一個 commit 改另一邊，否則兩種語言會走鐘。
+
+這些直接推 `main`，它們不屬於打 tag 的那次建置。
+
 ### 作廢一次建置
 
 刪掉 draft release，再刪掉 tag：

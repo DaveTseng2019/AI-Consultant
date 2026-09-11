@@ -73,6 +73,21 @@ pre-release executable. `build:local` writes the commit into the neighbouring `b
 that the version in your hand can be identified later. An open app locks the exe and makes linking
 fail; add `--close` to let it close the app itself.
 
+### 7. Update the documentation
+
+CI does not touch the docs either. After publishing, go through this list:
+
+- Add a row for the new version to the version tables in [`.github/README.md`](../.github/README.md)
+  and [`.github/README.zh-TW.md`](../.github/README.zh-TW.md). Describe **the change a user can
+  see**, not the commits.
+- Re-read the pages the release touched and fix what no longer matches the shipped app:
+  [`BASICS.md`](./BASICS.md), [`COMPATIBILITY.md`](./COMPATIBILITY.md),
+  [`RUN-AND-UPDATE.md`](./RUN-AND-UPDATE.md) and this file.
+- Every page has a `.zh-TW.md` twin. Change one and change the other in the same commit, or the two
+  languages drift apart.
+
+Push these straight to `main`; they are not part of the tagged build.
+
 ### Voiding a build
 
 Delete the draft release, then delete the tag:
