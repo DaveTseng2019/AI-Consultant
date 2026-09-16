@@ -473,7 +473,7 @@ export default function App() {
     // signed out, back to normal the moment the provider reports it is signed in, whether that is
     // the startup report or the user finishing the sign-in on screen. It is never persisted: the
     // expand is a login affordance, not a preference. A manual expand lasts until the next login
-    // change or the next card centred.
+    // change, the next card centred, or the next new conversation.
     // ...except when the user centred this provider by clicking its chip: the click asks for the
     // big stage, and it is this decision -- which lands after the centring -- that would undo it.
     // A request that has waited for its provider to report is dropped, not honoured, once a
@@ -1757,6 +1757,9 @@ export default function App() {
     setWorkflowStatus('');
     setProcessTrace(undefined);
     setReplayDrawerOpen(false);
+    // A manual expand outlives the conversation it was opened for, and the mode shelf stays hidden
+    // behind it -- so a fresh, empty conversation would open with no way to pick a mode.
+    setStageExpand('none');
     setTargetSelection({ targets: [...DEFAULT_FREE_TARGET_PROVIDERS], defaultsInitialized: true, userTouched: false });
     activeResponses.current.clear();
     const providersToClear = PROVIDERS.filter((provider) => statesRef.current[provider].webview === 'loaded');
