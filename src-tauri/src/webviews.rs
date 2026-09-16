@@ -1684,15 +1684,28 @@ async fn start_new_chat_in_page(app: &AppHandle, provider: &str) -> bool {
     ) else {
         return false;
     };
+    let at_new_session = format!(
+        "(() => {{ let path = location.pathname; while (path.length > 1 && path.endsWith('/')) path = path.slice(0, -1); return {paths_json}.includes(path); }})()"
+    );
+    // A provider already sitting on its new-session path has nothing to reset, so asking for one is
+    // work that can only cost. Clicking the control below replaces the document -- measured on
+    // 2026-09-16, every "new conversation" gave ChatGPT a fresh bootId even though its pane was
+    // 860px wide and the control was present (2 matches), so the click navigates for real rather
+    // than routing in place. The provider then reports dom "unknown" for about a second, which is
+    // long enough to drop it out of every picker that reads sendability.
+    // notes: "already on the new-session path" is the same test this function uses to confirm
+    //        success after clicking, so it inherits that assumption -- a provider that kept a live
+    //        conversation on its root path would be skipped here when it does need a reset. No
+    //        provider does today; revisit if one starts.
+    if eval_reports_true(app, provider, &at_new_session).await {
+        return true;
+    }
     let click = format!(
         "(() => {{ const el = document.querySelector({selector_json}); if (!el) return false; el.click(); return true; }})()"
     );
     if !eval_reports_true(app, provider, &click).await {
         return false;
     }
-    let at_new_session = format!(
-        "(() => {{ let path = location.pathname; while (path.length > 1 && path.endsWith('/')) path = path.slice(0, -1); return {paths_json}.includes(path); }})()"
-    );
     let deadline = tokio::time::Instant::now() + Duration::from_millis(IN_PAGE_NEW_CHAT_TIMEOUT_MS);
     loop {
         if eval_reports_true(app, provider, &at_new_session).await {
