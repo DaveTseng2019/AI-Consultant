@@ -216,6 +216,8 @@ export const de: Record<I18nKey, string> = {
   'stepTimeout.takeAnswer': 'Antwort ist fertig',
   'stepTimeout.title': 'Zeitüberschreitung im Schritt',
   'stepTimeout.description': '{provider} hat diesen Workflow-Schritt nicht abgeschlossen.',
+  'stepTimeout.providerErrorTitle': 'Anbieterfehler im Schritt',
+  'stepTimeout.providerErrorDescription': '{provider} hat beim Ausführen dieses Workflow-Schritts einen Fehler gemeldet.',
   'stepTimeout.retry': 'Erneut versuchen',
   'stepTimeout.skip': 'Überspringen',
   'stepTimeout.cancel': 'Abbrechen',

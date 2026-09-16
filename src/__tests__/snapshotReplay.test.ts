@@ -36,6 +36,7 @@ vi.mock('../host', () => ({
       send: vi.fn(),
       eval: vi.fn(),
       evalWithCallback: vi.fn(),
+      stop: vi.fn(() => Promise.resolve()),
     },
     connections: {
       get: vi.fn(),
@@ -148,7 +149,7 @@ describe('snapshot replay', () => {
   it('replays Brainstorm snapshots with the fixed four-seat rotation', () => {
     const snapshot = buildSnapshot({
       graphId: 'brainstorm',
-      graphVersion: 3,
+      graphVersion: 4,
       roleMap: { ...DEFAULT_ROUNDTABLE_ROLES },
       userQuestion: inlineRef('brainstorm question'),
       steps: [
@@ -167,18 +168,50 @@ describe('snapshot replay', () => {
     expect(plan.question).toBe('brainstorm question');
   });
 
-  it('blocks graph version mismatches unless the caller opts into the current graph', async () => {
-    const snapshot = buildSnapshot({ graphVersion: 2 });
+  it('blocks pre-recovery Brainstorm snapshots unless the caller opts into graph v4', () => {
+    const snapshot = buildSnapshot({
+      graphId: 'brainstorm',
+      graphVersion: 3,
+      roleMap: { ...DEFAULT_ROUNDTABLE_ROLES },
+      userQuestion: inlineRef('legacy brainstorm question'),
+    });
 
     expect(planReplay(snapshot)).toMatchObject({
       blocked: 'graph-version-mismatch',
-      detail: { snapshotVersion: 2, currentVersion: 3 },
+      detail: { snapshotVersion: 3, currentVersion: 4 },
+    });
+
+    const currentPlan = planReplay(snapshot, { replayWithCurrentGraph: true });
+    expect(currentPlan.blocked).toBeUndefined();
+    expect(currentPlan.graph).toBe(workflowGraphs.brainstorm);
+  });
+
+  it.each([
+    ['debate', 4, 5],
+    ['coding', 4, 5],
+    ['roundtable', 4, 5],
+    ['consult', 5, 6],
+  ] as const)('blocks interim %s snapshots after terminal error semantics are restored', (graphId, snapshotVersion, currentVersion) => {
+    const snapshot = buildSnapshot({ graphId, graphVersion: snapshotVersion });
+
+    expect(planReplay(snapshot)).toMatchObject({
+      blocked: 'graph-version-mismatch',
+      detail: { snapshotVersion, currentVersion },
+    });
+  });
+
+  it('blocks graph version mismatches unless the caller opts into the current graph', async () => {
+    const snapshot = buildSnapshot({ graphVersion: 4 });
+
+    expect(planReplay(snapshot)).toMatchObject({
+      blocked: 'graph-version-mismatch',
+      detail: { snapshotVersion: 4, currentVersion: 5 },
     });
 
     await expect(replaySnapshot({ snapshot }, {})).resolves.toEqual({
       ok: false,
       blocked: 'graph-version-mismatch',
-      detail: { snapshotVersion: 2, currentVersion: 3 },
+      detail: { snapshotVersion: 4, currentVersion: 5 },
     });
     expect(executeGraph).not.toHaveBeenCalled();
 
@@ -218,7 +251,7 @@ describe('snapshot replay', () => {
   it('uses the raw prompt-text userQuestion instead of rendered step inputs', () => {
     const snapshot = buildSnapshot({
       graphId: 'consult',
-      graphVersion: 4,
+      graphVersion: 6,
       redactionTier: 'prompt-text',
       roleMap: { first: 'chatgpt', second: 'grok', reviewer: 'claude', summary: 'gemini' },
       userQuestion: inlineRef('prompt text question', 'prompt-text'),
@@ -495,12 +528,7 @@ describe('snapshot replay', () => {
     publishBridgeMessage({ v: 1, action: 'CANCEL_WORKFLOW', transport: 'local' });
 
     await expect(run).rejects.toThrow('Workflow cancelled by user');
-    await vi.waitFor(() =>
-      expect(host.provider.eval).toHaveBeenCalledWith(
-        DEFAULT_DEBATE_ROLES.pro,
-        "window.__MAC_ENGINE__ && typeof window.__MAC_ENGINE__.stop === 'function' && window.__MAC_ENGINE__.stop();",
-      ),
-    );
+    await vi.waitFor(() => expect(host.provider.stop).toHaveBeenCalledWith(DEFAULT_DEBATE_ROLES.pro));
     const sendCount = vi.mocked(host.provider.send).mock.calls.length;
     publishBridgeMessage(done(DEFAULT_DEBATE_ROLES.pro, 'late cancelled'));
     expect(vi.mocked(host.provider.send).mock.calls.length).toBe(sendCount);
@@ -513,7 +541,7 @@ function buildSnapshot(overrides: Partial<ExecutionSnapshot> = {}): ExecutionSna
   return {
     snapshotId: 'snapshot-source',
     graphId: 'debate',
-    graphVersion: 3,
+    graphVersion: 5,
     appVersion: '0.0.0-test',
     createdAt: '2026-07-06T00:00:00.000Z',
     completedAt: '2026-07-06T00:01:00.000Z',

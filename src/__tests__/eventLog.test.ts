@@ -5,6 +5,8 @@ import {
   eventFromBridgeMessage,
   eventFromNavBlocked,
   eventFromProviderSend,
+  eventFromProviderState,
+  eventFromStepTimeout,
   filterEventLogByProvider,
   formatEventLogText,
 } from '../diagnostics/eventLog';
@@ -148,6 +150,23 @@ describe('event log reducer', () => {
     expect(formatEventLogText(events)).toMatch(/^2026-08-25 15:09:42\.007 provider-state \[Claude\] - local clock$/);
   });
 
+  it('logs provider errors as provider errors while legacy recovery events remain timeouts', () => {
+    const providerError = eventFromStepTimeout({
+      provider: 'chatgpt',
+      remainingMs: 0,
+      timedOut: true,
+      failureKind: 'provider-error',
+    });
+    const legacyTimeout = eventFromStepTimeout({ provider: 'chatgpt', remainingMs: 0, timedOut: true });
+
+    expect(providerError.summary).toBe('ChatGPT workflow step failed with a provider error');
+    expect(providerError.summary).not.toContain('timed out');
+    expect(providerError.detail).toMatchObject({ failureKind: 'provider-error' });
+    expect(providerError.detail).not.toHaveProperty('timedOut');
+    expect(legacyTimeout.summary).toBe('ChatGPT workflow step timed out');
+    expect(legacyTimeout.detail).toMatchObject({ failureKind: 'timeout', timedOut: true });
+  });
+
   it('formats only provider-filtered events when copying a filtered log', () => {
     const events = [
       { ts: 1, provider: 'chatgpt' as const, kind: 'provider-state' as const, summary: 'chatgpt-only' },
@@ -213,6 +232,46 @@ describe('event log reducer', () => {
       'ChatGPT state: ready',
       'ChatGPT state: thinking',
       'ChatGPT state: ready',
+    ]);
+  });
+
+  it('coalesces interleaved bridge and connection heartbeats independently', () => {
+    const providerState = {
+      provider: 'chatgpt' as const,
+      webview: 'loaded' as const,
+      dom: 'ready' as const,
+      login: 'logged_in' as const,
+      thinking: false,
+      bridge: 'ok' as const,
+      adapter: 'ok' as const,
+      lastStatusAt: 1,
+    };
+    const statusReport = (seq: number, thinking = false) =>
+      eventFromBridgeMessage({
+        v: 1,
+        action: 'STATUS_REPORT',
+        provider: 'chatgpt',
+        bootId: 'boot-1',
+        seq,
+        payload: { dom: 'ready', login: 'logged_in', thinking },
+        transport: 'title',
+      });
+
+    recordEventLog(statusReport(1));
+    recordEventLog(eventFromProviderState(providerState));
+    recordEventLog(statusReport(2));
+    recordEventLog(eventFromProviderState({ ...providerState, lastStatusAt: 2 }));
+
+    expect(getEventLogSnapshot()).toHaveLength(2);
+
+    recordEventLog(statusReport(3, true));
+    recordEventLog(eventFromProviderState({ ...providerState, thinking: true, lastStatusAt: 3 }));
+
+    expect(getEventLogSnapshot().map((event) => event.summary)).toEqual([
+      'ChatGPT status: dom ready, login logged_in, thinking no',
+      'ChatGPT state: bridge ok, adapter ok, login logged_in, dom ready, thinking no',
+      'ChatGPT status: dom ready, login logged_in, thinking yes',
+      'ChatGPT state: bridge ok, adapter ok, login logged_in, dom ready, thinking yes',
     ]);
   });
 });

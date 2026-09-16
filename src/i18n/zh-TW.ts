@@ -204,6 +204,8 @@ export const zhTW: Record<I18nKey, string> = {
   'stepTimeout.takeAnswer': '已完成回答',
   'stepTimeout.title': '步驟逾時',
   'stepTimeout.description': '{provider} 未完成這個 workflow 步驟。',
+  'stepTimeout.providerErrorTitle': 'AI 回應發生錯誤',
+  'stepTimeout.providerErrorDescription': '{provider} 在完成這個 workflow 步驟時回報錯誤。',
   'stepTimeout.retry': '重試',
   'stepTimeout.skip': '略過',
   'stepTimeout.cancel': '取消',

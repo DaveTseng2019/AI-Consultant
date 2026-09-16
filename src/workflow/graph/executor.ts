@@ -2,7 +2,7 @@ import { AI_PROVIDERS, CHAT_MODES } from '../../../shared/constants';
 import type { AIProvider, ChatMode } from '../../../shared/types';
 import type { Locale } from '../../i18n/resolve';
 import { formatI18n, t } from '../../i18n/t';
-import { checkAborted } from '../cancel';
+import { abortWorkflow, checkAborted, getInFlightProviders } from '../cancel';
 import { awaitCheckpoint } from '../checkpoint';
 import { sendRoleAssignment, sendWorkflowStatus } from '../events';
 import { fillAndAwaitNativeSend } from '../nativeEdit';
@@ -11,6 +11,8 @@ import { reserveProviderTurn, sendAndWait } from '../sendAndWait';
 import { prependResponseLanguagePolicy, type ResponseLanguagePolicy } from '../responseLanguage';
 import { runStep } from '../stepRunner';
 import { clearActiveTurn, SKIP_RESPONSE } from '../state';
+import { cancelPendingStepTimeoutAction } from '../stepTimeout';
+import { tearDownWaiters } from '../teardown';
 import { questionWithConversationContext } from '../../ui/conversationContinuity';
 import { getSnapshotAdapterVersions } from '../snapshot/adapterVersions';
 import { beginSnapshot, completeSnapshot, recordHumanEdit, recordStep } from '../snapshot/recorder';
@@ -116,7 +118,7 @@ export async function executeGraph(graph: WorkflowGraph, params: ExecuteGraphPar
       if (status !== undefined) sendWorkflowStatus(status);
 
       const prepared = batch.map((nodeId) => prepareNode(nodeId, context));
-      const results = await Promise.all(prepared.map((item) => item.run()));
+      const results = await runPreparedBatch(prepared, abortAware);
       results.forEach((result) => applyNodeResult(context, result));
       updateSessionCheckpoint({ stepIndex: context.completed.size });
 
@@ -136,6 +138,21 @@ export async function executeGraph(graph: WorkflowGraph, params: ExecuteGraphPar
       }
     }
     if (completedCleanly) clearSessionCheckpoint();
+  }
+}
+
+async function runPreparedBatch(prepared: PreparedNode[], abortAware: boolean): Promise<NodeRunResult[]> {
+  const running = prepared.map((item) => item.run());
+  try {
+    return await Promise.all(running);
+  } catch (error) {
+    if (!abortAware) throw error;
+    const providers = getInFlightProviders();
+    abortWorkflow();
+    cancelPendingStepTimeoutAction();
+    const cleanup = tearDownWaiters(providers, { stopClick: true });
+    await Promise.allSettled([...running, cleanup]);
+    throw error;
   }
 }
 
@@ -295,7 +312,9 @@ function prepareStepNode(
           );
         }
         const result =
-          checkpointAction === 'native-edit' ? await fillAndAwaitNativeSend(provider, input, turn) : await runStep(provider, input, turn);
+          checkpointAction === 'native-edit'
+            ? await fillAndAwaitNativeSend(provider, input, turn)
+            : await runStep(provider, input, turn, { recoverProviderErrors: context.graph.id === 'brainstorm' });
         const responseError = providerResponseError(provider, result.response);
         if (responseError) throw responseError;
         recordStep({

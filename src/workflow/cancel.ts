@@ -40,10 +40,7 @@ export function onWorkflowAbort(listener: (reason: Error) => void): () => void {
 }
 
 export async function stopProvider(provider: AIProvider): Promise<void> {
-  await host.provider.eval(
-    provider,
-    "window.__MAC_ENGINE__ && typeof window.__MAC_ENGINE__.stop === 'function' && window.__MAC_ENGINE__.stop();",
-  ).catch(() => undefined);
+  await host.provider.stop(provider).catch(() => undefined);
 }
 
 /** Take the answer the user can already see, instead of waiting for the detectors to confirm it. */
