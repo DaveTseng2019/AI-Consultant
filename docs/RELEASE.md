@@ -77,9 +77,6 @@ fail; add `--close` to let it close the app itself.
 
 CI does not touch the docs either. After publishing, go through this list:
 
-- Add a row for the new version to the version tables in [`.github/README.md`](../.github/README.md)
-  and [`.github/README.zh-TW.md`](../.github/README.zh-TW.md). Describe **the change a user can
-  see**, not the commits.
 - Re-read the pages the release touched and fix what no longer matches the shipped app:
   [`BASICS.md`](./BASICS.md), [`COMPATIBILITY.md`](./COMPATIBILITY.md),
   [`RUN-AND-UPDATE.md`](./RUN-AND-UPDATE.md) and this file.
