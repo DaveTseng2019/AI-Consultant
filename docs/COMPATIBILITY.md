@@ -2,8 +2,9 @@
 
 # Compatibility and manual test matrix
 
-> Last reviewed: 2026-09-11. The newest real-device records are `v0.0.2` on Windows and `v0.0.17`
-> on Linux; the versions in between were not re-run item by item.
+> Last reviewed: 2026-09-17. The newest real-device records are `v0.0.2` on Windows, `v0.0.17` on
+> Linux, and the single-provider check on `v0.0.19`; the versions in between were not re-run item
+> by item.
 >
 > This document records **evidence actually observed**, not guarantees. Provider DOM and sign-in
 > flows can change at any time, and every piece of real-device evidence below comes from the
@@ -72,6 +73,31 @@ through WSLg. What was tested is an **AppImage built in that checkout**
 Not verified: the CI `.AppImage`, bare-metal Linux, sign-in on all four providers, and every item in
 the product-behaviour list below that is not named above. The fix is Linux-only; Windows and macOS
 keep the code path they already had.
+
+### v0.0.19 provider handoff-completion test (2026-09-17)
+
+This version tightened what counts as the end of a turn: the same current assistant turn, unchanged
+full response text, no strong activity signal, and a stable completion marker. **Only the Grok item
+was tested against a live account**; the rest were not tested at all.
+
+Environment: Windows 11 Pro `10.0.26200`, running the executable from a local `pnpm build:local`
+(stamped `v0.0.19`), **not** the artifact CI attached to the release.
+
+| Item | Result |
+|---|---|
+| Grok Heavy does not finish early | **Passed** — the opening line does not end the turn; the transcript gets the complete answer |
+| A send is refused while ChatGPT is generating | **Not tested** |
+| ChatGPT multi-phase output does not finish early | **Not tested** |
+| Grok stuck-state recovery that recreates the child webview | **Not tested** (needs a real wedge past the watchdog window) |
+
+Not verified: the three items marked not tested above, the CI artifacts themselves (no released file
+was downloaded and run), the same behaviour on macOS and Linux, and every item in the
+product-behaviour list below that is not named here.
+
+> This version also fixes a problem only this repository could hit: upstream rewrote the completion
+> check to read ChatGPT's turn markup while still gating on a per-provider table, and this
+> repository's table carries a Grok entry as well. Without the fix Grok never completes at all. The
+> row above is the result after that fix.
 
 ## The agent source-launch lane
 

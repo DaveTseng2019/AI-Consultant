@@ -54,6 +54,13 @@
 | 7 | 狀態過期 | 載入了，但還不滿足送出條件 |
 | 8 | 就緒 | 可以送出 |
 
+> **v0.0.19 起，Grok 卡在「狀態過期」超過 40 秒時，那張卡片變成可以點的復原鈕。**
+> 點下去會用同一份持久化 profile 與位置**重建它的子 webview**（不是重新整理）。
+> 判定寫在 `src/ui/providerChipState.ts` 的 `isStuckProvider()`：只認 Grok，而且要求
+> bridge 與 adapter 都正常、DOM 還是 `unknown`。**其他 provider 沒有這個動作**，
+> 登出、被挑戰頁擋住、正在回答、adapter 壞掉、bridge 異常的狀況也都不給點——
+> 那幾種點下去只會把使用者正要處理的頁面丟掉。
+
 能不能送由 `src/workflow/sendability.ts` 一行決定：
 `webview === 'loaded' && dom === 'ready' && login === 'logged_in'`。
 

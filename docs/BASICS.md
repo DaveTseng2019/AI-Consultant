@@ -60,6 +60,14 @@ response block, how to tell that generation is running, and the sign-in / sign-o
 | 7 | State stale | Loaded, but the send conditions are not met yet |
 | 8 | Ready | Can send |
 
+> **From v0.0.19, a Grok card stuck on "State stale" for more than 40 seconds becomes a clickable
+> recovery affordance.** Clicking it **recreates the child webview** with the same persistent
+> profile and bounds — it is not a reload. The rule lives in `isStuckProvider()` in
+> `src/ui/providerChipState.ts`: Grok only, and it requires a healthy bridge and adapter with the
+> DOM still `unknown`. **No other provider offers this**, and it stays off for signed-out, blocked,
+> answering, broken-adapter and degraded-bridge cards — clicking there would only throw away the
+> page the user is about to deal with.
+
 Whether it can send is decided by one line in `src/workflow/sendability.ts`:
 `webview === 'loaded' && dom === 'ready' && login === 'logged_in'`.
 
