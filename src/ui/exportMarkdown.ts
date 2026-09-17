@@ -40,14 +40,11 @@ export function buildMarkdown(
   exportedAt: Date,
   provenance: ExportProvenance = {},
 ): { title: string; content: string } {
-  const modeInfo = provenance.preset ?? CHAT_MODES[mode];
-  const title = `AI Consultant — ${modeInfo.icon} ${modeInfo.name}`;
+  const title = exportTitle(mode, provenance);
   const lines: string[] = [
     `# ${title}`,
-    `> Exported: ${formatLocalTimestamp(exportedAt)} ${localTimezoneLabel(exportedAt)}`,
+    ...exportProvenanceLines(exportedAt, provenance).map((line) => `> ${line}`),
   ];
-  if (provenance.appVersion) lines.push(`> App version: ${provenance.appVersion}`);
-  if (provenance.snapshot) appendSnapshotProvenance(lines, provenance.snapshot);
   lines.push('', '---', '');
   const marks = new Set<keyof typeof AI_PROVIDERS>();
   for (const msg of messages) {
@@ -77,19 +74,33 @@ export function buildMarkdown(
   return { title, content: lines.join('\n') };
 }
 
+/** The heading both exports carry, so a file found later still says which app wrote it. */
+export function exportTitle(mode: ChatMode, provenance: ExportProvenance = {}): string {
+  const modeInfo = provenance.preset ?? CHAT_MODES[mode];
+  return `AI Consultant — ${modeInfo.icon} ${modeInfo.name}`;
+}
+
+/** The provenance block, unprefixed: markdown quotes these lines, HTML lists them. */
+export function exportProvenanceLines(exportedAt: Date, provenance: ExportProvenance = {}): string[] {
+  const lines = [`Exported: ${formatLocalTimestamp(exportedAt)} ${localTimezoneLabel(exportedAt)}`];
+  if (provenance.appVersion) lines.push(`App version: ${provenance.appVersion}`);
+  if (provenance.snapshot) appendSnapshotProvenance(lines, provenance.snapshot);
+  return lines;
+}
+
 function appendSnapshotProvenance(lines: string[], snapshot: ExecutionSnapshot): void {
-  lines.push(`> Latest workflow: ${snapshot.graphId} v${snapshot.graphVersion}`);
-  lines.push(`> Latest snapshot: ${snapshot.snapshotId}`);
-  lines.push(`> Latest run app version: ${snapshot.appVersion}`);
+  lines.push(`Latest workflow: ${snapshot.graphId} v${snapshot.graphVersion}`);
+  lines.push(`Latest snapshot: ${snapshot.snapshotId}`);
+  lines.push(`Latest run app version: ${snapshot.appVersion}`);
   // The snapshot stores UTC ISO strings. Show them on the same local 24-hour clock as the rest of
   // the export, and leave an unparseable value alone rather than printing "Invalid Date".
   const runStart = snapshotTime(snapshot.createdAt);
   const runEnd = snapshot.completedAt ? snapshotTime(snapshot.completedAt) : undefined;
-  lines.push(`> Latest run: ${runStart}${runEnd ? ` → ${runEnd}` : ''} (${localTimezoneLabel()})`);
+  lines.push(`Latest run: ${runStart}${runEnd ? ` → ${runEnd}` : ''} (${localTimezoneLabel()})`);
   const adapterVersions = Object.entries(snapshot.adapterVersions)
     .filter((entry): entry is [keyof typeof AI_PROVIDERS, number] => entry[0] in AI_PROVIDERS && typeof entry[1] === 'number')
     .map(([provider, version]) => `${AI_PROVIDERS[provider].name} v${version}`);
-  if (adapterVersions.length > 0) lines.push(`> Adapter versions: ${adapterVersions.join(', ')}`);
+  if (adapterVersions.length > 0) lines.push(`Adapter versions: ${adapterVersions.join(', ')}`);
 }
 
 function snapshotTime(value: string): string {
@@ -97,7 +108,20 @@ function snapshotTime(value: string): string {
   return Number.isFinite(parsed) ? formatLocalTimestamp(parsed) : value;
 }
 
-/** `ai-consultant-<mode>-YYYY-MM-DD-HH-mm-ss.md` */
-export function exportFilename(mode: ChatMode, exportedAt: Date, presetId?: string): string {
-  return `ai-consultant-${presetId ?? mode}-${localFilenameStamp(exportedAt)}.md`;
+/**
+ * `YYYY-MM-DD <conversation title>.<extension>`, so a folder of exports sorts by date and still
+ * says what each file is about. The title is whatever the sidebar shows; it comes from a person's
+ * own question, so it is stripped of everything Windows refuses in a name and capped in length.
+ */
+export function exportFilename(title: string, exportedAt: Date, extension: 'md' | 'html'): string {
+  const safeTitle = title
+    // eslint-disable-next-line no-control-regex -- control characters are illegal in a file name.
+    .replace(/[\u0000-\u001f<>:"/\\|?*]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/\.+$/, '')
+    .slice(0, 60)
+    .trim();
+  const stamp = localFilenameStamp(exportedAt).slice(0, 10);
+  return safeTitle ? `${stamp} ${safeTitle}.${extension}` : `${stamp} AI Consultant.${extension}`;
 }

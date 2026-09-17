@@ -117,6 +117,7 @@ import { loadFreeTargetSelection, saveFreeTargetSelection } from './ui/freeTarge
 import { loadWorkflowPreset, saveWorkflowPreset } from './ui/workflowPresetPreference';
 import { useOverlayGuard } from './ui/useOverlayGuard';
 import { buildMarkdown, exportFilename, matchingSnapshotForConversation } from './ui/exportMarkdown';
+import { buildHtml } from './ui/exportHtml';
 import { ProviderLogo } from './ui/ProviderLogo';
 import { formatReportBody, type AdapterNotice, type ReportDigest } from './ui/reportBroken';
 import type { CustomAction } from './ui/settingsModel';
@@ -1836,9 +1837,9 @@ export default function App() {
     [activeSessionId, isProcessing, selectConversationSession, sessions],
   );
 
-  // The same markdown the export writes, for whoever needs it: the export dialog, or an action
-  // that asked for the conversation as a file.
-  const conversationMarkdown = async () => {
+  // The conversation as a file, for whoever needs it: either export button, or an action that asked
+  // for the conversation as markdown.
+  const conversationDocument = async (format: 'md' | 'html') => {
     const now = new Date();
     const appVersion = await getRuntimeAppVersion();
     const snapshot = matchingSnapshotForConversation(messages, getLastSnapshot());
@@ -1850,19 +1851,32 @@ export default function App() {
             name: translateKey('preset.brainstorm.displayName', localeRef.current),
           }
         : undefined;
-    const { content } = buildMarkdown(messages, mode, now, { appVersion, snapshot, preset: exportPreset });
+    const provenance = { appVersion, snapshot, preset: exportPreset };
+    const { content } =
+      format === 'md'
+        ? buildMarkdown(messages, mode, now, provenance)
+        : await buildHtml(messages, mode, now, provenance, {
+            key: translateKey('export.tableKeyColumn', localeRef.current),
+            value: translateKey('export.tableValueColumn', localeRef.current),
+          });
     // The name is stamped with when the CONVERSATION started, not when the button was pressed, so
     // exporting the same conversation twice rewrites one file instead of leaving a trail of copies
     // that differ only in their timestamp.
-    const startedAt = sessions.find((session) => session.id === activeSessionId)?.createdAt;
-    return { name: exportFilename(mode, startedAt === undefined ? now : new Date(startedAt), exportPreset?.id), content };
+    const session = sessions.find((entry) => entry.id === activeSessionId);
+    const startedAt = session?.createdAt;
+    return {
+      name: exportFilename(session?.title ?? '', startedAt === undefined ? now : new Date(startedAt), format),
+      content,
+    };
   };
 
-  const exportConversation = async () => {
+  const conversationMarkdown = () => conversationDocument('md');
+
+  const exportConversation = async (format: 'md' | 'html') => {
     if (messages.length === 0 || sharing) return;
     setSharing(true);
     try {
-      const { name, content } = await conversationMarkdown();
+      const { name, content } = await conversationDocument(format);
       const saved = await host.share.exportMarkdown(name, content);
       if (saved) setShareNotice({ kind: 'ok', text: formatI18n(translateKey('share.exported', localeRef.current), { path: saved }) });
     } catch (reason) {
@@ -2391,10 +2405,20 @@ export default function App() {
                 <button
                   type="button"
                   className="border border-zinc-300 dark:border-zinc-700 px-2 py-1 text-xs hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50"
-                  onClick={() => void exportConversation()}
+                  onClick={() => void exportConversation('md')}
                   disabled={messages.length === 0 || sharing}
                 >
                   {translate('header.exportMarkdown')}
+                </button>
+                {/* The same conversation for a browser instead of a markdown viewer: it is the one
+                    that draws the tables. */}
+                <button
+                  type="button"
+                  className="border border-zinc-300 dark:border-zinc-700 px-2 py-1 text-xs hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50"
+                  onClick={() => void exportConversation('html')}
+                  disabled={messages.length === 0 || sharing}
+                >
+                  {translate('header.exportHtml')}
                 </button>
                 {/* One button per configured action, in the saved order. The note is the tooltip:
                     a caption short enough for a toolbar cannot also say what the script does. */}

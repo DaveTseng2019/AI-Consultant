@@ -69,7 +69,7 @@ describe('M4c share export helpers', () => {
 
     expect(title).toBe('AI Consultant — ✨ Brainstorm');
     expect(content.split('\n')[0]).toBe('# AI Consultant — ✨ Brainstorm');
-    expect(exportFilename('free', fixedDate, preset.id)).toBe('ai-consultant-brainstorm-2026-07-04-13-45-07.md');
+    expect(exportFilename('Brainstorm session', fixedDate, 'md')).toBe('2026-07-04 Brainstorm session.md');
   });
 
   it('renders app, workflow, snapshot, timing, and adapter provenance', () => {
@@ -104,8 +104,15 @@ describe('M4c share export helpers', () => {
     ).toBeUndefined();
   });
 
-  it('builds deterministic markdown filenames from ISO timestamps', () => {
-    expect(exportFilename('debate', fixedDate)).toBe('ai-consultant-debate-2026-07-04-13-45-07.md');
+  // The name is what a person sees in the folder a month later, so it carries the date the
+  // conversation started and its own title. Everything Windows refuses in a name has to go, or the
+  // save dialog opens on a name it cannot write.
+  it('names a file after the date and the conversation title', () => {
+    expect(exportFilename('比較三家雲端', fixedDate, 'md')).toBe('2026-07-04 比較三家雲端.md');
+    expect(exportFilename('比較三家雲端', fixedDate, 'html')).toBe('2026-07-04 比較三家雲端.html');
+    expect(exportFilename('a/b: c?  d', fixedDate, 'md')).toBe('2026-07-04 a b c d.md');
+    expect(exportFilename('   ', fixedDate, 'md')).toBe('2026-07-04 AI Consultant.md');
+    expect(exportFilename('x'.repeat(200), fixedDate, 'md')).toBe(`2026-07-04 ${'x'.repeat(60)}.md`);
   });
 });
 

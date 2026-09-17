@@ -199,7 +199,10 @@ providerResponse.ts Take the text back, hand it to the next step or into the tra
   the browser would have put it and reports the path. A text file is also read back and filed in the
   conversation as "provider - filename" (512 KB cap, valid UTF-8 only); an image or an archive is
   reported by path alone.
-- **Export**: Markdown, or the custom script you named in settings.
+- **Export**: Markdown, HTML, or the custom script you named in settings.
+  A file is named "date + conversation title", dated the day the conversation started.
+  The HTML one also draws tables as tables: a terminal's box-drawn table, a markdown table
+  flattened onto one line, and a run of "key: value" lines are turned back into rows first.
 
 ## Easy things to get wrong
 

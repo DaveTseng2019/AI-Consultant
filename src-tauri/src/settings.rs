@@ -504,11 +504,15 @@ pub async fn export_markdown(
     crate::webviews::ensure_control_webview(&webview)?;
 
     let (tx, rx) = tokio::sync::oneshot::channel();
-    let mut dialog = app
-        .dialog()
-        .file()
-        .set_file_name(&suggested_name)
-        .add_filter("Markdown", &["md"]);
+    // The same command saves the conversation as HTML, so the filter follows the name the frontend
+    // asked for rather than always claiming Markdown.
+    let html = suggested_name.to_ascii_lowercase().ends_with(".html");
+    let mut dialog = app.dialog().file().set_file_name(&suggested_name);
+    dialog = if html {
+        dialog.add_filter("HTML", &["html"])
+    } else {
+        dialog.add_filter("Markdown", &["md"])
+    };
     // Opens where the last export went, so both export buttons keep filing into one folder. A
     // default only: the dialog still saves anywhere else that is picked, and that becomes the new
     // remembered folder.
