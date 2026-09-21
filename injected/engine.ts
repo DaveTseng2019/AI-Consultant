@@ -66,6 +66,9 @@ const SEND_FINAL_VERIFY_DELAY_MS = 1500;
 // notes: a fixed wait, not a signal that the upload finished -- every provider shows that
 //        differently. Watch the composer for the thumbnail if a slow connection drops images.
 const IMAGE_PASTE_SETTLE_MS = 2000;
+// Long enough for ProseMirror to re-render the composer from its own document. A check in the
+// same tick reads the DOM we just wrote, not the state the editor will settle on.
+const COMPOSER_SETTLE_MS = 300;
 const CHATGPT_INITIAL_SEND_CONFIRMATION_DELAY_MS = 10_000;
 const CHATGPT_FALLBACK_SEND_CONFIRMATION_DELAY_MS = 4_000;
 const CHATGPT_USER_MESSAGE_SELECTOR = '[data-message-author-role="user"]';
@@ -307,6 +310,7 @@ class InactiveSendOperationError extends Error {
   let lastResponseText = '';
   let lastCompletionActivityAt = 0;
   let pendingPromptText = '';
+  let injectionStageTrail = '';
   let nativeDraftText = '';
   let nativeResponseBaseline: Element[] = [];
   let nativeAdoptPending = false;
@@ -746,6 +750,7 @@ class InactiveSendOperationError extends Error {
     lastResponseText = '';
     lastCompletionActivityAt = Date.now();
     pendingPromptText = text;
+    injectionStageTrail = '';
     matchingChatGptUserTurnBaseline = countMatchingChatGptUserTurns(activeAdapter, text);
     activeChatGptUserTurnAnchor = null;
     lastActivatedInput = null;
@@ -862,8 +867,11 @@ class InactiveSendOperationError extends Error {
     }
 
     if (adapter.provider === 'chatgpt' && !composerTextMatches(currentInput, pendingPromptText)) {
+      // The empty case already returned above, so the composer always holds text here.
+      const detail = composerMismatchDetail(currentInput, pendingPromptText);
+      logEngine(`chatgpt send not confirmed; composer changed: ${detail}`);
       doneWithError(
-        'chatgpt send could not be confirmed; composer changed before a matching user turn appeared',
+        `chatgpt send could not be confirmed; composer changed before a matching user turn appeared (${detail})`,
         originalAdapter.provider,
         sendOperation,
       );
@@ -927,8 +935,13 @@ class InactiveSendOperationError extends Error {
     }
 
     if (activeAdapter.provider === 'chatgpt' && !composerTextMatches(currentInput, pendingPromptText)) {
+      // A cleared composer is already fully described by the word "cleared". Only spend the
+      // fingerprint on the case where text is present but differs.
+      const changed = Boolean(getInputText(currentInput).trim());
+      const detail = changed ? ` (${composerMismatchDetail(currentInput, pendingPromptText)})` : '';
+      logEngine(`chatgpt send not confirmed after retry; composer ${changed ? 'changed' : 'cleared'}${detail}`);
       doneWithError(
-        `chatgpt send could not be confirmed; composer ${getInputText(currentInput).trim() ? 'changed' : 'cleared'} before a matching user turn appeared`,
+        `chatgpt send could not be confirmed; composer ${changed ? 'changed' : 'cleared'} before a matching user turn appeared${detail}`,
         activeAdapter.provider,
         sendOperation,
       );
@@ -977,13 +990,14 @@ class InactiveSendOperationError extends Error {
             sendOperation,
           );
         } else {
-          const composerState = finalInput
-            ? getInputText(finalInput).trim()
-              ? 'changed'
-              : 'cleared'
-            : 'disappeared';
+          const changed = Boolean(finalInput && getInputText(finalInput).trim());
+          const composerState = changed ? 'changed' : finalInput ? 'cleared' : 'disappeared';
+          // Only "changed" carries a hidden difference worth fingerprinting.
+          const detail =
+            changed && finalInput ? ` (${composerMismatchDetail(finalInput, pendingPromptText)})` : '';
+          logEngine(`chatgpt final send fallback not confirmed; composer ${composerState}${detail}`);
           doneWithError(
-            `chatgpt send could not be confirmed; composer ${composerState} before a matching user turn appeared`,
+            `chatgpt send could not be confirmed; composer ${composerState} before a matching user turn appeared${detail}`,
             adapter.provider,
             sendOperation,
           );
@@ -1127,7 +1141,9 @@ class InactiveSendOperationError extends Error {
     if (!allowComposerRestore && sendStarted(activeAdapter)) return liveInput;
     if (composerTextMatches(liveInput, pendingPromptText)) return liveInput;
     if (getInputText(liveInput).trim()) {
-      doneWithError(`${provider} composer changed before send`, provider, sendOperation);
+      const detail = composerMismatchDetail(liveInput, pendingPromptText);
+      logEngine(`${provider} composer changed before send: ${detail}`);
+      doneWithError(`${provider} composer changed before send (${detail})`, provider, sendOperation);
       return null;
     }
     if (!allowComposerRestore) return null;
@@ -1190,8 +1206,37 @@ class InactiveSendOperationError extends Error {
     }
   }
 
+  // A leftover draft is not something the paste below can replace. The synthetic paste and
+  // execInsertText both write past ProseMirror's own document, so the editor reverts them from its
+  // internal state and the prompt ends up appended to the stale text instead of replacing it.
+  // Clearing by hand (Ctrl+A, Delete) does work, so send those keys and verify after a settle:
+  // an editor that reads empty in the same tick can still refill from ProseMirror's document a
+  // moment later.
+  // notes: verified on the ChatGPT composer only. Grok shares this strategy but was never seen
+  //        in this state, so there is no second technique here. The clear-keys stage in the
+  //        injection error names the length left behind if another editor ignores the keys.
+  async function clearProseMirrorComposer(editor: HTMLElement, assertCanMutate: ChallengeMutationGuard) {
+    const composerLength = () => compactVisibleText(getInputText(editor)).length;
+    if (!composerLength()) return;
+
+    const key = (init: KeyboardEventInit) => {
+      editor.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, cancelable: true, ...init }));
+      editor.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true, cancelable: true, ...init }));
+    };
+
+    assertCanMutate();
+    key({ key: 'a', code: 'KeyA', keyCode: 65, which: 65, ctrlKey: true });
+    key({ key: 'Delete', code: 'Delete', keyCode: 46, which: 46 });
+    await sleep(COMPOSER_SETTLE_MS);
+    assertCanMutate();
+    recordInjectionStage(`clear-keys:${composerLength()}`);
+  }
+
   async function prosemirrorPasteInput(el: Element, text: string, assertCanMutate: ChallengeMutationGuard) {
     const editor = el as HTMLElement;
+    recordInjectionStage(
+      `want:${compactVisibleText(text).length} before:${compactVisibleText(getInputText(el)).length}`,
+    );
     assertCanMutate();
     tryFocus(editor, 'prosemirror editor');
     assertCanMutate();
@@ -1207,8 +1252,11 @@ class InactiveSendOperationError extends Error {
       assertCanMutate();
       el.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: text }));
       assertCanMutate();
+      recordInjectionStage(`textarea:${compactVisibleText(getInputText(el)).length}`);
       return;
     }
+
+    await clearProseMirrorComposer(editor, assertCanMutate);
 
     try {
       tryFocus(editor, 'prosemirror paste');
@@ -1230,14 +1278,23 @@ class InactiveSendOperationError extends Error {
       assertCanMutate();
       editor.dispatchEvent(pasteEvent);
       assertCanMutate();
-      await Promise.resolve();
+      // ProseMirror applies the paste to its own document and renders it a tick or two later. A
+      // microtask is not enough to see it: the composer still reads empty, the fallback below
+      // concludes the paste was ignored, and its second insert lands on top of the first once both
+      // flush -- the composer then holds the prompt twice and every send after it fails.
+      await sleep(COMPOSER_SETTLE_MS);
       assertCanMutate();
+      recordInjectionStage(`paste:${compactVisibleText(getInputText(editor)).length}`);
     } catch (error) {
       if (error instanceof ChallengeActiveError) throw error;
+      recordInjectionStage('paste:threw');
       logEngine(`prosemirror synthetic paste failed: ${errorMessage(error)}`);
     }
 
     assertCanMutate();
+    // The paste has settled by now, so a match here is the editor's own state rather than a DOM
+    // write about to be reverted. Every fallback that runs on top of a good paste is what puts the
+    // prompt in twice.
     if (!composerTextMatches(editor, text)) {
       try {
         tryFocus(editor, 'prosemirror insertText fallback');
@@ -1254,11 +1311,15 @@ class InactiveSendOperationError extends Error {
         if (inserted) {
           editor.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: text }));
           assertCanMutate();
-          await Promise.resolve();
+          // Same settle as the paste above, for the same reason: judging this write in the same
+          // tick is what makes the next fallback insert the prompt a second time.
+          await sleep(COMPOSER_SETTLE_MS);
           assertCanMutate();
         }
+        recordInjectionStage(`insertText:${compactVisibleText(getInputText(editor)).length}`);
       } catch (error) {
         if (error instanceof ChallengeActiveError) throw error;
+        recordInjectionStage('insertText:threw');
         logEngine(`prosemirror insertText fallback failed: ${errorMessage(error)}`);
       }
     }
@@ -1272,7 +1333,16 @@ class InactiveSendOperationError extends Error {
       editor.appendChild(p);
       editor.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: text }));
       assertCanMutate();
+      recordInjectionStage(`replaceChildren:${compactVisibleText(getInputText(editor)).length}`);
     }
+
+    // replaceChildren() above writes the DOM past ProseMirror's document, so the editor can read
+    // as correct now and revert a moment later. Settle first, then let the caller's
+    // assertInputLanded() judge what the composer actually holds. Without this the mismatch stays
+    // hidden until send, where the draft is already ruined and the error cannot say why.
+    await sleep(COMPOSER_SETTLE_MS);
+    assertCanMutate();
+    recordInjectionStage(`settled:${compactVisibleText(getInputText(editor)).length}`);
   }
 
   async function quillAngularInput(el: Element, text: string, assertCanMutate: ChallengeMutationGuard) {
@@ -1917,8 +1987,14 @@ class InactiveSendOperationError extends Error {
   function assertInputLanded(input: Element, text: string, strategy: InputStrategyName) {
     if (!text.trim()) return;
     if (composerTextMatches(input, text)) return;
-    if (!getInputText(input).trim()) throw new InputInjectionError(`${strategy} left editor empty after injection`);
-    throw new InputInjectionError(`${strategy} produced mismatched editor text after injection`);
+    if (!getInputText(input).trim()) {
+      // Strategies that record no stages say nothing useful here, so leave the suffix off.
+      const stages = injectionStageTrail ? ` (stages ${injectionStageTrail})` : '';
+      throw new InputInjectionError(`${strategy} left editor empty after injection${stages}`);
+    }
+    throw new InputInjectionError(
+      `${strategy} produced mismatched editor text after injection (${composerMismatchDetail(input, text)})`,
+    );
   }
 
   function composerTextMatches(input: Element, expected: string): boolean {
@@ -1927,6 +2003,34 @@ class InactiveSendOperationError extends Error {
 
   function compactVisibleText(value: string): string {
     return value.normalize('NFKC').replace(/\s+/g, '');
+  }
+
+  // Which injection stages ran, and the composer length each one left behind. The DOM is not a
+  // reliable witness of a ProseMirror document: the last-resort replaceChildren() writes past the
+  // editor's own model, so the text can read as correct at injection time and change back later.
+  // The trail is what tells a stage apart from the one after it. Reset per send by armResponseWatch.
+  function recordInjectionStage(stage: string) {
+    injectionStageTrail = injectionStageTrail ? `${injectionStageTrail} > ${stage}` : stage;
+  }
+
+  // A bare "composer changed before send" tells a bug reporter nothing: the prompt is still
+  // visible in the composer, so the mismatch is in characters nobody can see. Report where the
+  // two strings part company so one screenshot is enough to tell truncation from rewriting.
+  function composerMismatchDetail(input: Element, expected: string): string {
+    const actual = compactVisibleText(getInputText(input));
+    const wanted = compactVisibleText(expected);
+    let i = 0;
+    while (i < actual.length && i < wanted.length && actual[i] === wanted[i]) i += 1;
+    const shape = wanted.startsWith(actual)
+      ? 'truncated'
+      : actual.startsWith(wanted)
+        ? 'extended'
+        : 'diverged';
+    return (
+      `${shape} at ${i}/${wanted.length}, composer has ${actual.length}; ` +
+      `expected ${JSON.stringify(wanted.slice(i, i + 24))}, got ${JSON.stringify(actual.slice(i, i + 24))}; ` +
+      `stages ${injectionStageTrail || 'none'}`
+    );
   }
 
   function countMatchingChatGptUserTurns(activeAdapter: AdapterConfig, prompt: string): number {

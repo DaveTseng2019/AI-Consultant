@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { AIProvider, BridgeMessage } from '../../shared/types';
 
 const PRE_SEND_DELAY_MS = 800;
+const COMPOSER_SETTLE_MS = 300;
 const INPUT_SELECTOR_TIMEOUT_MS = 2500;
 const SELECTOR_RETRY_INTERVAL_MS = 250;
 const SEND_BUTTON_SELECTOR_TIMEOUT_MS = 800;
@@ -232,6 +233,8 @@ describe('injected engine input hardening', () => {
     send(handler, 'must not reach a fallback');
     await flushMicrotasks();
     await flushMicrotasks();
+    // The yield after the paste is a settle now, not a microtask: the challenge is caught there.
+    await vi.advanceTimersByTimeAsync(COMPOSER_SETTLE_MS);
 
     expect(env.input.textContent).toBe('');
     expect(env.sendButton?.clickCount).toBe(0);
@@ -259,12 +262,16 @@ describe('injected engine input hardening', () => {
     fill(handler, 'blocked fill');
     await flushMicrotasks();
     await flushMicrotasks();
+    // The challenge is caught at the settle that follows injection, so let that settle elapse:
+    // the aborted fill has to finish unwinding before the next send starts.
+    await vi.advanceTimersByTimeAsync(COMPOSER_SETTLE_MS);
     env.cloudflareChallenge = false;
     env.input.onDispatch = undefined;
 
     send(handler, 'later send');
     await flushMicrotasks();
-    await vi.advanceTimersByTimeAsync(PRE_SEND_DELAY_MS);
+    // The aborted fill left a draft behind, so this send clears the composer before it injects.
+    await vi.advanceTimersByTimeAsync(COMPOSER_SETTLE_MS * 2 + PRE_SEND_DELAY_MS);
 
     expect(env.input.textContent).toBe('later send');
     expect(env.sendButton?.clickCount).toBe(1);
@@ -762,6 +769,8 @@ describe('injected engine input hardening', () => {
 
     send(handler, 'fallback prompt');
     await flushMicrotasks();
+    // Paste settle, insertText settle, then the settle before assertInputLanded judges the result.
+    await vi.advanceTimersByTimeAsync(COMPOSER_SETTLE_MS * 3);
 
     expect(env.input.textContent).toBe('fallback prompt');
   });
@@ -775,6 +784,8 @@ describe('injected engine input hardening', () => {
 
     send(handler, 'fresh ChatGPT prompt', 'chatgpt');
     await flushMicrotasks();
+    // A stale draft is cleared first now, and each clearing technique settles before the next.
+    await vi.advanceTimersByTimeAsync(COMPOSER_SETTLE_MS * 2);
 
     expect(env.input.textContent).toBe('fresh ChatGPT prompt');
     expect(errorDone(env)).toBeUndefined();
