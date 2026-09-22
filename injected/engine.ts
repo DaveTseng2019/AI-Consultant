@@ -1404,6 +1404,69 @@ class InactiveSendOperationError extends Error {
     return null;
   }
 
+  // An empty capture looks exactly like a provider that answered nothing, and the facts that decide
+  // it -- which filter dropped every candidate -- live only in this frame. Name them in the error so
+  // the event log and the run snapshot carry the diagnosis instead of a blank answer.
+  function describeEmptyCapture(): string {
+    if (!adapter) return 'no adapter';
+    const parts = [`cached:${lastResponseText.length}`];
+    const chatGptAnchor = adapter.provider === 'chatgpt' ? refreshChatGptUserTurnAnchor(adapter) : null;
+    if (adapter.provider === 'chatgpt') {
+      parts.push(`anchor:${chatGptAnchor ? 'found' : 'missing'}`);
+      if (!chatGptAnchor) {
+        // A missing anchor has two very different causes: the page shows no user turn for this send
+        // at all, or it shows turns whose text no longer matches the prompt we sent. Only the counts
+        // tell them apart.
+        const turns = Array.from(document.querySelectorAll(CHATGPT_USER_MESSAGE_SELECTOR));
+        parts.push(
+          `turns:${turns.length}`,
+          `matching:${matchingChatGptUserTurns(adapter, pendingPromptText).length}`,
+          `turnBaseline:${matchingChatGptUserTurnBaseline}`,
+          `prompt:${pendingPromptText.length}`,
+        );
+        // Turns on the page that none of the comparisons accepted. Where each one parts company
+        // with the prompt says whether the page shortened the message or rewrote it.
+        const wanted = compactVisibleText(pendingPromptText);
+        turns.slice(-2).forEach((turn, index) => {
+          parts.push(`turn${index}:[${textDivergence(compactVisibleText(turn.textContent ?? ''), wanted, 'turn')}]`);
+        });
+        return parts.join(', ');
+      }
+    }
+    const responseEls = Array.from(document.querySelectorAll(adapter.responseSelectors.join(', ')));
+    parts.push(`nodes:${responseEls.length}`);
+    const rejected = new Map<string, number>();
+    const count = (reason: string) => rejected.set(reason, (rejected.get(reason) ?? 0) + 1);
+    for (let index = responseEls.length - 1; index >= 0; index -= 1) {
+      const response = responseEls[index];
+      if (chatGptAnchor && !elementFollows(chatGptAnchor, response)) {
+        count('before-anchor');
+        continue;
+      }
+      if (!chatGptAnchor && waitingForResponse && responseBaselineEls.has(response)) {
+        count('baseline-element');
+        continue;
+      }
+      if (isUserMessageElement(response)) {
+        count('user-message');
+        continue;
+      }
+      const text = extractResponseText(response);
+      if (!text) {
+        count('no-text');
+        continue;
+      }
+      if (!chatGptAnchor && waitingForResponse && !responseTextIsBeyondBaseline(text, responseEls)) {
+        count('at-baseline');
+        continue;
+      }
+      // A candidate the real read rejected moments ago means the DOM moved between the two reads.
+      count(isLikelyPromptEcho(text, pendingPromptText) ? 'prompt-echo' : 'would-match');
+    }
+    const tally = [...rejected].map(([reason, total]) => `${reason}:${total}`).join(' ');
+    return parts.concat(tally || 'nothing scanned').join(', ');
+  }
+
   function isUserMessageElement(response: Element): boolean {
     const closest = (response as Element & { closest?: (selector: string) => Element | null }).closest;
     if (typeof closest !== 'function') return false;
@@ -1846,6 +1909,12 @@ class InactiveSendOperationError extends Error {
     // return a message that already existed before the send.
     const payload = finalResponseText(lastResponseText, getLatestResponseText());
     const sendOperation = activeSendOperation;
+    if (!payload.trim()) {
+      // Report the empty capture before cancelResponseWait() clears the baselines the description
+      // reads. The host rejects an empty answer either way; this is what says why it was empty.
+      doneWithError(`${adapter.provider} captured an empty response (${describeEmptyCapture()})`, adapter.provider, sendOperation);
+      return;
+    }
     cancelResponseWait();
     bridge.emit({ v: 1, action: 'RESPONSE_DONE', provider: adapter.provider, payload });
     if (sendOperation !== undefined) releaseSendOperation(sendOperation);
@@ -2017,8 +2086,13 @@ class InactiveSendOperationError extends Error {
   // visible in the composer, so the mismatch is in characters nobody can see. Report where the
   // two strings part company so one screenshot is enough to tell truncation from rewriting.
   function composerMismatchDetail(input: Element, expected: string): string {
-    const actual = compactVisibleText(getInputText(input));
-    const wanted = compactVisibleText(expected);
+    const detail = textDivergence(compactVisibleText(getInputText(input)), compactVisibleText(expected), 'composer');
+    return `${detail}; stages ${injectionStageTrail || 'none'}`;
+  }
+
+  // Where two strings part company, in the compacted form the comparisons use. One line is enough
+  // to tell truncation from rewriting, for a composer draft and for a rendered user turn alike.
+  function textDivergence(actual: string, wanted: string, subject: string): string {
     let i = 0;
     while (i < actual.length && i < wanted.length && actual[i] === wanted[i]) i += 1;
     const shape = wanted.startsWith(actual)
@@ -2027,9 +2101,8 @@ class InactiveSendOperationError extends Error {
         ? 'extended'
         : 'diverged';
     return (
-      `${shape} at ${i}/${wanted.length}, composer has ${actual.length}; ` +
-      `expected ${JSON.stringify(wanted.slice(i, i + 24))}, got ${JSON.stringify(actual.slice(i, i + 24))}; ` +
-      `stages ${injectionStageTrail || 'none'}`
+      `${shape} at ${i}/${wanted.length}, ${subject} has ${actual.length}; ` +
+      `expected ${JSON.stringify(wanted.slice(i, i + 24))}, got ${JSON.stringify(actual.slice(i, i + 24))}`
     );
   }
 
@@ -2043,10 +2116,14 @@ class InactiveSendOperationError extends Error {
     const visibleExpected = promptEchoComparisonKey(prompt);
     return Array.from(document.querySelectorAll(CHATGPT_USER_MESSAGE_SELECTOR)).filter(
       (turn) => {
+        // The turn element carries its own controls, so its text is the prompt plus chrome: a long
+        // message renders with "顯示更多"/"顯示較少" and a reaction button inside the same element.
+        // Equality rejected every one of those turns, the anchor stayed missing, and the whole turn
+        // captured nothing. The prefix is the part the page echoed back.
         const content = turn.textContent ?? '';
         return (
-          compactVisibleText(content) === expected ||
-          (visibleExpected && promptEchoComparisonKey(content) === visibleExpected)
+          compactVisibleText(content).startsWith(expected) ||
+          (visibleExpected !== '' && promptEchoComparisonKey(content).startsWith(visibleExpected))
         );
       },
     );

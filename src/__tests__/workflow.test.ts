@@ -947,6 +947,21 @@ describe('workflow engine', () => {
     expect(prompts[3]).toBe(PROMPTS.debate.summary('debate question', `${pro}-answer`, `${con}-answer`, `${judge}-answer`));
   });
 
+  it('stops the debate when the pro answer comes back empty instead of quoting nothing to the con side', async () => {
+    const prompts: string[] = [];
+    vi.mocked(host.provider.send).mockImplementation(async (provider, prompt) => {
+      prompts.push(prompt);
+      publishBridgeMessage(done(provider, provider === DEFAULT_DEBATE_ROLES.pro ? '' : `${provider}-answer`));
+    });
+
+    await expect(runWorkflow({ text: 'empty pro answer', mode: 'debate', roles: DEFAULT_DEBATE_ROLES })).resolves.toEqual({
+      ok: true,
+    });
+
+    expect(prompts).toHaveLength(1);
+    expect(getLastSnapshot()?.steps).toMatchObject([{ nodeId: 'pro', status: 'error' }]);
+  });
+
   it('does not checkpoint default debate runs', async () => {
     const checkpoints: PendingCheckpoint[] = [];
     const unsubscribeCheckpoint = onCheckpoint((pending) => {

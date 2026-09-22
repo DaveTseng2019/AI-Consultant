@@ -1352,6 +1352,32 @@ describe('injected engine input hardening', () => {
     });
   });
 
+  it('reports why an operator-forced finish captured nothing instead of emitting an empty answer', async () => {
+    vi.useFakeTimers();
+    const env = createEnv({ inputKind: 'textarea' });
+    const handler = await installEngine(env);
+    dispatchAdapter(handler, {
+      timing: {
+        doneDelayMs: 100,
+        chunkDebounceMs: 0,
+        statusIntervalMs: 1_000_000,
+        backupPollMs: 1_000_000,
+      },
+    });
+
+    send(handler, 'draft');
+    await flushMicrotasks();
+    // What the "answer is finished" button does while the page still shows no answer.
+    const engine = (window as unknown as { __MAC_ENGINE__?: { finish?: () => void } }).__MAC_ENGINE__;
+    engine?.finish?.();
+
+    // An empty answer would travel on as a real one: the debate's con step quoted an empty pro
+    // section. The reason string is what names the filter that dropped the text.
+    const done = env.emitted.filter((message) => message.action === 'RESPONSE_DONE');
+    expect(done).toHaveLength(1);
+    expect(done[0].payload).toBe('[Error: grok captured an empty response (cached:0, nodes:0, nothing scanned)]');
+  });
+
   it('keeps Grok Heavy in flight while the live chat-stop-button remains visible', async () => {
     vi.useFakeTimers();
     const env = createEnv({ inputKind: 'textarea' });
@@ -2050,6 +2076,41 @@ describe('injected engine input hardening', () => {
       payload: 'answer whose own turn is unfinished',
     });
     expect(env.emitted.filter((message) => message.action === 'RESPONSE_DONE')).toHaveLength(0);
+  });
+
+  it('anchors a long ChatGPT turn that renders its own collapse and reaction controls', async () => {
+    vi.useFakeTimers();
+    const env = createEnv({ inputKind: 'textarea' });
+    const handler = await installEngine(env);
+    dispatchAdapter(handler, {
+      provider: 'chatgpt',
+      timing: { doneDelayMs: 100, chunkDebounceMs: 0, statusIntervalMs: 1_000_000, backupPollMs: 10 },
+    });
+
+    const prompt = 'a prompt long enough for the page to collapse it';
+    const answer = 'the answer that follows the collapsed turn';
+    send(handler, prompt, 'chatgpt');
+    await flushMicrotasks();
+    // The page appends its controls inside the user turn. Demanding equality left the anchor
+    // missing, and without an anchor the engine reads no response at all for the whole turn.
+    env.userMessages = [new FakeElement(env.document, 'div', `${prompt}顯示更多顯示較少👍`)];
+
+    const turn = new FakeElement(env.document, 'article');
+    const copyButton = new FakeElement(env.document, 'button');
+    copyButton.setAttribute('data-testid', CHATGPT_COPY_BUTTON_TEST_ID);
+    const response = new FakeElement(env.document, 'div', answer);
+    turn.appendChild(copyButton);
+    turn.appendChild(response);
+    env.detectorElements.set(CHATGPT_TURN_SELECTOR, [turn]);
+    env.responses = [response];
+
+    await vi.advanceTimersByTimeAsync(CHATGPT_TERMINAL_STABLE_MS + CHATGPT_TERMINAL_SAMPLE_INTERVAL_MS * 2);
+    expect(env.emitted).toContainEqual({
+      v: 1,
+      action: 'RESPONSE_DONE',
+      provider: 'chatgpt',
+      payload: answer,
+    });
   });
 
   it('restarts ChatGPT Astra terminal confirmation when the same text remounts in a new turn', async () => {
