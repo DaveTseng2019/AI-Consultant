@@ -91,6 +91,7 @@ Grok 有四件事是 app 看不到、因此也幫不上忙的，第一次用容�
 
 | 檔案 | 內容 |
 |---|---|
+| [`CHANGELOG.zh-TW.md`](../CHANGELOG.zh-TW.md) | 每一版改了什麼 |
 | [`docs/BASICS.zh-TW.md`](../docs/BASICS.zh-TW.md) | 這個 app 怎麼運作。機制說明，不是操作手冊 |
 | [`docs/RUN-AND-UPDATE.zh-TW.md`](../docs/RUN-AND-UPDATE.zh-TW.md) | 執行、更新、產生執行檔 |
 | [`docs/COMPATIBILITY.zh-TW.md`](../docs/COMPATIBILITY.zh-TW.md) | 各平台實際驗證到哪 |

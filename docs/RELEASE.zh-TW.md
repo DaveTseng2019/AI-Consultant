@@ -74,6 +74,9 @@ CI 發佈**不會**動到 `src-tauri/target/release/ai-consultant.exe`，也就�
 
 說明文件 CI 也不會動。發佈之後照這張清單走一遍：
 
+- 把這一版加進 [`CHANGELOG.zh-TW.md`](../CHANGELOG.zh-TW.md) 與 [`CHANGELOG.md`](../CHANGELOG.md)。
+  內容就是 release 說明的濃縮版，只寫自己的改動。**沒有寫說明的版本也要留一行**，指回 GitHub
+  上那筆自動產生的 commit 列表——空著會讓人以為那一版漏掉了。
 - 重讀這一版動到的頁面，把跟實際 app 不符的地方改掉：[`BASICS.zh-TW.md`](./BASICS.zh-TW.md)、
   [`COMPATIBILITY.zh-TW.md`](./COMPATIBILITY.zh-TW.md)、
   [`RUN-AND-UPDATE.zh-TW.md`](./RUN-AND-UPDATE.zh-TW.md)，以及這一份。

@@ -111,6 +111,7 @@ A signed-out Grok on the stage says 1, 3 and 4 on screen. The long version is in
 
 | File | Content |
 |---|---|
+| [`CHANGELOG.md`](../CHANGELOG.md) | What changed in each version |
 | [`docs/BASICS.md`](../docs/BASICS.md) | How this app works. The mechanism, not a user manual |
 | [`docs/RUN-AND-UPDATE.md`](../docs/RUN-AND-UPDATE.md) | Run it, update it, produce an executable |
 | [`docs/COMPATIBILITY.md`](../docs/COMPATIBILITY.md) | How far each platform is actually verified |

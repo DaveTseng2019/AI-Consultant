@@ -77,6 +77,9 @@ fail; add `--close` to let it close the app itself.
 
 CI does not touch the docs either. After publishing, go through this list:
 
+- Add the version to [`CHANGELOG.md`](../CHANGELOG.md) and [`CHANGELOG.zh-TW.md`](../CHANGELOG.zh-TW.md):
+  the release notes condensed, our own changes only. **A version with no notes still gets a line**
+  pointing at its generated commit list on GitHub — a gap reads as an omission.
 - Re-read the pages the release touched and fix what no longer matches the shipped app:
   [`BASICS.md`](./BASICS.md), [`COMPATIBILITY.md`](./COMPATIBILITY.md),
   [`RUN-AND-UPDATE.md`](./RUN-AND-UPDATE.md) and this file.
