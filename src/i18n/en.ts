@@ -25,7 +25,7 @@ export const en: Record<I18nKey, string> = {
   'preset.coding.displayName': 'Coding',
   'preset.coding.meta': '~ 10 min',
   'preset.coding.description':
-    'Use this for implementation work. The run plans, reviews, writes, tests, revises, and finishes a concrete answer.',
+    'The run plans, reviews, writes, reasons through test cases, revises, and ends with the finished code and notes on using it.',
   'preset.coding.costLabel': '4 roles · 4 logins · 8-12 min · High RAM',
   'preset.roundtable.displayName': 'Roundtable',
   'preset.roundtable.meta': '~ 12 min',

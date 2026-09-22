@@ -166,6 +166,15 @@ waitForResponse.ts 等生成結束（靠 thinkingDetectors ＋ 逾時看門狗�
 providerResponse.ts 取回文字，交給下一步或收進 transcript
 ```
 
+## 跟著問題一起送的圖片
+
+在輸入框按 `Ctrl + V` 或 `Alt + V` 貼上。最多 4 張，每張 4 MB。
+「插入檔案」按鈕只收純文字檔，不收圖片。app 自己不會抓螢幕，圖要你放上剪貼簿。
+
+**串行模式一樣送。** 圖片屬於整個 run，不屬於某一步（`src/workflow/pendingImages.ts`）。
+每家在輪到它的第一步收到圖，之後那家的步驟是同一個頁面的追問，不會重複上傳。
+所以 Coding 模式那 8 步裡，四家各自只看到圖片一次。
+
 ## 送出之後
 
 - **transcript**：回答進右側對話區。

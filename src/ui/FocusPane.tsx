@@ -326,7 +326,7 @@ function FocusStage({
       >
         <div className="flex items-center justify-between gap-2 px-3 py-2 text-sm">
           <span className="flex min-w-0 items-center gap-2 truncate">
-            <ProviderLogo provider={provider} className="h-4 w-4" />
+            <ProviderLogo provider={provider} />
             <span className="truncate">{AI_PROVIDERS[provider].name}</span>
           </span>
           {collapseToggle}
@@ -342,7 +342,7 @@ function FocusStage({
     >
       <div className="flex items-center justify-between gap-2 border-b border-sky-300 dark:border-sky-900 px-3 py-2 text-sm">
         <span className="flex min-w-0 items-center gap-2 truncate">
-          <ProviderLogo provider={provider} className="h-4 w-4" />
+          <ProviderLogo provider={provider} />
           <span className="truncate">{AI_PROVIDERS[provider].name}</span>
         </span>
         <div className="flex flex-wrap justify-end gap-2 text-xs">
@@ -574,7 +574,7 @@ function StatusStrip({
       <div className="mb-2 flex items-center justify-between gap-3 px-0.5">
         <h2 id="provider-connections-title" className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">{t('provider.connections')}</h2>
         <div className="flex min-w-0 items-center gap-3">
-          <span className="min-w-0 truncate text-[0.6875rem] text-zinc-500 dark:text-zinc-400">{t('provider.connectionsHint')}</span>
+          <span className="min-w-0 truncate text-xs text-zinc-500 dark:text-zinc-400">{t('provider.connectionsHint')}</span>
           <button
             type="button"
             className="shrink-0 border border-zinc-300 px-2 py-1 text-xs text-zinc-800 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
@@ -664,12 +664,12 @@ function StatusStripItem({
         <span className="absolute right-0.5 top-0.5 h-1.5 w-1.5 rounded-full bg-sky-600 dark:bg-sky-400" aria-hidden="true" />
       ) : null}
       <span className="flex min-w-0 items-center gap-2">
-        <ProviderLogo provider={provider} className="h-5 w-5" />
+        <ProviderLogo provider={provider} />
         <span className="min-w-0 flex-1">
           <span className="block truncate text-xs font-medium text-zinc-900 dark:text-zinc-100">{AI_PROVIDERS[provider].name}</span>
           <span className="mt-1 flex min-w-0 items-center gap-1">
             <span className={`h-2 w-2 shrink-0 rounded-full ${status.dotClassName}`} aria-hidden="true" />
-            <span className={`min-w-0 truncate text-[0.6875rem] ${status.className}`}>{openingProvider === provider ? t('connection.connecting') : status.label}</span>
+            <span className={`min-w-0 truncate text-xs ${status.className}`}>{openingProvider === provider ? t('connection.connecting') : status.label}</span>
           </span>
         </span>
       </span>
@@ -685,16 +685,16 @@ export function AdapterAccessPanel({ id, summary }: { id: string; summary: Adapt
       <div className="mb-2 flex items-center justify-between gap-2">
         <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{t('provider.access.heading')}</h3>
         {summary.provider ? (
-          <span className="flex shrink-0 items-center gap-1 text-[0.6875rem] text-sky-700 dark:text-sky-200">
-            <ProviderLogo provider={summary.provider} className="h-3.5 w-3.5" />
+          <span className="flex shrink-0 items-center gap-1 text-xs text-sky-700 dark:text-sky-200">
+            <ProviderLogo provider={summary.provider} />
             {summary.providerName}
           </span>
         ) : (
-          <span className="flex flex-wrap items-center justify-end gap-x-2 gap-y-1 text-[0.6875rem] text-sky-700 dark:text-sky-200">
+          <span className="flex flex-wrap items-center justify-end gap-x-2 gap-y-1 text-xs text-sky-700 dark:text-sky-200">
             <span>{t('provider.access.appliesTo')}</span>
             {PROVIDERS.map((candidate) => (
               <span key={candidate} className="flex items-center gap-1">
-                <ProviderLogo provider={candidate} className="h-3.5 w-3.5" />
+                <ProviderLogo provider={candidate} />
                 {AI_PROVIDERS[candidate].name}
               </span>
             ))}
@@ -706,7 +706,7 @@ export function AdapterAccessPanel({ id, summary }: { id: string; summary: Adapt
         <PermissionGroup title={t('provider.access.writeTitle')} lines={summary.writes} />
         <PermissionGroup title={t('provider.access.cannotTitle')} lines={summary.cannot} />
       </div>
-      {summary.note ? <p className="mt-3 border-t border-sky-300 dark:border-sky-900 pt-2 text-[0.6875rem] leading-relaxed text-zinc-500 dark:text-zinc-500">{summary.note}</p> : null}
+      {summary.note ? <p className="mt-3 border-t border-sky-300 dark:border-sky-900 pt-2 text-xs leading-relaxed text-zinc-500 dark:text-zinc-500">{summary.note}</p> : null}
     </section>
   );
 }
@@ -723,7 +723,7 @@ function PermissionGroup({ title, lines }: { title: string; lines: AdapterPermis
               <ul className="mt-1 space-y-1 border-l border-zinc-300 dark:border-zinc-700 pl-2">
                 {line.selectors.map((selector) => (
                   <li key={selector}>
-                    <code className="break-all text-[0.6875rem] text-sky-700 dark:text-sky-200">{selector}</code>
+                    <code className="break-all text-xs text-sky-700 dark:text-sky-200">{selector}</code>
                   </li>
                 ))}
               </ul>

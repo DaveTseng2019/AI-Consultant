@@ -38,7 +38,7 @@ export function ProcessTrace({
       >
         <div className="flex items-center justify-between gap-3 border-b border-zinc-200 px-2.5 py-1.5 dark:border-zinc-800">
           <h2 className="text-xs font-semibold uppercase text-zinc-700 dark:text-zinc-300">{t('processTrace.title', locale)}</h2>
-          <div className="min-w-0 truncate text-right text-[0.6875rem] text-sky-700 dark:text-sky-200">{trace.currentStatus || t('processTrace.settled', locale)}</div>
+          <div className="min-w-0 truncate text-right text-xs text-sky-700 dark:text-sky-200">{trace.currentStatus || t('processTrace.settled', locale)}</div>
         </div>
         {trace.steps.length > 0 ? (
           <ol className={`divide-y divide-zinc-200 overflow-auto dark:divide-zinc-800 ${grow ? 'min-h-0 flex-1' : 'max-h-36'}`}>
@@ -58,7 +58,7 @@ export function ProcessTrace({
                   <span className="flex items-center gap-1" aria-hidden="true">
                     <span className={`h-2 w-2 rounded-full ${statusDotClass(step.status)}`} />
                   </span>
-                  <span className={`truncate text-[0.6875rem] font-medium uppercase ${statusClass(step.status)}`}>{statusLabel(step.status, locale)}</span>
+                  <span className={`truncate text-xs font-medium uppercase ${statusClass(step.status)}`}>{statusLabel(step.status, locale)}</span>
                   <span className="min-w-0 truncate text-zinc-800 dark:text-zinc-200">
                     <span className="font-medium">{step.label}</span>
                     {step.detail ? <span className="text-zinc-500 dark:text-zinc-400"> — {step.detail}</span> : null}

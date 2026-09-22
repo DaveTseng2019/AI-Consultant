@@ -195,6 +195,17 @@ waitForResponse.ts Wait for generation to end (thinkingDetectors + a timeout wat
 providerResponse.ts Take the text back, hand it to the next step or into the transcript
 ```
 
+## Images sent with the question
+
+Paste them into the composer with `Ctrl + V` or `Alt + V`. Up to 4 images, 4 MB each.
+The "insert file" button takes plain-text files only, never images. The app does not capture
+your screen; you put the image on the clipboard.
+
+**Serial modes send them too.** The images belong to the run, not to one step
+(`src/workflow/pendingImages.ts`). Each provider receives them on its first step; later steps on
+that provider are follow-ups in a page that already holds the image, so nothing is uploaded twice.
+Across Coding mode's eight steps, each of the four providers sees the image once.
+
 ## After a send
 
 - **Transcript**: the answer goes into the conversation column on the right.

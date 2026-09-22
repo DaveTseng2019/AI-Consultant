@@ -25,7 +25,7 @@ export const ja: Record<I18nKey, string> = {
   'preset.coding.displayName': 'コーディング',
   'preset.coding.meta': '約10分',
   'preset.coding.description':
-    '実装作業に使います。計画、レビュー、作成、テスト、修正を行い、具体的な回答に仕上げます。',
+    '計画、レビュー、作成、テストケースの検討、修正を行い、最後に完成したコードと使い方を出力します。',
   'preset.coding.costLabel': '4役割 · ログイン4件 · 8～12分 · RAM使用量：多',
   'preset.roundtable.displayName': 'ラウンドテーブル',
   'preset.roundtable.meta': '約12分',

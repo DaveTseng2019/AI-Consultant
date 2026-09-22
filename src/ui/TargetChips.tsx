@@ -42,7 +42,7 @@ export function TargetChips({
                   <path d="M20 6 9 17l-5-5" />
                 </svg>
               ) : null}
-              <ProviderLogo provider={provider} className="h-4 w-4" />
+              <ProviderLogo provider={provider} />
               <span>{AI_PROVIDERS[provider].name}</span>
             </span>
           </button>

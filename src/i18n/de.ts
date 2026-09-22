@@ -25,7 +25,7 @@ export const de: Record<I18nKey, string> = {
   'preset.coding.displayName': 'Programmieren',
   'preset.coding.meta': 'ca. 10 Min.',
   'preset.coding.description':
-    'Für Implementierungsaufgaben. Der Lauf plant, prüft, schreibt, testet, überarbeitet und liefert ein konkretes Ergebnis.',
+    'Der Lauf plant, prüft, schreibt, spielt Testfälle durch, überarbeitet und gibt am Ende den fertigen Code samt Hinweisen zur Nutzung aus.',
   'preset.coding.costLabel': '4 Rollen · 4 Anmeldungen · 8–12 Min. · Hoher RAM-Bedarf',
   'preset.roundtable.displayName': 'Diskussionsrunde',
   'preset.roundtable.meta': 'ca. 12 Min.',

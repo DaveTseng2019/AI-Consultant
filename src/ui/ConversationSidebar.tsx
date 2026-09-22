@@ -55,14 +55,16 @@ export function ConversationSidebar({
       className={`${collapsed ? 'w-14 transition-[width]' : ''} flex min-h-0 shrink-0 flex-col border-r border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900`}
     >
       <div className="flex items-center gap-2 border-b border-zinc-200 p-2 dark:border-zinc-800">
+        {/* px, not rem: the logo is artwork at a fixed size, and this button is only its hit area,
+            so it tracks the logo rather than the interface font size. */}
         <button
           type="button"
-          className="grid h-9 w-9 shrink-0 place-items-center rounded-md hover:bg-white focus-visible:outline-offset-2 dark:hover:bg-zinc-800"
+          className="grid h-[40px] w-[40px] shrink-0 place-items-center rounded-md hover:bg-white focus-visible:outline-offset-2 dark:hover:bg-zinc-800"
           aria-label={labels.toggle}
           title={labels.toggle}
           onClick={onToggle}
         >
-          <img src={appIconUrl} alt="" className="default-brand-icon h-8 w-8" />
+          <img src={appIconUrl} alt="" className="default-brand-icon h-[36px] w-[36px]" />
         </button>
         {!collapsed ? (
           <span className="min-w-0 truncate text-sm font-semibold text-zinc-900 dark:text-zinc-100">
@@ -86,7 +88,7 @@ export function ConversationSidebar({
 
       {!collapsed ? (
         <div className="flex min-h-0 flex-1 flex-col px-2 pb-2">
-          <h2 className="px-1 pb-2 text-[0.6875rem] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">{labels.history}</h2>
+          <h2 className="px-1 pb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">{labels.history}</h2>
           <div className="min-h-0 flex-1 overflow-auto">
             {sessions.length === 0 ? (
               <div className="px-2 py-3 text-xs text-zinc-500 dark:text-zinc-400">{labels.empty}</div>
@@ -108,14 +110,17 @@ export function ConversationSidebar({
                       <span className="block truncate text-xs font-medium">
                         {session.title === DEFAULT_CONVERSATION_SESSION_TITLE ? labels.newConversation : session.title}
                       </span>
-                      <span className="mt-1 block text-[0.625rem] text-zinc-500 dark:text-zinc-400">
+                      {/* Dimmer than the heading in dark mode only. zinc-400 was tried on light
+                          and read as washed out on the near-white sidebar, so light keeps
+                          zinc-500 and leans on the title's zinc-700 above it for separation. */}
+                      <span className="mt-1 block text-xs text-zinc-500 dark:text-zinc-500">
                         {new Intl.DateTimeFormat(locale, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }).format(session.updatedAt)}
                       </span>
                     </button>
                     {pendingDeleteId === session.id ? (
                       <button
                         type="button"
-                        className="shrink-0 rounded-md border border-red-300 px-2 text-[0.625rem] font-medium text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-800 dark:text-red-200 dark:hover:bg-red-950"
+                        className="shrink-0 rounded-md border border-red-300 px-2 text-xs font-medium text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-800 dark:text-red-200 dark:hover:bg-red-950"
                         onClick={() => {
                           setPendingDeleteId(undefined);
                           onDeleteSession(session);

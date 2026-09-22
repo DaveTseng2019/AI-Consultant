@@ -52,12 +52,12 @@ export function PresetCatalog({
         activePresetId,
       })}
       {detailPreset ? (
-        <div className="rounded border border-sky-200 bg-sky-50 px-3 py-2 text-xs dark:border-sky-900 dark:bg-sky-950/30">
+        <div className="rounded border border-sky-200 bg-sky-50 px-3 py-2 text-sm dark:border-sky-900 dark:bg-sky-950/30">
           <div className="font-semibold text-sky-900 dark:text-sky-100">{t(detailPreset.displayNameKey, locale)}</div>
           <p className="mt-1 leading-relaxed text-zinc-700 dark:text-zinc-300">{t(detailPreset.descriptionKey, locale)}</p>
           {/* Own row, wrapping: the cost label runs from a few words to a full line
               (brainstorm), so an inline pill laid the panel out differently per preset. */}
-          <span className="mt-2 inline-block rounded-full bg-white px-2 py-1 text-[0.6875rem] leading-relaxed text-zinc-600 dark:bg-zinc-900 dark:text-zinc-300">
+          <span className="mt-2 inline-block rounded-full bg-white px-2 py-1 leading-relaxed text-zinc-600 dark:bg-zinc-900 dark:text-zinc-300">
             {t(detailPreset.costLabelKey, locale)}
           </span>
         </div>
@@ -114,7 +114,7 @@ function renderPresetGrid({
               </span>
               {readiness ? (
                 <span
-                  className={`shrink-0 rounded-full px-2 py-0.5 text-[0.6875rem] font-medium ${
+                  className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${
                     readiness.ready
                       ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200'
                       : 'bg-zinc-200 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300'
@@ -124,7 +124,7 @@ function renderPresetGrid({
                 </span>
               ) : null}
             </span>
-            {preset.metaKey ? <span className="mt-1 text-[0.6875rem] leading-none text-zinc-500 dark:text-zinc-400">{t(preset.metaKey, locale)}</span> : null}
+            {preset.metaKey ? <span className="mt-1 text-xs leading-none text-zinc-500 dark:text-zinc-400">{t(preset.metaKey, locale)}</span> : null}
           </button>
         );
       })}

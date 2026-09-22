@@ -21,7 +21,7 @@ export const zhTW: Record<I18nKey, string> = {
   'preset.consult.costLabel': '4 角色 · 4 家登入 · ~2 min · 低 RAM',
   'preset.coding.displayName': 'Coding 模式',
   'preset.coding.meta': '約 10 分鐘',
-  'preset.coding.description': '適合實作工作。流程會規劃、審查、撰寫、測試、修正，最後整理出具體答案。',
+  'preset.coding.description': '流程會規劃、審查、撰寫、推演測試案例、修正，最後交出完整程式碼與使用說明。',
   'preset.coding.costLabel': '4 角色 · 4 家登入 · 8–12 min · 高 RAM',
   'preset.roundtable.displayName': '道理辯證',
   'preset.roundtable.meta': '約 12 分鐘',

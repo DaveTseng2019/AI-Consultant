@@ -3,7 +3,10 @@ import { PROVIDER_LOGOS } from '../assets/providers/logos';
 
 // The provider name is always rendered next to the mark, so the image is decorative: an alt text
 // here would make a screen reader announce every provider twice.
-export function ProviderLogo({ provider, className = 'h-4 w-4' }: { provider: AIProvider; className?: string }) {
+// One size for every mark in the app. The marks name the same four providers wherever they appear,
+// and three different sizes read as three different things. Pass className only for something other
+// than the size.
+export function ProviderLogo({ provider, className = 'h-5 w-5' }: { provider: AIProvider; className?: string }) {
   return (
     <img
       src={PROVIDER_LOGOS[provider]}

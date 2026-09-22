@@ -978,7 +978,7 @@ export function SettingsModal({
             {error.detail ? (
               <details className="mt-2">
                 <summary className="cursor-pointer font-medium">{t('settings.technicalDetails')}</summary>
-                <code className="mt-1 block break-words text-[0.6875rem] opacity-80">{error.detail}</code>
+                <code className="mt-1 block break-words text-xs opacity-80">{error.detail}</code>
               </details>
             ) : null}
           </div>
@@ -1167,7 +1167,7 @@ function DiagnosticsSection({
             <div key={provider} className="border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 px-3 py-2 text-xs">
               <div className="mb-2 flex items-center justify-between gap-2">
                 <span className="flex min-w-0 items-center gap-1.5 font-medium text-zinc-900 dark:text-zinc-100">
-                  <ProviderLogo provider={provider} className="h-4 w-4" />
+                  <ProviderLogo provider={provider} />
                   <span className="truncate">{providerName(provider)}</span>
                 </span>
                 <span className="text-zinc-500 dark:text-zinc-500">{lastEvent ? formatRelativeTime(lastEvent, now) : t('settings.noEvents')}</span>
@@ -1214,16 +1214,16 @@ function EventLogRow({ event, now }: { event: EventLogEvent; now: number }) {
     <li className="px-3 py-2 text-xs">
       <div className="flex flex-wrap items-center gap-2 text-zinc-500 dark:text-zinc-500">
         <span>{formatRelativeTime(event.ts, now)}</span>
-        <span className="border border-zinc-300 dark:border-zinc-700 px-1.5 py-0.5 text-[0.6875rem] uppercase text-zinc-700 dark:text-zinc-300">{event.kind}</span>
+        <span className="border border-zinc-300 dark:border-zinc-700 px-1.5 py-0.5 text-xs uppercase text-zinc-700 dark:text-zinc-300">{event.kind}</span>
         {event.provider ? (
           <span className="flex items-center gap-1 text-sky-700 dark:text-sky-300">
-            <ProviderLogo provider={event.provider} className="h-3.5 w-3.5" />
+            <ProviderLogo provider={event.provider} />
             {providerName(event.provider)}
           </span>
         ) : null}
       </div>
       <div className="mt-1 break-words text-zinc-800 dark:text-zinc-200">{event.summary}</div>
-      {event.detail ? <code className="mt-1 block break-words text-[0.6875rem] text-zinc-500 dark:text-zinc-500">{JSON.stringify(event.detail)}</code> : null}
+      {event.detail ? <code className="mt-1 block break-words text-xs text-zinc-500 dark:text-zinc-500">{JSON.stringify(event.detail)}</code> : null}
     </li>
   );
 }

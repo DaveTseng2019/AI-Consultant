@@ -2319,7 +2319,7 @@ export default function App() {
                   <>
                     <div className="mb-2 flex flex-wrap items-baseline gap-2">
                       <span className="text-xs font-semibold uppercase text-zinc-600 dark:text-zinc-400">{translate('input.sendSelectedProviders')}</span>
-                      <span className="text-[0.6875rem] text-zinc-500 dark:text-zinc-500">{translate('input.sendTargetsByRole')}</span>
+                      <span className="text-xs text-zinc-500 dark:text-zinc-500">{translate('input.sendTargetsByRole')}</span>
                     </div>
                     <div className="flex flex-wrap gap-1.5">
                       {/* The same chips, ticked and frozen. A tick means "this one is being asked"
@@ -2749,7 +2749,7 @@ export function ChatArea({
               <div className="flex items-center gap-1.5 text-xs uppercase text-zinc-500 dark:text-zinc-500">
                 {/* A role label ("Reviewer") replaces the provider name, so the mark is what still
                     says which AI wrote the bubble. */}
-                {isProvider ? <ProviderLogo provider={p as AIProvider} className="h-4 w-4" /> : null}
+                {isProvider ? <ProviderLogo provider={p as AIProvider} /> : null}
                 <span>
                   {bubbleAuthorLabel(message)}
                   {message.modeRole ? ` · ${message.modeRole}` : ''}
