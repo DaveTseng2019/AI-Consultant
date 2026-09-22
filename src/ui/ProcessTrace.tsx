@@ -9,10 +9,13 @@ export function ProcessTrace({
   trace,
   locale = 'en',
   onDetailOpenChange,
+  grow = false,
 }: {
   trace: ProcessTraceState;
   locale?: Locale;
   onDetailOpenChange?: (open: boolean) => void;
+  /** Take the room a collapsed stage gave up, instead of the fixed list height. */
+  grow?: boolean;
 }) {
   const [detailStep, setDetailStep] = useState<ProcessTraceStep | undefined>();
 
@@ -27,13 +30,18 @@ export function ProcessTrace({
 
   return (
     <>
-      <section aria-label={t('processTrace.title', locale)} className="mt-2 shrink-0 overflow-hidden rounded border border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900">
+      <section
+        aria-label={t('processTrace.title', locale)}
+        className={`mt-2 flex flex-col overflow-hidden rounded border border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 ${
+          grow ? 'min-h-0 flex-1' : 'shrink-0'
+        }`}
+      >
         <div className="flex items-center justify-between gap-3 border-b border-zinc-200 px-2.5 py-1.5 dark:border-zinc-800">
           <h2 className="text-xs font-semibold uppercase text-zinc-700 dark:text-zinc-300">{t('processTrace.title', locale)}</h2>
           <div className="min-w-0 truncate text-right text-[0.6875rem] text-sky-700 dark:text-sky-200">{trace.currentStatus || t('processTrace.settled', locale)}</div>
         </div>
         {trace.steps.length > 0 ? (
-          <ol className="max-h-36 divide-y divide-zinc-200 overflow-auto dark:divide-zinc-800">
+          <ol className={`divide-y divide-zinc-200 overflow-auto dark:divide-zinc-800 ${grow ? 'min-h-0 flex-1' : 'max-h-36'}`}>
             {trace.steps.map((step) => (
               <li key={step.id}>
                 <button

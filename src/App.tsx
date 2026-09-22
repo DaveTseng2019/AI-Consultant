@@ -343,6 +343,9 @@ export default function App() {
   // would give the picker back, and one press from any state covers the picker.
   const [stageExpand, setStageExpand] = useState<'none' | 'auto' | 'manual'>('none');
   const stageExpanded = stageExpand === 'manual';
+  // Collapsed to its title row. Independent of the expand above: that one picks how much room the
+  // stage takes, this one takes the stage away and leaves the header to say which provider it was.
+  const [stageCollapsed, setStageCollapsed] = useState(false);
   const [messagesMaximized, setMessagesMaximized] = useState(false);
   const [scrollFocusedProvider, setScrollFocusedProvider] = useState<AIProvider | undefined>();
   const [presentation, setPresentation] = useState<PresentationByProvider>(() => defaultPresentation());
@@ -382,6 +385,7 @@ export default function App() {
     Object.fromEntries(PROVIDERS.map((provider) => [provider, 0])) as Record<AIProvider, number>,
   );
   const overlayGuardOpenRef = useRef(false);
+  const stageCollapsedRef = useRef(false);
   const pendingRestore = useRef<Set<AIProvider>>(new Set());
   const dragStartFocusPaneWidth = useRef(defaultSettings().focusPaneWidth);
   const dragStartSidebarWidth = useRef(defaultSettings().sessionSidebarWidth);
@@ -449,6 +453,7 @@ export default function App() {
     Boolean(preflight) || Boolean(stepTimeout?.timedOut) || settingsOpen || Boolean(reportPreview) || processTraceDetailOpen || messagesMaximized;
   const manualFocusIdlePaused = Boolean(checkpoint) || Boolean(stepTimeout);
   overlayGuardOpenRef.current = overlayGuardOpen;
+  stageCollapsedRef.current = stageCollapsed;
   isProcessingRef.current = isProcessing;
 
   const setCenterSurfaceMode = useCallback((surface: CenterSurface) => {
@@ -523,8 +528,23 @@ export default function App() {
     settingsRef.current = appSettings;
   }, [appSettings]);
 
+  // `system` keeps listening: the OS switch flips while the app is open, and the window has to
+  // follow it without a restart.
   useEffect(() => {
-    document.documentElement.classList.toggle('dark', appSettings.theme !== 'light');
+    const apply = (dark: boolean) => document.documentElement.classList.toggle('dark', dark);
+    if (appSettings.theme !== 'system') {
+      apply(appSettings.theme === 'dark');
+      return;
+    }
+    const query = window.matchMedia?.('(prefers-color-scheme: dark)');
+    if (!query) {
+      apply(false);
+      return;
+    }
+    const onChange = () => apply(query.matches);
+    onChange();
+    query.addEventListener('change', onChange);
+    return () => query.removeEventListener('change', onChange);
   }, [appSettings.theme]);
 
   useEffect(() => {
@@ -1057,6 +1077,7 @@ export default function App() {
       presentationRef.current[provider] === 'center' &&
       centerSurfaceRef.current === 'native' &&
       !userHiddenRef.current.has(provider) &&
+      !stageCollapsedRef.current &&
       !overlayGuardOpenRef.current;
     if (!shouldPaintCenter) {
       await host.provider.park(provider, hiddenProviderLoadBounds());
@@ -1075,6 +1096,7 @@ export default function App() {
 
   const driveCenteredProviderToStage = useCallback(async (provider: AIProvider) => {
     if (centerSurfaceRef.current !== 'native') return;
+    if (stageCollapsedRef.current) return;
     // overlay(設定、preflight 等)開啟時 guard 已 hide webview；此處若照常把
     // bounds 推回舞台，syncBounds 的 park→show 會讓 webview 重新蓋在 overlay 上。
     if (overlayGuardOpenRef.current) return;
@@ -1536,6 +1558,16 @@ export default function App() {
     if (sessionChanged || userSentMessage) transcriptStickToEndRef.current = true;
     if (transcriptStickToEndRef.current) scrollTranscriptToEnd(container);
   }, [activeSessionId, messages]);
+
+  // 收合／展開都要立刻動到原生 webview：收合時舞台沒有錨點元素，webview 會留在原位蓋住下方。
+  useEffect(() => {
+    if (centeredProvider) void syncBounds(centeredProvider);
+  }, [centeredProvider, stageCollapsed, syncBounds]);
+
+  // Centring another provider is a request to look at it, so it never lands inside a collapsed stage.
+  useEffect(() => {
+    setStageCollapsed(false);
+  }, [centeredProvider]);
 
   // overlay 關閉後立即把置中的 webview 推回舞台，不等 2.5 秒的定時同步。
   useEffect(() => {
@@ -2261,11 +2293,17 @@ export default function App() {
                 signs in, and the conversation column beside it is collapsed until some provider can
                 receive a message -- both true for the whole of startup, which is exactly when the
                 send targets and the reason nothing can be sent have to be readable. */}
-            {/* Always on screen, in every mode: before sending, the one thing the user has to be
-                able to read is who the question goes to. Free mode lets them choose it here; the
+            {/* On screen in every mode while a question can still be composed: before sending, the
+                one thing the user has to be able to read is who the question goes to. Free mode lets them choose it here; the
                 other modes take their participants from the mode's role settings, so the same strip
                 shows that list rather than disappearing and leaving the question unanswered. */}
-            {showSendTargets || requiredModeProviders.length > 0 || sendBlockedNotice ? (
+            {/* Once a question has been asked, a manual Expand is allowed to take this room too, and
+                the stage reaches the top of the column: mid-run the chips are disabled anyway, and
+                with a transcript on screen the user is reading answers, not picking who to ask.
+                Restore brings the strip back before the next question. A blocked-send notice is the
+                exception -- it is the one thing here that still has to be read. */}
+            {(showSendTargets || requiredModeProviders.length > 0 || sendBlockedNotice) &&
+            !(stageExpand === 'manual' && (isProcessing || messages.length > 0) && !sendBlockedNotice) ? (
               <section
                 aria-label={translate('input.sendSelectedProviders')}
                 className="shrink-0 border-b border-zinc-200 bg-white px-3 py-2 dark:border-zinc-800 dark:bg-zinc-950"
@@ -2341,6 +2379,13 @@ export default function App() {
               }}
               stageExpanded={stageExpanded}
               onToggleStageExpanded={() => setStageExpand((current) => (current === 'manual' ? 'none' : 'manual'))}
+              stageCollapsed={stageCollapsed}
+              onToggleStageCollapsed={() =>
+                setStageCollapsed((current) => {
+                  if (!current) setStageExpand('none');
+                  return !current;
+                })
+              }
               onOpenSettings={() => setSettingsOpen(true)}
             />
           </div>

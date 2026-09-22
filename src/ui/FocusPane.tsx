@@ -49,6 +49,8 @@ export function FocusPane({
   onChipClick,
   stageExpanded = false,
   onToggleStageExpanded,
+  stageCollapsed = false,
+  onToggleStageCollapsed,
   onOpenSettings,
 }: {
   centeredProvider?: AIProvider;
@@ -79,6 +81,8 @@ export function FocusPane({
   stageExpanded?: boolean;
   onOpenSettings: () => void;
   onToggleStageExpanded?: () => void;
+  stageCollapsed?: boolean;
+  onToggleStageCollapsed: () => void;
 }) {
   const { locale, t } = useI18n();
   const [providerAction, setProviderAction] = useState<ProviderActionState | undefined>();
@@ -124,6 +128,8 @@ export function FocusPane({
           reportBusy={reportBusy}
           stageExpanded={effectiveStageExpanded}
           onToggleStageExpanded={onToggleStageExpanded}
+          stageCollapsed={stageCollapsed}
+          onToggleStageCollapsed={onToggleStageCollapsed}
         />
       ) : (
         <FirstRunPanel
@@ -152,7 +158,10 @@ export function FocusPane({
         <StepTimeoutDialog event={stepTimeout} onClose={onStepTimeoutClose} locale={locale} />
       ) : null}
 
-      {processTrace && !effectiveStageExpanded ? <ProcessTrace trace={processTrace} locale={locale} onDetailOpenChange={onTraceDetailOpenChange} /> : null}
+      {/* Collapsing the stage is how the user asks to watch the run, so the trace takes the room. */}
+      {processTrace && !effectiveStageExpanded ? (
+        <ProcessTrace trace={processTrace} locale={locale} onDetailOpenChange={onTraceDetailOpenChange} grow={stageCollapsed} />
+      ) : null}
 
       {/* The strip stays while the stage is expanded: switching AI is the reason to be looking at
           one, and losing the switcher to see it bigger trades the wrong thing away. Only the
@@ -242,6 +251,8 @@ function FocusStage({
   reportBusy,
   stageExpanded,
   onToggleStageExpanded,
+  stageCollapsed,
+  onToggleStageCollapsed,
 }: {
   provider: AIProvider;
   state: ProviderState;
@@ -262,6 +273,8 @@ function FocusStage({
   reportBusy: boolean;
   stageExpanded: boolean;
   onToggleStageExpanded?: () => void;
+  stageCollapsed: boolean;
+  onToggleStageCollapsed: () => void;
 }) {
   const { t } = useI18n();
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
@@ -288,6 +301,40 @@ function FocusStage({
     };
   }, [moreMenuOpen]);
 
+  const collapseToggle = (
+    <button
+      type="button"
+      className="min-w-8 border border-zinc-300 dark:border-zinc-700 px-2 py-1 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+      aria-expanded={!stageCollapsed}
+      aria-label={stageCollapsed ? t('provider.restoreFromTitle') : t('provider.collapseToTitle')}
+      title={stageCollapsed ? t('provider.restoreFromTitle') : t('provider.collapseToTitle')}
+      onClick={onToggleStageCollapsed}
+    >
+      <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        {stageCollapsed ? <path d="M9 6l6 6-6 6" /> : <path d="M6 9l6 6 6-6" />}
+      </svg>
+    </button>
+  );
+
+  // Collapsed keeps the title row and the way back, nothing else: the point is to give the room
+  // to whatever is under the stage, so the header must not stay as tall as it is when open.
+  if (stageCollapsed) {
+    return (
+      <section
+        className="flex flex-col overflow-hidden border border-sky-300 dark:border-sky-900 bg-zinc-50 dark:bg-zinc-900"
+        onPointerDownCapture={() => onManualFocusControl(provider)}
+      >
+        <div className="flex items-center justify-between gap-2 px-3 py-2 text-sm">
+          <span className="flex min-w-0 items-center gap-2 truncate">
+            <ProviderLogo provider={provider} className="h-4 w-4" />
+            <span className="truncate">{AI_PROVIDERS[provider].name}</span>
+          </span>
+          {collapseToggle}
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section
       className="flex min-h-[160px] flex-1 flex-col overflow-hidden border border-sky-300 dark:border-sky-900 bg-zinc-50 dark:bg-zinc-900"
@@ -308,6 +355,7 @@ function FocusStage({
               {t('provider.textView')}
             </button>
           )}
+          {collapseToggle}
           {onToggleStageExpanded ? (
             <button
               type="button"
@@ -345,6 +393,9 @@ function FocusStage({
               {t('provider.login')}
             </button>
           ) : null}
+          {/* The menu is HTML, and on the real page the native webview sits on top of it: the popup
+              opens behind the site and the button reads as dead. It belongs to the text face only. */}
+          {centerSurface === 'text' ? (
           <div ref={moreMenuRef} className="relative">
             <button
               type="button"
@@ -391,6 +442,7 @@ function FocusStage({
               </div>
             ) : null}
           </div>
+          ) : null}
         </div>
       </div>
       {/* WebView 以此區域定位，讓上方標題列（含「文字檢視」返回鈕）保持可見 */}

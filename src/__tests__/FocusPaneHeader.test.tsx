@@ -35,6 +35,8 @@ function renderFocusPane({
   scrollFocusedProvider,
   stageExpanded,
   stageToggleEnabled = true,
+  centerSurface = 'text',
+  stageCollapsed = false,
 }: {
   stateOverrides?: Partial<Record<AIProvider, Partial<ProviderState>>>;
   presentation?: PresentationByProvider;
@@ -42,6 +44,8 @@ function renderFocusPane({
   scrollFocusedProvider?: AIProvider;
   stageExpanded?: boolean;
   stageToggleEnabled?: boolean;
+  centerSurface?: 'text' | 'native';
+  stageCollapsed?: boolean;
 }): string {
   return renderToStaticMarkup(
     <I18nProvider language="en">
@@ -52,7 +56,7 @@ function renderFocusPane({
         scrollFocusedProvider={scrollFocusedProvider}
         states={states(stateOverrides)}
         presentation={presentation}
-        centerSurface="text"
+        centerSurface={centerSurface}
         centerTextFinal={false}
         userHidden={new Set()}
         presentationHidden={new Set()}
@@ -68,6 +72,8 @@ function renderFocusPane({
         reportBusy={false}
         stageExpanded={stageExpanded}
         onToggleStageExpanded={stageExpanded === undefined || !stageToggleEnabled ? undefined : vi.fn()}
+        stageCollapsed={stageCollapsed}
+        onToggleStageCollapsed={vi.fn()}
       />
     </I18nProvider>,
   );
@@ -182,6 +188,31 @@ describe('FocusPane provider header', () => {
     // Expanding trades away the process trace, not the switcher: reaching another provider is the
     // usual reason to be looking at one, and it must not cost a collapse first.
     expect(expanded).toContain('AI connections');
+  });
+
+  it('hides the more-actions menu on the real page, where the native webview covers its popup', () => {
+    // The menu is HTML and the native webview is an OS window on top of it, so on the real page the
+    // popup opens behind the site and the button reads as broken. The actions stay on the text face.
+    const label = t('provider.moreActions', 'en');
+    expect(renderFocusPane({ centerSurface: 'text' })).toContain(label);
+    expect(renderFocusPane({ centerSurface: 'native' })).not.toContain(label);
+  });
+
+  it('leaves only the title row and the way back when the stage is collapsed', () => {
+    // Collapsing exists to give the room under the stage away. A header that still carried the
+    // face switch, the expand and the menu would keep most of that room for itself.
+    const html = renderFocusPane({ stageCollapsed: true, stageExpanded: false });
+    const stage = html.slice(0, html.indexOf('<section aria-labelledby="provider-connections-title"'));
+
+    expect(stage).toContain('ChatGPT');
+    expect(stage).toContain(t('provider.restoreFromTitle', 'en'));
+    expect(stage).not.toContain(t('provider.realPage', 'en'));
+    expect(stage).not.toContain(t('provider.moreActions', 'en'));
+    // One button in the whole header: the way back. Anything else would keep the room the
+    // collapse was pressed to give away.
+    expect(stage.match(/<button/g)).toHaveLength(1);
+    // The switcher is what a collapsed stage hands the room to, so it must still be there.
+    expect(html).toContain('AI connections');
   });
 
   it('ignores an expanded state when no restore callback is available', () => {

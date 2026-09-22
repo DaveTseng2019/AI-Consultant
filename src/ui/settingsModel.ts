@@ -60,7 +60,8 @@ export interface AppSettings {
   settingsSchemaVersion: number;
   language: LanguageSetting;
   responseLanguage: ResponseLanguageSetting;
-  theme: 'light' | 'dark';
+  /** `system` follows the OS light/dark setting, and keeps following it while the app runs. */
+  theme: 'light' | 'dark' | 'system';
   /** Interface text: everything outside the transcript and the centre stage, via the root font size. */
   fontSize: number;
   /** The reading size, for the transcript bubbles and the centre stage text view only. */
@@ -200,7 +201,7 @@ function centerSurface(value: unknown, fallback: CenterSurface): CenterSurface {
 }
 
 function theme(value: unknown, fallback: AppSettings['theme']): AppSettings['theme'] {
-  return value === 'light' || value === 'dark' ? value : fallback;
+  return value === 'light' || value === 'dark' || value === 'system' ? value : fallback;
 }
 
 export const DEFAULT_FONT_SIZE = 18;

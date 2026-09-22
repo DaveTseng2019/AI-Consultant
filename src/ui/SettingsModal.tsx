@@ -11,6 +11,7 @@ import {
   type CustomAction,
   type CustomActionPayload,
   DEFAULT_FONT_SIZE,
+  defaultSettings,
   DEFAULT_READING_FONT_SIZE,
   MIN_FONT_SIZE,
   normalizeSettings,
@@ -284,25 +285,34 @@ export function SettingsModal({
   // display choice, a role assignment) -- fields that touch privacy, network trust, or run a
   // script (snapshotPersistence, adapterBaseUrl, archiveScript, archiveConfirm, ...) still gate
   // on the explicit Save so nothing consequential applies without a deliberate confirm click.
-  const persistDraftFieldImmediately = async <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => {
+  const persistDraftPatchImmediately = async (patch: Partial<AppSettings>) => {
     const modalSession = modalSessionRef.current;
     const updateSeq = ++immediatePersistSeqRef.current;
     setError(undefined);
-    updateDraft({ [key]: value } as Partial<AppSettings>);
+    updateDraft(patch);
     try {
-      const next = await persistSettingsPatch({ [key]: value } as Partial<AppSettings>);
+      const next = await persistSettingsPatch(patch);
       onSaved(next);
       if (modalSession === modalSessionRef.current) setError(undefined);
     } catch (reason) {
       if (updateSeq === immediatePersistSeqRef.current) {
         const persisted = settingsPersistenceRef.current.current();
         if (modalSession === modalSessionRef.current) {
-          if (persisted) updateDraft({ [key]: persisted[key] } as Partial<AppSettings>);
+          if (persisted) {
+            const reverted: Partial<AppSettings> = {};
+            for (const key of Object.keys(patch) as (keyof AppSettings)[]) {
+              (reverted as Record<string, unknown>)[key] = persisted[key];
+            }
+            updateDraft(reverted);
+          }
           setError({ messageKey: 'settings.saveFailed', detail: errorDetail(reason) });
         }
       }
     }
   };
+
+  const persistDraftFieldImmediately = <K extends keyof AppSettings>(key: K, value: AppSettings[K]) =>
+    persistDraftPatchImmediately({ [key]: value } as Partial<AppSettings>);
 
   const persistFontSize = async ({ updateSeq }: PendingFontSizeUpdate) => {
     const modalSession = modalSessionRef.current;
@@ -338,6 +348,33 @@ export function SettingsModal({
     updateDraft(patch);
     pendingFontSizePatchRef.current = { ...pendingFontSizePatchRef.current, ...patch };
     fontSizeDebounceRef.current?.schedule({ updateSeq });
+  };
+
+  // Both sizes move by the same step, so the gap the two defaults set is kept whatever the user
+  // has already typed into either box.
+  const nudgeFontSizes = (by: 1 | -1) => {
+    if (!draft) return;
+    setFontSizeText({});
+    scheduleFontSizeUpdate({
+      fontSize: Math.max(MIN_FONT_SIZE, draft.fontSize + by),
+      readingFontSize: Math.max(MIN_FONT_SIZE, draft.readingFontSize + by),
+    });
+  };
+
+  // Only the appearance fields. A "defaults" button that also wiped the adapter URL, the custom
+  // action list or the snapshot choices would be a different, much larger promise.
+  const restoreInterfaceDefaults = async () => {
+    const defaults = defaultSettings();
+    fontSizeUpdateSeqRef.current += 1;
+    fontSizeDebounceRef.current?.cancel();
+    pendingFontSizePatchRef.current = {};
+    setFontSizeText({});
+    await persistDraftPatchImmediately({
+      theme: defaults.theme,
+      fontSize: defaults.fontSize,
+      readingFontSize: defaults.readingFontSize,
+      monospaceFont: defaults.monospaceFont,
+    });
   };
 
   const closeSettings = async () => {
@@ -511,6 +548,7 @@ export function SettingsModal({
                 >
                   <option value="light">{t('settings.themeLight')}</option>
                   <option value="dark">{t('settings.themeDark')}</option>
+                  <option value="system">{t('settings.themeSystem')}</option>
                 </select>
               </label>
             </section>
@@ -535,6 +573,31 @@ export function SettingsModal({
             </section>
 
             <section>
+              <div className="flex items-center gap-2 text-xs text-zinc-600 dark:text-zinc-400">
+                <span className="font-medium text-zinc-700 dark:text-zinc-300">{t('settings.fontSizeSync')}</span>
+                <button
+                  type="button"
+                  aria-label={t('settings.fontSizeSyncSmaller')}
+                  onClick={() => nudgeFontSizes(-1)}
+                  className="border border-zinc-300 dark:border-zinc-700 px-2 py-1 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                >
+                  −
+                </button>
+                <button
+                  type="button"
+                  aria-label={t('settings.fontSizeSyncLarger')}
+                  onClick={() => nudgeFontSizes(1)}
+                  className="border border-zinc-300 dark:border-zinc-700 px-2 py-1 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                >
+                  +
+                </button>
+              </div>
+              <p className="mt-1 text-xs leading-relaxed text-zinc-500 dark:text-zinc-500">
+                {t('settings.fontSizeSyncDescription')}
+              </p>
+            </section>
+
+            <section>
               <label className="flex items-start gap-3 text-xs text-zinc-600 dark:text-zinc-400">
                 <input
                   type="checkbox"
@@ -547,6 +610,19 @@ export function SettingsModal({
                   <span className="mt-1 block leading-relaxed">{t('settings.monospaceFontDescription')}</span>
                 </span>
               </label>
+            </section>
+
+            <section>
+              <button
+                type="button"
+                onClick={() => void restoreInterfaceDefaults()}
+                className="border border-zinc-300 dark:border-zinc-700 px-2 py-1 text-xs text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+              >
+                {t('settings.restoreDefaults')}
+              </button>
+              <p className="mt-1 text-xs leading-relaxed text-zinc-500 dark:text-zinc-500">
+                {t('settings.restoreDefaultsDescription')}
+              </p>
             </section>
 
             <section>
