@@ -141,6 +141,19 @@ view.
 > `unknown` it returns `undefined` = do nothing yet — at startup every provider is `unknown`, and
 > deciding then would treat a signed-in account as signed out and enlarge it.
 
+The header carries a **collapse** button as well: it shrinks the provider to its icon and name, and
+the live page goes with it (the webview is parked off screen), handing the room to the process trace
+and the AI connection strip. Centring another provider expands it again. Like the enlargement, the
+collapsed state is not written to settings.
+
+**The "⋯" menu shows on the text view only.** The menu is HTML, and on the live page the native
+webview sits on top of it, so the popup opens out of sight. Reload and Report are used from the text
+view.
+
+A manual **Expand** also takes the "Send to selected AI" strip above the stage, once a question has
+been asked or a transcript is on screen, so the stage reaches the top of the column. Restore brings
+it back. A blocked-send notice is the exception and stays.
+
 ## Six modes
 
 They differ only in who speaks, how many rounds, and in what order (`shared/constants.ts` +
