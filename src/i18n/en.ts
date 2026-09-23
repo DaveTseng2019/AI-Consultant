@@ -64,7 +64,7 @@ export const en: Record<I18nKey, string> = {
   'download.saved': 'Downloaded: {path}',
   'share.exportFailed': "Couldn't export this conversation. Please try again.",
   'archive.noRunArgument': '(no run passed)',
-  'archive.noSnapshot': 'This question has no recorded run. A run is kept in memory as it completes, so ask the question again, then press this.',
+  'archive.noSnapshot': 'This question has no recorded run. Only the newest 50 runs stay on disk, and only the full-local tier keeps the question text. Ask the question again, then press this.',
   'archive.running': 'Archiving…',
   'archive.done': 'Archived: {detail}',
   'archive.failed': 'Archive script failed: {detail}',
@@ -313,7 +313,7 @@ export const en: Record<I18nKey, string> = {
   'settings.singleInstanceDescription': 'Launching again while a copy is running raises the window you already have instead of opening a second one. Turn this off to run several at once - they share one set of provider logins and one settings file. Takes effect at the next launch.',
   'settings.durableSnapshots': 'Durable snapshots',
   'settings.durableSnapshotsDescription':
-    'Off by default. While off, only the last run stays in memory to replay, and closing the app loses it. On, every run is written as a file under app data, so the replay panel can list stored snapshots to re-run or delete and they survive a restart; the newest 50 are kept and older ones are deleted. How much of the text a file keeps is decided by the redaction tier below; never cookies or provider storage. The toolbar buttons do not need this - the app writes one for that single run and deletes it again.',
+    'Off by default. While off, only the last run stays in memory to replay, and closing the app loses it. On, every run is written as a file under app data, so the replay panel can list stored snapshots to re-run or delete and they survive a restart; the newest 50 are kept and older ones are deleted. How much of the text a file keeps is decided by the redaction tier below; never cookies or provider storage. The toolbar buttons do not need this - the app writes one for that single run and deletes it again. To press one on a conversation reopened from history, turn this on at the full-local tier.',
   'settings.snapshotRedactionTier': 'Snapshot redaction tier',
   'settings.snapshotTierMetadataOnly': 'metadata-only — structure only, no text; replay asks for the question again',
   'settings.snapshotTierHashes': 'hashes — SHA-256 only, enough to compare content; replay asks for the question again',

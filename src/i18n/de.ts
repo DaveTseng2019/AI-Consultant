@@ -64,7 +64,7 @@ export const de: Record<I18nKey, string> = {
   'download.saved': 'Heruntergeladen: {path}',
   'share.exportFailed': 'Die Unterhaltung konnte nicht exportiert werden. Bitte erneut versuchen.',
   'archive.noRunArgument': '(ohne Lauf)',
-  'archive.noSnapshot': 'Zu dieser Frage gibt es keine Aufzeichnung. Ein Lauf wird beim Abschluss im Arbeitsspeicher gehalten; stellen Sie die Frage erneut und drücken Sie dann hier.',
+  'archive.noSnapshot': 'Zu dieser Frage gibt es keine Aufzeichnung. Nur die neuesten 50 Läufe bleiben auf dem Datenträger, und nur die Stufe full-local behält den Fragetext. Stellen Sie die Frage erneut und drücken Sie dann hier.',
   'archive.running': 'Wird abgelegt…',
   'archive.done': 'Abgelegt: {detail}',
   'archive.failed': 'Ablage-Skript fehlgeschlagen: {detail}',
@@ -315,7 +315,7 @@ export const de: Record<I18nKey, string> = {
   'settings.singleInstanceDescription': 'Ein erneuter Start holt das bereits offene Fenster nach vorn, statt eine zweite Instanz zu öffnen. Ausgeschaltet laufen mehrere gleichzeitig - sie teilen sich dieselben Provider-Anmeldungen und dieselbe Einstellungsdatei. Wirkt ab dem nächsten Start.',
   'settings.durableSnapshots': 'Dauerhafte Snapshots',
   'settings.durableSnapshotsDescription':
-    'Standardmäßig aus. Solange sie aus sind, bleibt nur der letzte Lauf im Arbeitsspeicher zum Wiederholen und geht beim Schließen der App verloren. Eingeschaltet wird jeder Lauf als Datei unter app data abgelegt: Das Wiedergabe-Panel listet die gespeicherten Snapshots zum erneuten Ausführen oder Löschen auf, und sie überstehen einen Neustart. Die neuesten 50 bleiben, ältere werden gelöscht. Wie viel Text eine Datei behält, entscheidet die Schwärzungsstufe unten; Cookies oder Provider-Speicher nie. Die Schaltflächen in der Leiste brauchen das nicht - die App schreibt für den einen Lauf eine Datei und löscht sie wieder.',
+    'Standardmäßig aus. Solange sie aus sind, bleibt nur der letzte Lauf im Arbeitsspeicher zum Wiederholen und geht beim Schließen der App verloren. Eingeschaltet wird jeder Lauf als Datei unter app data abgelegt: Das Wiedergabe-Panel listet die gespeicherten Snapshots zum erneuten Ausführen oder Löschen auf, und sie überstehen einen Neustart. Die neuesten 50 bleiben, ältere werden gelöscht. Wie viel Text eine Datei behält, entscheidet die Schwärzungsstufe unten; Cookies oder Provider-Speicher nie. Die Schaltflächen in der Leiste brauchen das nicht - die App schreibt für den einen Lauf eine Datei und löscht sie wieder. Um sie in einer aus dem Verlauf geöffneten Unterhaltung zu drücken, schalten Sie dies mit der Stufe full-local ein.',
   'settings.snapshotRedactionTier': 'Schwärzungsstufe für Snapshots',
   'settings.snapshotTierMetadataOnly': 'metadata-only — nur Struktur, kein Text; Replay fragt die Frage erneut ab',
   'settings.snapshotTierHashes': 'hashes — nur SHA-256, Inhalte vergleichbar; Replay fragt die Frage erneut ab',

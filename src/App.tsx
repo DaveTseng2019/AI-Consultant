@@ -116,7 +116,7 @@ import {
 import { loadFreeTargetSelection, saveFreeTargetSelection } from './ui/freeTargetSelectionPreference';
 import { loadWorkflowPreset, saveWorkflowPreset } from './ui/workflowPresetPreference';
 import { useOverlayGuard } from './ui/useOverlayGuard';
-import { buildMarkdown, exportFilename, matchingSnapshotForConversation } from './ui/exportMarkdown';
+import { buildMarkdown, exportFilename, matchingSnapshotForConversation, storedSnapshotIdForConversation } from './ui/exportMarkdown';
 import { buildHtml } from './ui/exportHtml';
 import { ProviderLogo } from './ui/ProviderLogo';
 import { formatReportBody, type AdapterNotice, type ReportDigest } from './ui/reportBroken';
@@ -527,6 +527,25 @@ export default function App() {
   useEffect(() => {
     settingsRef.current = appSettings;
   }, [appSettings]);
+
+  // A conversation reopened from history has no run in memory, so a "run" action looks the question
+  // up on disk instead. Keyed on the question, not on messages, so streaming answers do not re-list.
+  const lastQuestion = [...messages].reverse().find((message) => message.role === 'user')?.content;
+  const [storedRunId, setStoredRunId] = useState<string | undefined>();
+  useEffect(() => {
+    setStoredRunId(undefined);
+    if (lastQuestion === undefined) return;
+    let cancelled = false;
+    host.snapshot
+      .list()
+      .then((stored) => {
+        if (!cancelled) setStoredRunId(storedSnapshotIdForConversation([{ role: 'user', content: lastQuestion }], stored));
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [lastQuestion]);
 
   // `system` keeps listening: the OS switch flips while the app is open, and the window has to
   // follow it without a restart.
@@ -1927,11 +1946,14 @@ export default function App() {
   // Runs one toolbar action. An action that asked for the run gets ONE run, not the history:
   // matchingSnapshotForConversation returns the snapshot only when it belongs to the question
   // currently on screen, so a stale snapshot from an earlier session cannot be handed over by
-  // mistake. An action that did not ask for a run is a plain utility and runs with no argument.
+  // mistake. Without one in memory, the stored run of that same question stands in; it is already
+  // on disk, so it needs no temporary copy. An action that did not ask for a run is a plain utility
+  // and runs with no argument.
   const runCustomAction = async (action: CustomAction) => {
     if (sharing) return;
     const snapshot = action.payload === 'run' ? matchingSnapshotForConversation(messages, getLastSnapshot()) : undefined;
-    if (action.payload === 'run' && !snapshot) {
+    const runId = action.payload === 'run' ? (snapshot?.snapshotId ?? storedRunId) : undefined;
+    if (action.payload === 'run' && !runId) {
       setShareNotice({ kind: 'error', text: translateKey('archive.noSnapshot', localeRef.current) });
       return;
     }
@@ -1939,7 +1961,7 @@ export default function App() {
     const confirmPrompt = action.confirm
       ? formatI18n(translateKey('archive.confirmMessage', localeRef.current), {
           script: action.script,
-          snapshot: snapshot?.snapshotId ?? translateKey('archive.noRunArgument', localeRef.current),
+          snapshot: runId ?? translateKey('archive.noRunArgument', localeRef.current),
         })
       : undefined;
     setSharing(true);
@@ -1958,7 +1980,7 @@ export default function App() {
         temporary = (await host.snapshot.load(snapshot.snapshotId)) === null;
         if (temporary) await writeSnapshot(snapshot, 'full-local');
       }
-      const detail = await host.share.runCustomAction(action.id, snapshot?.snapshotId ?? null, markdown, confirmPrompt);
+      const detail = await host.share.runCustomAction(action.id, runId ?? null, markdown, confirmPrompt);
       // null means the confirmation was declined -- nothing ran, so say nothing rather than
       // leaving "正在存檔…" on screen as if it were still going.
       setShareNotice(
@@ -2468,11 +2490,14 @@ export default function App() {
                 {/* One button per configured action, in the saved order. The note is the tooltip:
                     a caption short enough for a toolbar cannot also say what the script does. */}
                 {appSettings.customActions.map((action) => {
-                  // An action that wants the run cannot do anything without one, and the run lives in
-                  // memory only: restoring a conversation from history, or restarting, leaves none.
-                  // Saying so on a greyed-out button beats letting the press fail.
+                  // An action that wants the run cannot do anything without one. A conversation
+                  // restored from history falls back to its stored run; one whose run was pruned or
+                  // stored without the question text has none. Saying so on a greyed-out button
+                  // beats letting the press fail.
                   const missingRun =
-                    action.payload === 'run' && !matchingSnapshotForConversation(messages, getLastSnapshot());
+                    action.payload === 'run' &&
+                    !matchingSnapshotForConversation(messages, getLastSnapshot()) &&
+                    !storedRunId;
                   return (
                     <button
                       key={action.id}

@@ -3,6 +3,7 @@ import { PROVIDER_LOGOS } from '../assets/providers/logos';
 import type { ChatMode } from '../../shared/types';
 import { formatLocalTimestamp, localFilenameStamp, localTimezoneLabel } from '../formatTime';
 import type { ExecutionSnapshot } from '../workflow/snapshot/types';
+import type { StoredSnapshotInfo } from '../host';
 
 /** Structural subset of App.tsx's Bubble that export needs. */
 export interface ExportMessage {
@@ -32,6 +33,20 @@ export function matchingSnapshotForConversation(
     if (message.role === 'user') return message.content === snapshot.userQuestion.text ? snapshot : undefined;
   }
   return undefined;
+}
+
+/** The newest run on disk asked with the question currently on screen. A conversation reopened from
+ *  history, or after a restart, has no run in memory, but its run may still be stored. Only the
+ *  full-local tier keeps the question text, so a run stored at any other tier never matches. */
+export function storedSnapshotIdForConversation(
+  messages: readonly ExportMessage[],
+  stored: readonly StoredSnapshotInfo[],
+): string | undefined {
+  const question = [...messages].reverse().find((message) => message.role === 'user')?.content;
+  if (question === undefined) return undefined;
+  return stored
+    .filter((snapshot) => snapshot.question === question)
+    .sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''))[0]?.id;
 }
 
 export function buildMarkdown(

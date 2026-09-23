@@ -4,6 +4,7 @@ import {
   buildMarkdown,
   exportFilename,
   matchingSnapshotForConversation,
+  storedSnapshotIdForConversation,
   type ExportMessage,
 } from '../ui/exportMarkdown';
 import type { ExecutionSnapshot } from '../workflow/snapshot/types';
@@ -102,6 +103,32 @@ describe('M4c share export helpers', () => {
         snapshot,
       ),
     ).toBeUndefined();
+  });
+
+  // A conversation reopened from history has no run in memory, so the archive button falls back to
+  // the stored run. It must be a run of the question on screen -- archiving a different question's
+  // answers under this one would be worse than a greyed-out button -- and the newest when it was
+  // asked more than once, since that is the run the answers on screen came from.
+  it('picks the newest stored run of the question on screen, and nothing for another question', () => {
+    const stored = [
+      { id: 'old', createdAt: '2026-09-01T01:00:00.000Z', question: 'question' },
+      { id: 'new', createdAt: '2026-09-02T01:00:00.000Z', question: 'question' },
+      { id: 'other', createdAt: '2026-09-03T01:00:00.000Z', question: 'another topic' },
+      { id: 'redacted', createdAt: '2026-09-04T01:00:00.000Z' },
+    ];
+
+    expect(storedSnapshotIdForConversation([{ role: 'user', content: 'question' }], stored)).toBe('new');
+    expect(
+      storedSnapshotIdForConversation(
+        [
+          { role: 'user', content: 'question' },
+          { role: 'ai', provider: 'chatgpt', content: 'answer' },
+          { role: 'user', content: 'follow-up' },
+        ],
+        stored,
+      ),
+    ).toBeUndefined();
+    expect(storedSnapshotIdForConversation([], stored)).toBeUndefined();
   });
 
   // The name is what a person sees in the folder a month later, so it carries the date the

@@ -58,7 +58,7 @@ export const zhTW: Record<I18nKey, string> = {
   'download.saved': '已下載：{path}',
   'share.exportFailed': '無法匯出這段對話，請再試一次。',
   'archive.noRunArgument': '（不帶入執行紀錄）',
-  'archive.noSnapshot': '這一題沒有可用的執行紀錄。紀錄是在問題跑完時留在記憶體裡的，請重新問一次再按一次。',
+  'archive.noSnapshot': '這一題沒有可用的執行紀錄。磁碟上只保留最新 50 次執行，而且只有full-local 層級會留下問題原文。請重新問一次再按一次。',
   'archive.running': '正在存檔…',
   'archive.done': '已存檔：{detail}',
   'archive.failed': '存檔腳本失敗：{detail}',
@@ -303,7 +303,7 @@ export const zhTW: Record<I18nKey, string> = {
   'settings.singleInstanceDescription': '已經有一份在跑的時候再啟動，會把現有視窗叫到前面，不開第二份。關掉這個選項才能同時開多份，但多份會共用同一組 provider 登入資料與同一個設定檔。改了要下次啟動才生效。',
   'settings.durableSnapshots': '持久化 snapshots',
   'settings.durableSnapshotsDescription':
-    '預設關閉。關著的時候只有「上次執行」留在記憶體裡可以重播，關掉 app 就沒了。開啟後，每次執行都會寫成一個檔案存進本機 app data，重播面板的「已儲存 snapshots」就能列出、重跑或刪除，重開程式後仍在；最多保留 50 筆，超過會自動刪掉最舊的。檔案裡實際留下多少內容由下面的遮蔽等級決定；不會存 cookies 或 provider storage。工具列的自訂按鈕不需要開這個——app 會為那一次臨時寫一份，跑完就刪掉。',
+    '預設關閉。關著的時候只有「上次執行」留在記憶體裡可以重播，關掉 app 就沒了。開啟後，每次執行都會寫成一個檔案存進本機 app data，重播面板的「已儲存 snapshots」就能列出、重跑或刪除，重開程式後仍在；最多保留 50 筆，超過會自動刪掉最舊的。檔案裡實際留下多少內容由下面的遮蔽等級決定；不會存 cookies 或 provider storage。工具列的自訂按鈕不需要開這個——app 會為那一次臨時寫一份，跑完就刪掉。但要從歷史對話按，就要開啟這個，並使用 full-local 等級。',
   'settings.snapshotRedactionTier': 'Snapshot redaction tier',
   'settings.snapshotTierMetadataOnly': 'metadata-only — 只存流程結構，不存任何文字；重播時需重新輸入問題',
   'settings.snapshotTierHashes': 'hashes — 只存 SHA-256 雜湊，可比對內容是否相同；重播時需重新輸入問題',

@@ -64,7 +64,7 @@ export const ja: Record<I18nKey, string> = {
   'download.saved': 'ダウンロードしました：{path}',
   'share.exportFailed': '会話を書き出せませんでした。もう一度お試しください。',
   'archive.noRunArgument': '（実行記録なし）',
-  'archive.noSnapshot': 'この質問には実行記録がありません。記録は実行の完了時にメモリーへ保持されるため、もう一度質問してから押してください。',
+  'archive.noSnapshot': 'この質問には実行記録がありません。ディスクに残るのは最新の 50 件だけで、質問の原文を残すのはfull-local 層だけです。もう一度質問してから押してください。',
   'archive.running': '保存中…',
   'archive.done': '保存しました：{detail}',
   'archive.failed': '保存スクリプトが失敗しました：{detail}',
@@ -315,7 +315,7 @@ export const ja: Record<I18nKey, string> = {
   'settings.singleInstanceDescription': 'すでに起動しているときに再度起動すると、2 つ目を開かず既存のウィンドウを前面に出します。オフにすると複数同時に起動できますが、provider のログイン情報と設定ファイルは共有されます。次回の起動から有効です。',
   'settings.durableSnapshots': '永続スナップショット',
   'settings.durableSnapshotsDescription':
-    '既定はオフ。オフのあいだは「前回の実行」だけがメモリーに残り再実行できますが、app を閉じると失われます。オンにすると、実行ごとにファイルとして app data に保存され、再実行パネルの「保存済み snapshots」から一覧・再実行・削除ができ、再起動後も残ります。最新 50 件を保持し、古いものは自動的に削除されます。ファイルにどこまで本文が残るかは下の秘匿レベルで決まります。cookies や provider のストレージは保存しません。ツールバーのカスタムボタンにこの設定は不要です。その 1 回分だけを一時的に書き出し、終わったら削除します。',
+    '既定はオフ。オフのあいだは「前回の実行」だけがメモリーに残り再実行できますが、app を閉じると失われます。オンにすると、実行ごとにファイルとして app data に保存され、再実行パネルの「保存済み snapshots」から一覧・再実行・削除ができ、再起動後も残ります。最新 50 件を保持し、古いものは自動的に削除されます。ファイルにどこまで本文が残るかは下の秘匿レベルで決まります。cookies や provider のストレージは保存しません。ツールバーのカスタムボタンにこの設定は不要です。その 1 回分だけを一時的に書き出し、終わったら削除します。ただし履歴から開いた会話で押すには、この設定をオンにして full-local レベルを使ってください。',
   'settings.snapshotRedactionTier': 'スナップショットの秘匿化レベル',
   'settings.snapshotTierMetadataOnly': 'metadata-only — 構造のみでテキストは保存しない。再生時に質問の再入力が必要',
   'settings.snapshotTierHashes': 'hashes — SHA-256 のみ保存し内容の一致を比較できる。再生時に質問の再入力が必要',
