@@ -3846,34 +3846,6 @@ async function flushMicrotasks() {
   await Promise.resolve();
 }
 
-function engineActivitySnapshot(env: FakeDomEnv): string {
-  return JSON.stringify({
-    emitted: env.emitted,
-    titleEmits: env.titleEmits,
-    text: env.input.textContent,
-    clicks: env.sendButton?.clickCount ?? 0,
-    keys: keyEventCount(env.input),
-  });
-}
-
-// The pre-strategy title turn moves challenge and release work by one microtask.
-// Wait until observable engine state stays quiet long enough for the trailing
-// releaseFillOperation / releaseSendOperation bookkeeping, which changes no message.
-async function drainUntilSettled(env: FakeDomEnv) {
-  let snapshot = engineActivitySnapshot(env);
-  let stablePasses = 0;
-  for (let step = 0; step < 40 && stablePasses < 3; step += 1) {
-    await flushMicrotasks();
-    const next = engineActivitySnapshot(env);
-    if (next === snapshot) stablePasses += 1;
-    else {
-      stablePasses = 0;
-      snapshot = next;
-    }
-  }
-  if (stablePasses < 3) throw new Error('engine did not settle');
-}
-
 function fillStartTitleEmit(fillChars: number) {
   return {
     action: 'STATUS_REPORT',
