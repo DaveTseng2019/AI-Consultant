@@ -1196,8 +1196,11 @@ class InactiveSendOperationError extends Error {
     tryFocus(el, 'default input');
     assertCanMutate();
 
-    if (input instanceof HTMLTextAreaElement) {
-      const setter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')?.set;
+    if (input instanceof HTMLTextAreaElement || input instanceof HTMLInputElement) {
+      const inputPrototype = input instanceof HTMLTextAreaElement
+        ? window.HTMLTextAreaElement.prototype
+        : window.HTMLInputElement.prototype;
+      const setter = Object.getOwnPropertyDescriptor(inputPrototype, 'value')?.set;
       if (setter) setter.call(input, text);
       else input.value = text;
       assertCanMutate();
@@ -2098,7 +2101,7 @@ class InactiveSendOperationError extends Error {
 
   function getInputText(input: Element | null): string {
     if (!input) return '';
-    if (input instanceof HTMLTextAreaElement) return input.value;
+    if (input instanceof HTMLTextAreaElement || input instanceof HTMLInputElement) return input.value;
     return input.textContent ?? '';
   }
 

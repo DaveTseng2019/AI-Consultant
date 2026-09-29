@@ -3,6 +3,7 @@ import chatgptLogo from './chatgpt.png?inline';
 import claudeLogo from './claude.png?inline';
 import geminiLogo from './gemini.png?inline';
 import grokLogo from './grok.png?inline';
+import metaLogo from './meta.png?inline';
 
 // `?inline` on every import: these are 32px marks small enough that Vite would inline them anyway,
 // but the markdown export embeds the value straight into the file, and a bundled URL there would
@@ -12,4 +13,5 @@ export const PROVIDER_LOGOS: Record<AIProvider, string> = {
   claude: claudeLogo,
   gemini: geminiLogo,
   grok: grokLogo,
+  meta: metaLogo,
 };

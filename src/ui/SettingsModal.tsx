@@ -7,6 +7,7 @@ import { useI18n } from '../i18n/context';
 import { formatI18n } from '../i18n/t';
 import type { PresentationByProvider } from './presentation';
 import {
+  activeProvidersForStandby,
   type AppSettings,
   type CustomAction,
   type CustomActionPayload,
@@ -21,6 +22,7 @@ import {
   MODE_ROLE_LABEL_KEYS,
   MODE_ROLE_MODE_LABEL_KEYS,
   assignModeRole,
+  replaceModeRoleProvider,
   type ModeRoleAssignments,
 } from './modeRoleAssignment';
 import { compareVersions, fetchLatestRelease, isLocalBuild } from './updateCheck';
@@ -64,6 +66,33 @@ interface PendingFontSizeUpdate {
   updateSeq: number;
 }
 
+interface PersistSettingsOptions {
+  standbyProvider?: AIProvider;
+}
+
+// Exported for the persistence regression test; keeping the merge beside the
+// modal makes its live-prop precedence explicit.
+// eslint-disable-next-line react-refresh/only-export-components
+export function applyStandbyProviderToLiveSettings(
+  previousStandbyProvider: AIProvider,
+  nextStandbyProvider: AIProvider,
+  openProviders: readonly AIProvider[],
+  presentation: PresentationByProvider,
+): Pick<AppSettings, 'openProviders' | 'presentation'> {
+  if (previousStandbyProvider === nextStandbyProvider) {
+    return { openProviders: [...openProviders], presentation: { ...presentation } };
+  }
+
+  return {
+    openProviders: openProviders.filter((provider) => provider !== nextStandbyProvider),
+    presentation: {
+      ...presentation,
+      [previousStandbyProvider]: 'side',
+      [nextStandbyProvider]: 'chip',
+    },
+  };
+}
+
 export function SettingsModal({
   open,
   openProviders,
@@ -71,6 +100,7 @@ export function SettingsModal({
   presentation,
   providerStates,
   activeModeRoleSettings,
+  providerSelectionDisabled = false,
   onClose,
   onSaved,
 }: {
@@ -80,6 +110,7 @@ export function SettingsModal({
   presentation: PresentationByProvider;
   providerStates: Record<AIProvider, ProviderState>;
   activeModeRoleSettings?: keyof ModeRoleAssignments;
+  providerSelectionDisabled?: boolean;
   onClose: () => void;
   onSaved: (settings: AppSettings) => void;
 }) {
@@ -247,14 +278,24 @@ export function SettingsModal({
     if (chosen) updateAction(index, { script: chosen });
   };
 
-  const persistSettingsPatch = (patch: Partial<AppSettings>): Promise<AppSettings> =>
+  const persistSettingsPatch = (
+    patch: Partial<AppSettings>,
+    options: PersistSettingsOptions = {},
+  ): Promise<AppSettings> =>
     settingsPersistenceRef.current.update(() => {
       const live = liveRef.current;
+      const liveProviderSettings = options.standbyProvider
+        ? applyStandbyProviderToLiveSettings(
+            settingsPersistenceRef.current.current()?.standbyProvider ?? options.standbyProvider,
+            options.standbyProvider,
+            live.openProviders,
+            live.presentation,
+          )
+        : { openProviders: [...live.openProviders], presentation: { ...live.presentation } };
       return {
         ...patch,
-        openProviders: live.openProviders,
+        ...liveProviderSettings,
         focusPaneWidth: live.focusPaneWidth,
-        presentation: live.presentation,
       };
     });
 
@@ -377,6 +418,21 @@ export function SettingsModal({
     });
   };
 
+  const updateStandbyProvider = (standbyProvider: AIProvider) => {
+    if (!draft || standbyProvider === draft.standbyProvider || providerSelectionDisabled) return;
+    const previousStandby = draft.standbyProvider;
+    updateDraft({
+      standbyProvider,
+      modeRoles: replaceModeRoleProvider(draft.modeRoles, standbyProvider, previousStandby),
+      openProviders: draft.openProviders.filter((provider) => provider !== standbyProvider),
+      presentation: {
+        ...draft.presentation,
+        [previousStandby]: 'side',
+        [standbyProvider]: 'chip',
+      },
+    });
+  };
+
   const closeSettings = async () => {
     const modalSession = modalSessionRef.current;
     try {
@@ -398,12 +454,10 @@ export function SettingsModal({
     setSaving(true);
     setError(undefined);
     try {
-      const next = await persistSettingsPatch({
-        ...draft,
-        openProviders,
-        focusPaneWidth,
-        presentation,
-      });
+      const next = await persistSettingsPatch(
+        { ...draft },
+        { standbyProvider: draft.standbyProvider },
+      );
       onSaved(next);
       if (modalSession === modalSessionRef.current && draftUpdateSeq === draftUpdateSeqRef.current) {
         setSaved(true);
@@ -664,6 +718,44 @@ export function SettingsModal({
               </label>
             </section>
 
+            <section className="space-y-3 border-t border-zinc-200 pt-4 dark:border-zinc-800">
+              <div>
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                  {t('settings.providers')}
+                </h3>
+                <p className="mt-1 text-xs leading-relaxed text-zinc-500 dark:text-zinc-500">
+                  {t('settings.providersDescription')}
+                </p>
+              </div>
+              <label className="block text-xs text-zinc-600 dark:text-zinc-400">
+                <span className="mb-1 block font-medium text-zinc-700 dark:text-zinc-300">
+                  {t('settings.providersSelect')}
+                </span>
+                <select
+                  value={draft.standbyProvider}
+                  disabled={providerSelectionDisabled}
+                  onChange={(event) => updateStandbyProvider(event.target.value as AIProvider)}
+                  className="w-full border border-zinc-300 bg-zinc-50 px-2 py-1.5 text-sm text-zinc-900 outline-none focus:border-sky-500 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:border-sky-600"
+                >
+                  {PROVIDERS.map((provider) => (
+                    <option key={provider} value={provider}>
+                      {AI_PROVIDERS[provider].name}{provider === 'meta' ? ` — ${t('settings.providersDefault')}` : ''}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <div className="flex flex-wrap gap-1.5" aria-label={t('settings.providerActive')}>
+                {activeProvidersForStandby(draft.standbyProvider).map((provider) => (
+                  <span key={provider} className="rounded-full border border-emerald-300 bg-emerald-50 px-2 py-1 text-xs text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">
+                    {AI_PROVIDERS[provider].name} · {t('settings.providerActive')}
+                  </span>
+                ))}
+                <span className="rounded-full border border-zinc-300 bg-zinc-100 px-2 py-1 text-xs text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">
+                  {AI_PROVIDERS[draft.standbyProvider].name} · {t('settings.providerStandby')}
+                </span>
+              </div>
+            </section>
+
             <section className="space-y-3 border-t border-zinc-200 dark:border-zinc-800 pt-4">
               <SectionHeading>{t('settings.modeRoles')}</SectionHeading>
               <p className="text-xs leading-relaxed text-zinc-500 dark:text-zinc-500">{t('settings.modeRolesDescription')}</p>
@@ -698,7 +790,7 @@ export function SettingsModal({
                           }
                           className="w-full border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 px-2 py-1.5 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-sky-500 dark:focus:border-sky-600"
                         >
-                          {PROVIDERS.map((provider) => (
+                          {activeProvidersForStandby(draft.standbyProvider).map((provider) => (
                             <option key={provider} value={provider}>{AI_PROVIDERS[provider].name}</option>
                           ))}
                         </select>

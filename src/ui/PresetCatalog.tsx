@@ -1,5 +1,6 @@
 import { CHAT_MODES } from '../../shared/constants';
 import type { AIProvider, ChatMode, ProviderState, WorkflowPresetId } from '../../shared/types';
+import { DEFAULT_FREE_TARGET_PROVIDERS } from '../../shared/constants';
 import { formatI18n, t } from '../i18n/t';
 import type { Locale } from '../i18n/resolve';
 import { isSendable } from '../workflow/sendability';
@@ -14,6 +15,7 @@ export function PresetCatalog({
   visiblePresetCount = PRESET_CATALOG.length,
   states,
   modeRoles,
+  activeProviders,
   disabled = false,
   detailsPresetId,
   layout = 'wide',
@@ -25,6 +27,7 @@ export function PresetCatalog({
   visiblePresetCount?: number;
   states?: Record<AIProvider, ProviderState>;
   modeRoles?: ModeRoleAssignments;
+  activeProviders?: readonly AIProvider[];
   disabled?: boolean;
   detailsPresetId?: WorkflowPresetId;
   layout?: 'wide' | 'sidebar';
@@ -41,6 +44,7 @@ export function PresetCatalog({
         locale,
         states,
         modeRoles,
+        activeProviders,
         disabled,
         compact: layout === 'sidebar',
         className:
@@ -72,6 +76,7 @@ function renderPresetGrid({
   locale,
   states,
   modeRoles,
+  activeProviders,
   disabled,
   className,
   compact = false,
@@ -83,6 +88,7 @@ function renderPresetGrid({
   locale: Locale;
   states?: Record<AIProvider, ProviderState>;
   modeRoles?: ModeRoleAssignments;
+  activeProviders?: readonly AIProvider[];
   disabled: boolean;
   className: string;
   compact?: boolean;
@@ -95,7 +101,7 @@ function renderPresetGrid({
         const selected = activePresetId === preset.id;
         const displayName = t(preset.displayNameKey, locale);
         const icon = preset.id === 'brainstorm' ? '✨' : CHAT_MODES[preset.graphId].icon;
-        const readiness = states ? presetReadiness(preset, states, locale, modeRoles) : undefined;
+        const readiness = states ? presetReadiness(preset, states, locale, modeRoles, activeProviders) : undefined;
         return (
           <button
             key={`${keyPrefix}-${preset.id}`}
@@ -137,11 +143,13 @@ function presetReadiness(
   states: Record<AIProvider, ProviderState>,
   locale: Locale,
   modeRoles?: ModeRoleAssignments,
+  activeProviders?: readonly AIProvider[],
 ): { label: string; ready: boolean } {
   const roles = defaultRolesForPreset(preset.graphId, preset.id, modeRoles);
   const required = roles ? ([...new Set(Object.values(roles))] as AIProvider[]) : preset.requiredProviders;
   if (required.length === 0) {
-    const readyCount = (Object.keys(states) as AIProvider[]).filter((provider) => isSendable(states[provider])).length;
+    const providers = activeProviders ?? DEFAULT_FREE_TARGET_PROVIDERS;
+    const readyCount = providers.filter((provider) => isSendable(states[provider])).length;
     return {
       label: formatI18n(t('preset.readinessAny', locale), { ready: readyCount }),
       ready: readyCount > 0,

@@ -1,5 +1,5 @@
 import type { AIProvider } from '../../shared/types';
-import { AI_PROVIDERS } from '../../shared/constants';
+import { AI_PROVIDERS, ALL_AI_PROVIDERS, DEFAULT_STANDBY_PROVIDER } from '../../shared/constants';
 import { DEFAULT_COLUMN_WIDTHS, type ColumnWidths, clampColumnWidths } from './dockLayout';
 import { DEFAULT_FOCUS_PANE_WIDTH, DEFAULT_SIDEBAR_WIDTH, clampFocusPaneWidth, clampSidebarWidth } from './focusLayout';
 import {
@@ -9,6 +9,7 @@ import {
   normalizeSlotAssignment,
 } from './slotAssignment';
 import {
+  keepModeRolesWithinProviders,
   type ModeRoleAssignments,
   migrateLegacyModeRoleAssignments,
   normalizeModeRoleAssignments,
@@ -81,6 +82,7 @@ export interface AppSettings {
   columnWidths: ColumnWidths;
   slotAssignment: SlotAssignment;
   modeRoles: ModeRoleAssignments;
+  standbyProvider: AIProvider;
   openProviders: AIProvider[];
   adapterBaseUrl: string;
   updaterChannel: string;
@@ -99,7 +101,18 @@ export interface AppSettings {
 }
 
 const PROVIDERS = Object.keys(AI_PROVIDERS) as AIProvider[];
-export const SETTINGS_SCHEMA_VERSION = 1;
+export const SETTINGS_SCHEMA_VERSION = 2;
+const LEGACY_MODE_ROLE_MIGRATION_VERSION = 1;
+
+export function activeProvidersForStandby(standbyProvider: AIProvider): AIProvider[] {
+  return (ALL_AI_PROVIDERS as readonly AIProvider[]).filter((provider) => provider !== standbyProvider);
+}
+
+export function normalizeStandbyProvider(value: unknown): AIProvider {
+  return typeof value === 'string' && PROVIDERS.includes(value as AIProvider)
+    ? (value as AIProvider)
+    : DEFAULT_STANDBY_PROVIDER;
+}
 
 export function defaultSettings(): AppSettings {
   return {
@@ -119,6 +132,7 @@ export function defaultSettings(): AppSettings {
     columnWidths: { ...DEFAULT_COLUMN_WIDTHS },
     slotAssignment: { ...DEFAULT_SLOT_ASSIGNMENT },
     modeRoles: normalizeModeRoleAssignments(undefined),
+    standbyProvider: DEFAULT_STANDBY_PROVIDER,
     openProviders: [],
     adapterBaseUrl: '',
     updaterChannel: 'stable',
@@ -248,6 +262,19 @@ export function normalizeSettings(value: unknown): AppSettings {
     input.settingsSchemaVersion >= 0
       ? input.settingsSchemaVersion
       : 0;
+  const normalizedStandbyProvider = normalizeStandbyProvider(input.standbyProvider);
+  const activeProviders = activeProvidersForStandby(normalizedStandbyProvider);
+  const normalizedModeRoles =
+    storedSchemaVersion < LEGACY_MODE_ROLE_MIGRATION_VERSION
+      ? migrateLegacyModeRoleAssignments(input.modeRoles, defaults.modeRoles)
+      : normalizeModeRoleAssignments(input.modeRoles, defaults.modeRoles);
+  const standbyPresentation = Object.fromEntries(
+    PROVIDERS.map((provider) => [provider, provider === normalizedStandbyProvider ? 'chip' : 'side']),
+  ) as PresentationByProvider;
+  const presentationInput = input.presentation && typeof input.presentation === 'object'
+    ? { ...(input.presentation as Record<string, unknown>), [normalizedStandbyProvider]: 'chip' }
+    : input.presentation;
+  const normalizedPresentation = normalizePresentation(presentationInput, standbyPresentation);
 
   return {
     settingsSchemaVersion: SETTINGS_SCHEMA_VERSION,
@@ -267,11 +294,9 @@ export function normalizeSettings(value: unknown): AppSettings {
     ),
     columnWidths: normalizedColumnWidths,
     slotAssignment: normalizeSlotAssignment(input.slotAssignment, defaults.slotAssignment),
-    modeRoles:
-      storedSchemaVersion < SETTINGS_SCHEMA_VERSION
-        ? migrateLegacyModeRoleAssignments(input.modeRoles, defaults.modeRoles)
-        : normalizeModeRoleAssignments(input.modeRoles, defaults.modeRoles),
-    openProviders: Array.from(new Set(providerList(input.openProviders))),
+    modeRoles: keepModeRolesWithinProviders(normalizedModeRoles, activeProviders),
+    standbyProvider: normalizedStandbyProvider,
+    openProviders: Array.from(new Set(providerList(input.openProviders))).filter((provider) => provider !== normalizedStandbyProvider),
     adapterBaseUrl: stringValue(input.adapterBaseUrl, defaults.adapterBaseUrl),
     updaterChannel: stringValue(input.updaterChannel, defaults.updaterChannel),
     portable: input.portable === true,
@@ -280,7 +305,7 @@ export function normalizeSettings(value: unknown): AppSettings {
     snapshotRedactionTier: snapshotRedactionTier(input.snapshotRedactionTier, defaults.snapshotRedactionTier),
     customActions: customActions(input as Record<string, unknown>),
     singleInstance: input.singleInstance !== false,
-    presentation: normalizePresentation(input.presentation, defaults.presentation),
+    presentation: { ...normalizedPresentation, [normalizedStandbyProvider]: 'chip' },
     centerSurface: centerSurface(input.centerSurface, defaults.centerSurface),
   };
 }

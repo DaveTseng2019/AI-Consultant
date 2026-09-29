@@ -1,7 +1,7 @@
 // Portions adapted from teddashh/multi-ai-chat (MIT).
 // Extended for AI Consultant.
 
-export type AIProvider = 'chatgpt' | 'claude' | 'gemini' | 'grok';
+export type AIProvider = 'chatgpt' | 'claude' | 'gemini' | 'grok' | 'meta';
 
 // Snapshot schema compatibility alias.
 export type AIProviderV2 = AIProvider;

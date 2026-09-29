@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
-import { AI_PROVIDERS } from '../../shared/constants';
+import { AI_PROVIDERS, DEFAULT_FREE_TARGET_PROVIDERS } from '../../shared/constants';
 import type { AIProvider, ProviderState } from '../../shared/types';
 import { I18nProvider } from '../i18n/context';
 import { t } from '../i18n/t';
@@ -37,6 +37,7 @@ function renderFocusPane({
   stageToggleEnabled = true,
   centerSurface = 'text',
   stageCollapsed = false,
+  activeProviders,
 }: {
   stateOverrides?: Partial<Record<AIProvider, Partial<ProviderState>>>;
   presentation?: PresentationByProvider;
@@ -46,6 +47,7 @@ function renderFocusPane({
   stageToggleEnabled?: boolean;
   centerSurface?: 'text' | 'native';
   stageCollapsed?: boolean;
+  activeProviders?: readonly AIProvider[];
 }): string {
   return renderToStaticMarkup(
     <I18nProvider language="en">
@@ -74,6 +76,7 @@ function renderFocusPane({
         onToggleStageExpanded={stageExpanded === undefined || !stageToggleEnabled ? undefined : vi.fn()}
         stageCollapsed={stageCollapsed}
         onToggleStageCollapsed={vi.fn()}
+        providers={activeProviders}
       />
     </I18nProvider>,
   );
@@ -109,11 +112,22 @@ describe('FocusPane provider header', () => {
       },
     });
 
-    for (const provider of providers) expect(html).toContain(`aria-label="${AI_PROVIDERS[provider].name}:`);
+    for (const provider of DEFAULT_FREE_TARGET_PROVIDERS) expect(html).toContain(`aria-label="${AI_PROVIDERS[provider].name}:`);
+    expect(html).not.toContain('aria-label="Meta AI:');
     expect(html).toContain('Claude: Sign in');
     expect(html).toContain('Gemini: Thinking');
     expect(html).toContain('aria-pressed="true"');
     expect(html).not.toContain('role="button"');
+  });
+
+  it('shows Meta AI only when it replaces the selected standby provider', () => {
+    const html = renderFocusPane({
+      activeProviders: ['chatgpt', 'claude', 'gemini', 'meta'],
+      presentation: { ...defaultPresentation(), grok: 'chip', meta: 'side' },
+    });
+
+    expect(html).toContain('aria-label="Meta AI: Ready"');
+    expect(html).not.toContain('aria-label="Grok:');
   });
 
   it('renders a clear first-run provider picker instead of an empty stage', () => {
