@@ -327,6 +327,7 @@ export default function App() {
   const [checkpoint, setCheckpoint] = useState<PendingCheckpoint | undefined>();
   const [checkpointDraft, setCheckpointDraft] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [preflightLoginPending, setPreflightLoginPending] = useState(false);
   const [preflight, setPreflight] = useState<{ mode: PreflightSubject; result: PreflightResult } | undefined>();
   const [stepTimeout, setStepTimeout] = useState<StepTimeoutDialogState | undefined>();
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -463,7 +464,7 @@ export default function App() {
   const centerTextFinal = latestCenterBubble?.final === true;
 
   const overlayGuardOpen =
-    Boolean(preflight) || Boolean(stepTimeout?.timedOut) || settingsOpen || Boolean(reportPreview) || processTraceDetailOpen || messagesMaximized;
+    (Boolean(preflight) && !preflightLoginPending) || Boolean(stepTimeout?.timedOut) || settingsOpen || Boolean(reportPreview) || processTraceDetailOpen || messagesMaximized;
   const manualFocusIdlePaused = Boolean(checkpoint) || Boolean(stepTimeout);
   overlayGuardOpenRef.current = overlayGuardOpen;
   stageCollapsedRef.current = stageCollapsed;
@@ -2154,14 +2155,14 @@ export default function App() {
 
   const openPreflightLogin = useCallback(
     async (provider: AIProvider) => {
-      setPreflight(undefined);
+      setPreflightLoginPending(true);
       try {
         await openProviderLogin(provider);
-      } catch {
-        setWorkflowStatus(translate('input.sendFailed'));
+      } finally {
+        setPreflightLoginPending(false);
       }
     },
-    [openProviderLogin, translate],
+    [openProviderLogin],
   );
 
   const applySavedSettings = (settings: AppSettings) => {
@@ -2685,7 +2686,8 @@ export default function App() {
       {preflight ? (
         <PreflightDialog
           model={buildPreflightDialogModel(preflight.mode, preflight.result, states, locale)}
-          onOpenLogin={(provider) => void openPreflightLogin(provider)}
+          hidden={preflightLoginPending}
+          onOpenLogin={openPreflightLogin}
           onClose={() => setPreflight(undefined)}
           onSwitchMode={() => {
             setMode('free');
