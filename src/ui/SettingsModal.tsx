@@ -425,6 +425,9 @@ export function SettingsModal({
     });
   };
 
+  // Only the role seats, persisted at once like each role picker.
+  const restoreModeRoleDefaults = () => persistDraftFieldImmediately('modeRoles', defaultSettings().modeRoles);
+
   const updateStandbyProvider = (standbyProvider: AIProvider) => {
     if (!draft || standbyProvider === draft.standbyProvider || providerSelectionDisabled || saveInFlightRef.current) return;
     // Only the order changes: the standby keeps its roles, its open pane and its presentation.
@@ -783,6 +786,14 @@ export function SettingsModal({
             <section className="space-y-3 border-t border-zinc-200 dark:border-zinc-800 pt-4">
               <SectionHeading>{t('settings.modeRoles')}</SectionHeading>
               <p className="text-xs leading-relaxed text-zinc-500 dark:text-zinc-500">{t('settings.modeRolesDescription')}</p>
+              <button
+                type="button"
+                aria-label={`${t('settings.restoreDefaults')}: ${t('settings.modeRoles')}`}
+                onClick={() => void restoreModeRoleDefaults()}
+                className="border border-zinc-300 dark:border-zinc-700 px-2 py-1 text-xs text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+              >
+                {t('settings.restoreDefaults')}
+              </button>
               {orderedRoleModes.map((roleMode) => (
                 <details
                   key={roleMode}

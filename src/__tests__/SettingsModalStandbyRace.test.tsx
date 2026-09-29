@@ -92,6 +92,28 @@ describe('SettingsModal standby save ordering', () => {
     expect(persisted.openProviders).toEqual(initial.openProviders);
   });
 
+  it('restores only the collaboration roles to their defaults, at once and without Save', async () => {
+    vi.stubGlobal('window', { setTimeout: vi.fn(), clearTimeout: vi.fn() });
+    const write = vi.spyOn(host.settings, 'set').mockResolvedValue(undefined);
+    const initial = defaultSettings();
+    const edited: AppSettings = {
+      ...initial,
+      adapterBaseUrl: SEED_URL,
+      modeRoles: { ...initial.modeRoles, debate: { ...initial.modeRoles.debate, judge: 'meta' } },
+    };
+    const ui = harness(edited);
+
+    const label = `${t('settings.restoreDefaults', 'en')}: ${t('settings.modeRoles', 'en')}`;
+    control(ui.render(), (element) => element.type === 'button' && (element.props as { 'aria-label'?: string })['aria-label'] === label)!
+      .props.onClick!();
+
+    await vi.waitFor(() => expect(write).toHaveBeenCalledTimes(1));
+    const persisted = write.mock.calls[0][0] as AppSettings;
+    expect(persisted.modeRoles).toEqual(initial.modeRoles);
+    // A roles reset is not a general reset: other fields keep their values.
+    expect(persisted.adapterBaseUrl).toBe(SEED_URL);
+  });
+
   it('coalesces Save clicks and keeps the modal open while a save is in flight', async () => {
     vi.stubGlobal('window', { setTimeout: vi.fn(), clearTimeout: vi.fn() });
     let finishSwap!: () => void;
