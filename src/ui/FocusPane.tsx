@@ -109,6 +109,7 @@ export function FocusPane({
       else if (action === 'reload') {
         resetProviderBootState(provider);
         await host.provider.reload(provider);
+        if (generation !== providerActionGeneration.current) return;
         await syncBounds(provider);
       } else if (action === 'browser') await host.provider.openLoginExternal(provider);
       else if (action === 'reconnect') {
