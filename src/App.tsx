@@ -788,6 +788,9 @@ export default function App() {
   }, [setLanguage]);
 
   useEffect(() => {
+    // Before settings load, activeProviders is the default lineup, where Meta is the standby.
+    // Filtering a restored selection against it dropped Meta, and the save effect persisted that.
+    if (!settingsLoaded) return;
     setTargetSelection((current) => {
       const nextTargets = current.userTouched
         ? current.targets.filter((provider) => activeProviders.includes(provider))
@@ -801,7 +804,7 @@ export default function App() {
       }
       return { ...current, targets: nextTargets, defaultsInitialized: true };
     });
-  }, [activeProviders]);
+  }, [activeProviders, settingsLoaded]);
 
   useEffect(() => {
     let disposed = false;
