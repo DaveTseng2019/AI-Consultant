@@ -425,6 +425,7 @@ export const en: Record<I18nKey, string> = {
   'reportPreview.cancel': 'Cancel',
   'reportPreview.openGithubIssue': 'Open GitHub issue',
   'fileInsert.binaryUnsupported': 'Insert file takes plain-text files only, not PDFs, images, or documents. For an image, paste it into the input box with Ctrl + V or Alt + V.',
+  'reportPreview.openFailed': "Couldn't open the GitHub issue. Please try again.",
   'fileInsert.fileTooLarge': 'Text files must be smaller than about 256 KB. Please choose a smaller file.',
   'fileInsert.attachmentLimit': 'You can attach up to 8 text files totaling about 256 KB. Remove a file or choose smaller files.',
   'image.limit': 'You can paste up to 4 images. Remove one first.',

@@ -414,6 +414,7 @@ export const zhTW: Record<I18nKey, string> = {
   'reportPreview.cancel': '取消',
   'reportPreview.openGithubIssue': '開啟 GitHub issue',
   'fileInsert.binaryUnsupported': '插入檔案只收純文字檔，PDF、圖片、文件檔不行。圖片請直接在輸入框按 Ctrl + V 或 Alt + V 貼上。',
+  'reportPreview.openFailed': "無法開啟 GitHub issue，請再試一次。",
   'fileInsert.fileTooLarge': '文字檔需小於約 256 KB，請選擇較小的檔案。',
   'fileInsert.attachmentLimit': '最多可附加 8 個文字檔，總大小約 256 KB；請移除或改選較小的檔案。',
   'image.limit': '最多貼上 4 張圖片，請先移除一張。',

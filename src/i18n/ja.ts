@@ -427,6 +427,7 @@ export const ja: Record<I18nKey, string> = {
   'reportPreview.cancel': 'キャンセル',
   'reportPreview.openGithubIssue': 'GitHub Issueを開く',
   'fileInsert.binaryUnsupported': 'ファイル挿入はプレーンテキストファイルのみです。PDF、画像、文書ファイルは扱えません。画像は入力欄で Ctrl + V または Alt + V で貼り付けてください。',
+  'reportPreview.openFailed': "GitHub issueを開けませんでした。もう一度お試しください。",
   'fileInsert.fileTooLarge': 'テキストファイルは約256 KB未満にしてください。より小さいファイルを選択してください。',
   'fileInsert.attachmentLimit': '添付できるテキストファイルは合計約256 KB、最大8件です。ファイルを削除するか、より小さいファイルを選択してください。',
   'image.limit': '貼り付けられる画像は最大4枚です。1枚削除してください。',

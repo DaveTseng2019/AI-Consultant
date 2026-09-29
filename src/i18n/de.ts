@@ -427,6 +427,7 @@ export const de: Record<I18nKey, string> = {
   'reportPreview.cancel': 'Abbrechen',
   'reportPreview.openGithubIssue': 'GitHub-Issue öffnen',
   'fileInsert.binaryUnsupported': 'Datei einfügen nimmt nur reine Textdateien, keine PDFs, Bilder oder Dokumente. Ein Bild mit Strg + V oder Alt + V ins Eingabefeld einfügen.',
+  'reportPreview.openFailed': "Das GitHub-Issue konnte nicht geöffnet werden. Bitte erneut versuchen.",
   'fileInsert.fileTooLarge': 'Textdateien müssen kleiner als etwa 256 KB sein. Bitte eine kleinere Datei auswählen.',
   'fileInsert.attachmentLimit': 'Du kannst bis zu 8 Textdateien mit insgesamt etwa 256 KB anhängen. Entferne eine Datei oder wähle kleinere Dateien.',
   'image.limit': 'Du kannst höchstens 4 Bilder einfügen. Entferne zuerst eines.',
