@@ -1852,7 +1852,7 @@ export default function App() {
     // A manual expand outlives the conversation it was opened for, and the mode shelf stays hidden
     // behind it -- so a fresh, empty conversation would open with no way to pick a mode.
     setStageExpand('none');
-    setTargetSelection({ targets: DEFAULT_FREE_TARGET_PROVIDERS.filter((provider) => activeProviders.includes(provider)), defaultsInitialized: true, userTouched: false });
+    setTargetSelection({ targets: [...activeProviders], defaultsInitialized: true, userTouched: false });
     activeResponses.current.clear();
     const providersToClear = activeProviders.filter((provider) => statesRef.current[provider].webview === 'loaded');
     pendingProviderResetRef.current = new Set(providersToClear);
