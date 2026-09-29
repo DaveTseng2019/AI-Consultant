@@ -176,6 +176,7 @@ export const I18N_KEYS = [
   'workflowStatus.numberedProviderStep',
   'workflowStatus.roundtableSpeaker',
   'workflowStatus.nativeEdit',
+  'workflow.providerPageReloaded',
   'workflowRole.debate.pro',
   'workflowRole.debate.con',
   'workflowRole.debate.judge',
