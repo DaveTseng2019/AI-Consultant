@@ -6,6 +6,34 @@ The full notes for each version are on [GitHub releases](https://github.com/Dave
 Dates are the release date (UTC). The repo pins `0.0.0` on purpose; the real number is injected by
 the release CI from the tag.
 
+## [v0.0.23](https://github.com/DaveTseng2019/AI-Consultant/releases/tag/v0.0.23) — 2026-09-29
+
+- Meta AI joins as a fifth provider. All five can be opened, ticked in free mode and assigned to
+  collaboration roles.
+- The standby provider now only sets the order: it is listed last but opens and works like the
+  rest. Upstream disables the standby entirely; this app deliberately does not.
+- Choosing the standby in Settings is saved at once, without pressing Save.
+- Collaboration roles have a Defaults button that resets only the role seats.
+- The AI connection cards sit in one row and share its width, wrapping only when the window is
+  too narrow.
+- Fixed: a provider that was slow to load at startup was dropped from the providers reopened next
+  time.
+- Fixed: Meta AI placed in the centre did not reopen at startup.
+- Fixed: Meta AI lost its tick in "Send to selected AI" after a restart, and a new conversation did
+  not tick it.
+- ChatGPT's new composer is recognised.
+- After a long question, ChatGPT's answer could be on screen while the app kept waiting until it
+  timed out. That is fixed.
+- A Grok answer that pauses and resumes is no longer taken as finished early.
+- A step fails straight away when the provider's page is replaced mid-run, instead of waiting for
+  the timeout.
+- Login, reload, open-in-browser, report-a-problem and download-page buttons now show an error and a
+  Retry when they fail, instead of doing nothing.
+- Closing Settings cancels an update check that is still running.
+- A diagnostic trace, off by default: put an empty `provider-trace.on` file in the settings folder
+  and restart to log provider opens, closes and state changes to `provider-trace.log`. Questions
+  and answers are never logged.
+
 ## [v0.0.22](https://github.com/DaveTseng2019/AI-Consultant/releases/tag/v0.0.22) — 2026-09-22
 
 - The answer is captured when ChatGPT collapses a long question into an expandable block. That step
