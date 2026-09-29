@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-provider-trace-ui"
+description = "Enables the provider_trace_ui command without any pre-configured scope."
+commands.allow = ["provider_trace_ui"]
+
+[[permission]]
+identifier = "deny-provider-trace-ui"
+description = "Denies the provider_trace_ui command without any pre-configured scope."
+commands.deny = ["provider_trace_ui"]

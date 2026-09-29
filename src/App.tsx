@@ -449,7 +449,8 @@ export default function App() {
       : anySendableTargets.length === 0);
   const modeSendBlocked = (mode !== 'free' || presetId === 'brainstorm') && missingModeProviderCount > 0;
   const openProviders = useMemo(
-    () => activeProviders.filter((provider) => states[provider].webview === 'loaded'),
+    // 'creating' counts as open: a provider that is still loading is meant to stay open.
+    () => activeProviders.filter((provider) => states[provider].webview !== 'none'),
     [activeProviders, states],
   );
   const latestCenterBubble = useMemo(() => {
@@ -826,6 +827,7 @@ export default function App() {
         // default standby (Meta), and a Meta saved as open was dropped without being opened.
         presentationRef.current = loaded.presentation;
         pendingRestore.current = new Set(restorableOpenProviders(loaded.openProviders, loaded.presentation));
+        void host.dev.trace(`load open=${loaded.openProviders.join(",")} pending=${Array.from(pendingRestore.current).join(",")}`);
         setInitialRestoreComplete(pendingRestore.current.size === 0);
       })
       .catch(() => {
@@ -1105,6 +1107,7 @@ export default function App() {
   const restoreProvider = useCallback(
     async (provider: AIProvider) => {
       const target = presentationRef.current[provider];
+      void host.dev.trace(`restore ${provider} target=${target} webview=${statesRef.current[provider].webview}`);
       if (target === 'chip') return;
       if (target === 'side') {
         await ensureProviderLoadedHidden(
@@ -1125,6 +1128,23 @@ export default function App() {
       await openProvider(provider);
     },
     [ensureProviderLoadedHidden, openProvider],
+  );
+
+  // Restore is complete only when no provider is waiting and none is still opening. Marking it
+  // complete when the first restore settled let the openProviders save run mid-startup, writing
+  // only the providers loaded so far; a provider still opening (or slow to load) was then dropped
+  // from settings for good.
+  const restoresInFlight = useRef(0);
+  const startRestore = useCallback(
+    (provider: AIProvider) => {
+      pendingRestore.current.delete(provider);
+      restoresInFlight.current += 1;
+      void restoreProvider(provider).finally(() => {
+        restoresInFlight.current -= 1;
+        if (pendingRestore.current.size === 0 && restoresInFlight.current === 0) setInitialRestoreComplete(true);
+      });
+    },
+    [restoreProvider],
   );
 
   const syncBounds = useCallback(async (provider: AIProvider) => {
@@ -1170,14 +1190,9 @@ export default function App() {
       paneRefs.current[provider] = el;
       if (!el) return;
       void syncBounds(provider);
-      if (pendingRestore.current.has(provider)) {
-        pendingRestore.current.delete(provider);
-        void restoreProvider(provider).finally(() => {
-          if (pendingRestore.current.size === 0) setInitialRestoreComplete(true);
-        });
-      }
+      if (pendingRestore.current.has(provider)) startRestore(provider);
     },
-    [restoreProvider, syncBounds],
+    [startRestore, syncBounds],
   );
 
   const resyncNativeBounds = useCallback(() => {
@@ -1218,14 +1233,9 @@ export default function App() {
       const provider = centerPresentationProvider(presentationRef.current);
       if (!provider) return;
       if (centerSurfaceRef.current === 'native') void syncBounds(provider);
-      if (pendingRestore.current.has(provider)) {
-        pendingRestore.current.delete(provider);
-        void restoreProvider(provider).finally(() => {
-          if (pendingRestore.current.size === 0) setInitialRestoreComplete(true);
-        });
-      }
+      if (pendingRestore.current.has(provider)) startRestore(provider);
     },
-    [restoreProvider, syncBounds],
+    [startRestore, syncBounds],
   );
 
   useEffect(() => {
@@ -1239,14 +1249,11 @@ export default function App() {
       }
       const hasPlaceholder = state === 'center' ? Boolean(centerStageRef.current) : Boolean(paneRefs.current[provider]);
       if (!hasPlaceholder) continue;
-      pendingRestore.current.delete(provider);
-      void restoreProvider(provider).finally(() => {
-        if (pendingRestore.current.size === 0) setInitialRestoreComplete(true);
-      });
+      startRestore(provider);
     }
 
-    if (pendingRestore.current.size === 0) setInitialRestoreComplete(true);
-  }, [centeredProvider, initialRestoreComplete, presentation, restoreProvider, settingsLoaded]);
+    if (pendingRestore.current.size === 0 && restoresInFlight.current === 0) setInitialRestoreComplete(true);
+  }, [centeredProvider, initialRestoreComplete, presentation, settingsLoaded, startRestore]);
 
   const persistPresentation = useCallback(
     async (next: PresentationByProvider) => {
@@ -1555,6 +1562,7 @@ export default function App() {
     ) {
       return;
     }
+    void host.dev.trace(`persist openProviders=${openProviders.join(",")}`);
     void persistSettingsPatch({ openProviders });
   }, [connectionSnapshotLoaded, initialRestoreComplete, openProviders, persistSettingsPatch, settingsLoaded, settingsOpen]);
 

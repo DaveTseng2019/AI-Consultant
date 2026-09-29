@@ -21,6 +21,7 @@
     "allow-provider-new-session",
     "allow-connections-get",
     "allow-dev-log",
+    "allow-provider-trace-ui",
     "allow-adapter-push",
     "allow-report-broken",
     "allow-open-adapter-issue",

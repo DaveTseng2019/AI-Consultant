@@ -60,6 +60,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             webviews::provider_open,
+            webviews::provider_trace_ui,
             webviews::provider_close,
             webviews::provider_show,
             webviews::provider_hide,

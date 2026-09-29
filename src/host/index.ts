@@ -151,6 +151,8 @@ export const host = {
   dev: {
     /** Dev-only: forward a line to the Rust stdout so headless harness runs can capture it. */
     log: (message: string): Promise<void> => invoke('dev_log', { message }),
+    /** Provider lifecycle trace; Rust drops the line unless provider-trace.on is present. */
+    trace: (line: string): Promise<void> => invoke<void>('provider_trace_ui', { line }).catch(() => undefined),
   },
   settings: {
     get: (): Promise<unknown> => invoke('settings_get'),

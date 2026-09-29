@@ -1146,6 +1146,50 @@ fn physical_bounds(bounds: &Bounds) -> Result<(PhysicalPosition<i32>, PhysicalSi
     ))
 }
 
+// Provider lifecycle trace for diagnosing restore and load problems. Off by default: it records
+// only when `provider-trace.on` exists in the app data dir at launch, and appends to
+// `provider-trace.log` there. It records provider names and states, never prompts or answers.
+// notes: the switch is read once per launch (OnceLock), so toggling it needs a restart. The log
+//        rolls to provider-trace.log.old past 1 MB, so at most about 2 MB is kept.
+const PROVIDER_TRACE_MAX_BYTES: u64 = 1024 * 1024;
+static PROVIDER_TRACE_ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+
+fn provider_trace(app: &AppHandle, line: &str) {
+    use std::io::Write;
+    let Ok(dir) = app.path().app_data_dir() else {
+        return;
+    };
+    if !*PROVIDER_TRACE_ON.get_or_init(|| dir.join("provider-trace.on").exists()) {
+        return;
+    }
+    let path = dir.join("provider-trace.log");
+    if std::fs::metadata(&path).is_ok_and(|meta| meta.len() > PROVIDER_TRACE_MAX_BYTES) {
+        let _ = std::fs::rename(&path, dir.join("provider-trace.log.old"));
+    }
+    if let Ok(mut file) = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&path)
+    {
+        let ms = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|elapsed| elapsed.as_millis())
+            .unwrap_or(0);
+        let _ = writeln!(file, "{ms} {line}");
+    }
+}
+
+#[tauri::command]
+pub fn provider_trace_ui(
+    app: AppHandle,
+    webview: tauri::Webview,
+    line: String,
+) -> Result<(), String> {
+    ensure_control_webview(&webview)?;
+    provider_trace(&app, &format!("ui {line}"));
+    Ok(())
+}
+
 #[tauri::command]
 pub async fn provider_open(
     app: AppHandle,
@@ -1159,6 +1203,7 @@ pub async fn provider_open(
     // Serialize provider creation with standby changes. Otherwise settings_set could select this
     // provider as standby after the first active check but before add_child registers the WebView.
     let _lifecycle_guard = settings::lock_provider_lifecycle()?;
+    provider_trace(&app, &format!("provider_open {provider}"));
     settings::ensure_provider_active_locked(&app, &provider)?;
     let label = provider_label(&provider);
     if let Some(webview) = app.get_webview(&label) {
@@ -1523,6 +1568,7 @@ pub async fn provider_close(
 }
 
 fn close_provider(app: &AppHandle, provider: &str) -> Result<(), String> {
+    provider_trace(app, &format!("close_provider {provider}"));
     let label = provider_label(provider);
     retire_grok_document(provider);
     if let Some(webview) = app.get_webview(&label) {
@@ -2477,8 +2523,22 @@ fn current_state(provider: &str) -> ProviderState {
 }
 
 fn set_state(app: &AppHandle, state: ProviderState) {
+    let mut previous_webview = None;
     if let Ok(mut guard) = runtime().lock() {
+        previous_webview = guard
+            .states
+            .get(&state.provider)
+            .map(|current| current.webview.clone());
         guard.states.insert(state.provider.clone(), state.clone());
+    }
+    if previous_webview.as_deref() != Some(state.webview.as_str()) {
+        provider_trace(
+            app,
+            &format!(
+                "state {} webview {:?} -> {}",
+                state.provider, previous_webview, state.webview
+            ),
+        );
     }
     let _ = app.emit_to("main", "connections://update", &state);
 }
