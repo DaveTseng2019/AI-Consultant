@@ -76,6 +76,7 @@ export class ReplayPanel extends Component<ReplayPanelProps, ReplayPanelState> {
 
   private mounted = false;
   private loginRequestGeneration = 0;
+  private loginInFlight = false;
 
   componentDidMount(): void {
     this.mounted = true;
@@ -156,7 +157,8 @@ export class ReplayPanel extends Component<ReplayPanelProps, ReplayPanelState> {
   }
 
   private async openProviderLogin(provider: AIProvider): Promise<void> {
-    if (this.props.activeProviders?.includes(provider) === false) return;
+    if (this.loginInFlight || this.props.activeProviders?.includes(provider) === false) return;
+    this.loginInFlight = true;
     const generation = ++this.loginRequestGeneration;
     const block = this.state.block;
     this.updateState({ notice: undefined });
@@ -172,6 +174,8 @@ export class ReplayPanel extends Component<ReplayPanelProps, ReplayPanelState> {
           retryLoginProvider: provider,
         },
       });
+    } finally {
+      this.loginInFlight = false;
     }
   }
 
