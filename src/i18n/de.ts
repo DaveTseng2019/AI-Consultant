@@ -343,6 +343,7 @@ export const de: Record<I18nKey, string> = {
   'settings.portableUpdateConfirm': 'Die App wird beendet, lädt die neue portable Version herunter und startet sich neu. Fortfahren?',
   'settings.portableUpdateFailed': 'Update fehlgeschlagen:',
   'settings.downloadPageFailed': "Die Downloadseite konnte nicht geöffnet werden. Bitte erneut versuchen.",
+  'settings.externalLinkFailed': "Dieser Link konnte nicht geöffnet werden. Bitte erneut versuchen.",
   'settings.releasesUnavailable': 'Versionen konnten nicht geprüft werden. Bitte später erneut versuchen.',
   'settings.updateCheckFailed': 'Updateprüfung fehlgeschlagen:',
   'settings.telemetryNone': 'Telemetrie: keine',
