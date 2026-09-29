@@ -1,4 +1,4 @@
-import { AI_PROVIDERS } from '../../shared/constants';
+import { ALL_AI_PROVIDERS } from '../../shared/constants';
 import type { AIProvider, ProviderState } from '../../shared/types';
 import { formatLocalTimestamp, localFilenameStamp, localTimezoneLabel } from '../formatTime';
 import { appendEvent, formatEventLogText, providerName, type EventLogEvent } from './eventLog';
@@ -32,7 +32,7 @@ export interface DebugBundleInput {
   events: readonly EventLogEvent[];
 }
 
-const PROVIDERS = Object.keys(AI_PROVIDERS) as AIProvider[];
+const PROVIDERS: readonly AIProvider[] = ALL_AI_PROVIDERS;
 
 interface DebugBundleProvider {
   provider: AIProvider;
