@@ -24,3 +24,6 @@ AGENTS.md
 docs/.local/
 docs/HANDOVER.md
 docs/VISION-ALIGNMENT.md
+
+# local debug bundles exported from the app — contain environment details, never commit
+multi-ai-chat-debug-*.txt
