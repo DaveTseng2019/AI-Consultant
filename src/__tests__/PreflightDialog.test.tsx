@@ -1,7 +1,11 @@
 import { Children, isValidElement, useEffect, useRef, useState, type ReactElement, type ReactNode } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { t } from '../i18n/t';
 import { PreflightDialog } from '../ui/PreflightDialog';
+
+// Read from the catalogue: this repo labels the button 'Go to sign-in', upstream 'Open/Login'.
+const OPEN_LOGIN = t('preflight.openLogin', 'en');
 
 vi.mock('react', async (importOriginal) => {
   const react = await importOriginal<typeof import('react')>();
@@ -57,7 +61,7 @@ describe('PreflightDialog login recovery', () => {
       return Promise.reject(new Error('host denied'));
     });
     const ui = harness(login);
-    expect(() => ui.click('Open/Login')).not.toThrow();
+    expect(() => ui.click(OPEN_LOGIN)).not.toThrow();
     await vi.waitFor(() => expect(ui.html()).toContain('role="alert"'));
     expect(ui.html()).toContain('Couldn&#x27;t open Meta AI. Please try again.');
     expect(ui.onClose).not.toHaveBeenCalled();
@@ -72,15 +76,15 @@ describe('PreflightDialog login recovery', () => {
     const second = deferred();
     const login = vi.fn().mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise);
     const ui = harness(login);
-    ui.click('Open/Login');
-    ui.click('Open/Login');
+    ui.click(OPEN_LOGIN);
+    ui.click(OPEN_LOGIN);
     expect(login).toHaveBeenCalledTimes(1);
     first.reject(new Error('denied'));
     await vi.waitFor(() => expect(ui.html()).toContain('role="alert"'));
     const retry = button(ui.render(), 'Try again')!;
     retry.props.onClick();
     retry.props.onClick();
-    ui.click('Open/Login');
+    ui.click(OPEN_LOGIN);
     expect(login).toHaveBeenCalledTimes(2);
     second.resolve();
     await vi.waitFor(() => expect(ui.onClose).toHaveBeenCalledTimes(1));
@@ -90,7 +94,7 @@ describe('PreflightDialog login recovery', () => {
     const request = deferred();
     const login = vi.fn().mockReturnValue(request.promise);
     const ui = harness(login);
-    const open = button(ui.render(), 'Open/Login')!;
+    const open = button(ui.render(), OPEN_LOGIN)!;
     open.props.onClick();
     expect(ui.render(true)).toBeNull();
     open.props.onClick();
@@ -105,7 +109,7 @@ describe('PreflightDialog login recovery', () => {
   it.each(['Back', 'Use Free mode', 'unmount'] as const)('ignores late rejection after %s', async (action) => {
     const request = deferred();
     const ui = harness(vi.fn().mockReturnValue(request.promise));
-    ui.click('Open/Login');
+    ui.click(OPEN_LOGIN);
     if (action === 'unmount') ui.unmount();
     else ui.click(action);
     request.reject(new Error('late rejection'));
