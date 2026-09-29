@@ -101,8 +101,8 @@ product-behaviour list below that is not named here.
 
 ### v0.0.23 Meta AI and startup restore (2026-09-29)
 
-This version adds Meta AI as a fifth provider, renames the standby provider the substitute and lets
-it take over a role whose provider is not ready, gives Consult a third answerer and an anonymous
+This version adds Meta AI as a fifth provider, adds a substitute provider that takes
+over a role whose provider is not ready, gives Consult a third answerer and an anonymous
 review, and fixes three startup-restore problems. Checked by hand by the maintainer.
 
 Environment: Windows 11 Pro `10.0.26200`, **executables built locally with `pnpm build:local`**

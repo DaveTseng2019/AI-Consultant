@@ -10,18 +10,15 @@ the release CI from the tag.
 
 - Meta AI joins as a fifth provider. All five can be opened, ticked in free mode and assigned to
   collaboration roles.
-- The standby provider is renamed the substitute. When a role's provider is not signed in or not
-  ready, the substitute takes over, and the role label says so ("substitute for ChatGPT"). It does
-  not step in when that would put one provider in two seats that answer at the same time. All five
-  still open and work as usual; the substitute is only listed last. Upstream disables the standby
-  entirely; this app deliberately does not.
-- Choosing the substitute in Settings is saved at once, without pressing Save.
+- A substitute provider. Pick one in Settings → Collaboration roles. When a role's provider is not
+  signed in or not ready, the substitute takes over, and the role label says so ("substitute for
+  ChatGPT"). It does not step in when that would put one provider in two seats that answer at the
+  same time. The substitute opens and works like the other four and is listed last.
 - Settings is split into tabs: General, Appearance, Collaboration roles, Privacy & history, Custom buttons,
   Updates, and Advanced & diagnostics. Only the open tab scrolls.
 - Save and Cancel appear only while a setting that needs Save has an unsaved change. Everything else
   is saved as you change it.
-- "One copy at a time" moves to General, and the substitute dropdown moves to Collaboration roles.
-  Adapter base URL has a short description.
+- "One copy at a time" moves to General. Adapter base URL has a short description.
 - Consult gains a third answerer, Meta AI by default, so three providers answer at once. The third
   answerer and the summary can each be set to "Not used", and they are skipped when their provider
   is not ready instead of blocking the run. Without a summary the run ends at the review.
