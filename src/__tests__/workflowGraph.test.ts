@@ -239,7 +239,7 @@ describe('workflow graph foundation', () => {
       free: freeGraph.version,
     }).toEqual({
       debate: 5,
-      consult: 6,
+      consult: 7,
       coding: 5,
       roundtable: 5,
       brainstorm: 4,

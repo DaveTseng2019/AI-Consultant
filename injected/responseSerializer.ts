@@ -98,15 +98,57 @@ function isMathRoot(element: Element, tag: string): boolean {
 
 function mathText(element: Element, tag: string): string {
   const tex = texAnnotation(element)?.trim();
-  if (tex) {
-    const display =
-      classList(element).includes('katex-display') ||
-      (tag === 'MJX-CONTAINER' && attribute(element, 'display') === 'true');
-    return display ? block('$$' + tex + '$$') : '$' + tex + '$';
-  }
+  const display =
+    classList(element).includes('katex-display') ||
+    (tag === 'MJX-CONTAINER' && attribute(element, 'display') === 'true');
+  if (tex) return display ? block('$$' + tex + '$$') : '$' + tex + '$';
+  // ChatGPT ships only the aria-hidden katex-html glyphs, with no MathML and so no TeX.
   // notes: without a TeX source we keep the rendered characters, which doubles a formula that
   //        ships MathML and glyphs side by side. Narrow to the MathML subtree if that turns up.
-  return normalizeText(element.textContent ?? '').trim();
+  const glyphs = normalizeText(katexGlyphText(element)).trim();
+  return display ? block(glyphs) : glyphs;
+}
+
+// Struts, spacers and the fraction bar carry no text; vlist-s holds a zero-width space.
+const KATEX_SILENT_CLASSES = new Set(['strut', 'pstrut', 'frac-line', 'vlist-s', 'nulldelimiter']);
+const ZERO_WIDTH_SPACE = String.fromCharCode(0x200b);
+
+// notes: reads the glyph layout. Fractions come out as "(a) / b"; superscripts, subscripts and
+//        roots still flatten ("x2" for x squared). Add a case here when one of those turns up.
+function katexGlyphText(node: Node): string {
+  if (node.nodeType === TEXT_NODE) return (node.textContent ?? '').split(ZERO_WIDTH_SPACE).join('');
+  const element = node as Element;
+  if (node.nodeType !== ELEMENT_NODE || typeof element.tagName !== 'string') return '';
+  const classes = classList(element);
+  if (classes.some((name) => KATEX_SILENT_CLASSES.has(name))) return '';
+  if (classes.includes('mfrac')) return katexFraction(element);
+  const inner = Array.from(element.childNodes ?? []).map(katexGlyphText).join('');
+  return classes.includes('mrel') || classes.includes('mbin') ? ` ${inner.trim()} ` : inner;
+}
+
+// KaTeX stacks a fraction bottom-up: the vlist lists the denominator first and the numerator
+// last, then shifts them into place. Reading the text in DOM order puts the denominator in front.
+function katexFraction(element: Element): string {
+  const vlist = firstDescendantByClass(element, 'vlist');
+  const parts = (vlist ? directChildElements(vlist) : [])
+    .map((row) => katexGlyphText(row).trim())
+    .filter(Boolean);
+  if (parts.length !== 2) return parts.join(' ');
+  const [denominator, numerator] = parts;
+  return ` ${fractionOperand(numerator)} / ${fractionOperand(denominator)} `;
+}
+
+function fractionOperand(value: string): string {
+  return /[\s+\-−×÷·/]/.test(value) ? `(${value})` : value;
+}
+
+function firstDescendantByClass(element: Element, wantedClass: string): Element | undefined {
+  for (const child of directChildElements(element)) {
+    if (classList(child).includes(wantedClass)) return child;
+    const descendant = firstDescendantByClass(child, wantedClass);
+    if (descendant) return descendant;
+  }
+  return undefined;
 }
 
 function texAnnotation(element: Element): string | null {

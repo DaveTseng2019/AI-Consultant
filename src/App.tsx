@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AI_PROVIDERS, CHAT_MODES, DEFAULT_FREE_TARGET_PROVIDERS } from '../shared/constants';
+import { AI_PROVIDERS, CHAT_MODES, DEFAULT_FREE_TARGET_PROVIDERS, isSeatedProvider, seatedProviders } from '../shared/constants';
 import type { AIProvider, BridgeMessage, ChatMode, ProviderState, WorkflowPresetId } from '../shared/types';
 import { startBridgePull, resetProviderBootState, resetProviderPullState } from './bridge/pull';
 import { isRenderableResponseMessage } from './bridge/render';
@@ -74,6 +74,7 @@ import {
   throttleWithFrame,
 } from './ui/focusLayout';
 import { isSerialMode } from './ui/modeRoles';
+import { isDefaultModeRoles, MODE_ROLE_LABEL_KEYS, restoreModeRoles, toggleOptionalSeat } from './ui/modeRoleAssignment';
 import {
   centerHiddenProviders,
   centerPresentationProvider,
@@ -92,7 +93,7 @@ import {
   waitForPresentationTargetBounds,
 } from './ui/presentationCommands';
 import { preflightGraph, workflowGraphs } from './workflow/graph';
-import { defaultRolesForPreset, presetForId } from './ui/presetCatalogData';
+import { defaultRolesForPreset, plannedRolesForPreset, presetForId, seatedProvidersForPreset } from './ui/presetCatalogData';
 import { buildPreflightDialogModel } from './ui/preflightModel';
 import { preflightFromResult, type PreflightSubject } from './ui/preflightFromResult';
 import { processingAfterSend, processingAfterSettle, processingAfterWorkflowStatus } from './ui/processing';
@@ -431,12 +432,34 @@ export default function App() {
   }, [centerSurface, modalHiddenProviders, presentation, states]);
   const hasFreeModeTargets = useMemo(() => hasEffectiveFreeModeTargets(targets, states), [states, targets]);
   const anySendableTargets = useMemo(() => defaultTargets(states, activeProviders), [activeProviders, states]);
-  const requiredModeProviders = useMemo(() => {
-    const roles = defaultRolesForPreset(mode, presetId, appSettings.modeRoles);
-    return roles
-      ? ([...new Set(Object.values(roles))] as AIProvider[])
-      : presetForId(presetId).requiredProviders;
-  }, [mode, presetId, appSettings.modeRoles]);
+  const plannedModeRoles = useMemo(
+    () => plannedRolesForPreset(mode, presetId, appSettings.modeRoles, states, activeProviders, appSettings.standbyProvider),
+    [mode, presetId, appSettings.modeRoles, appSettings.standbyProvider, states, activeProviders],
+  );
+  const requiredModeProviders = useMemo(
+    () => (plannedModeRoles ? seatedProviders(plannedModeRoles) : presetForId(presetId).requiredProviders),
+    [plannedModeRoles, presetId],
+  );
+  // Each chip in a role mode shows the role its AI plays instead of the AI's name.
+  const modeRoleBadges = useMemo(() => {
+    if (!plannedModeRoles) return undefined;
+    const labelMode = presetId === 'brainstorm' ? 'roundtable' : (mode as keyof typeof MODE_ROLE_LABEL_KEYS);
+    const separator = locale === 'zh-TW' || locale === 'ja' ? '、' : ', ';
+    const badges: Partial<Record<AIProvider, string>> = {};
+    for (const [role, provider] of Object.entries(plannedModeRoles)) {
+      if (!isSeatedProvider(provider)) continue;
+      const label = translate(MODE_ROLE_LABEL_KEYS[labelMode][role]);
+      badges[provider] = badges[provider] ? badges[provider] + separator + label : label;
+    }
+    return badges;
+  }, [plannedModeRoles, presetId, mode, locale, translate]);
+  const roleMode = presetId !== 'brainstorm' && isSerialMode(mode) ? mode : undefined;
+  const seatToggle = (provider: AIProvider) =>
+    roleMode ? toggleOptionalSeat(appSettings.modeRoles, roleMode, provider) : undefined;
+  const toggleSeatFromStrip = async (provider: AIProvider) => {
+    const next = seatToggle(provider);
+    if (next) await persistSettingsPatch({ modeRoles: next });
+  };
   const readyModeProviders = useMemo(
     () => requiredModeProviders.filter((provider) => isSendable(states[provider])),
     [requiredModeProviders, states],
@@ -1662,7 +1685,7 @@ export default function App() {
       workflowExecutionGenerationRef.current = workflowExecutionGeneration;
       if (mode === 'free') {
         const brainstormRoles = brainstorm ? defaultRolesForPreset(mode, presetId, settingsRef.current.modeRoles) : undefined;
-        autoFocusRunCandidate(brainstormRoles ? Object.values(brainstormRoles)[0] : workflowTargets?.[0]);
+        autoFocusRunCandidate(brainstormRoles ? seatedProviders(brainstormRoles)[0] : workflowTargets?.[0]);
       }
       const replayContext =
         replayContextSessionRef.current === activeSessionId ? buildConversationReplayContext(messages) : undefined;
@@ -1684,6 +1707,7 @@ export default function App() {
         roles: workflowRoles,
         targets: workflowTargets,
         activeProviders: activeProvidersForStandby(snapshotSettings.standbyProvider),
+        standbyProvider: snapshotSettings.standbyProvider,
         locale: localeRef.current,
         snapshotPersistence: snapshotSettings.snapshotPersistence,
         snapshotRedactionTier: snapshotSettings.snapshotRedactionTier,
@@ -1722,7 +1746,14 @@ export default function App() {
         ? defaultRolesForPreset(serialMode, undefined, modeRoles)
         : undefined;
     const participants = workflowRoles
-      ? [...new Set(Object.values(workflowRoles))]
+      ? seatedProvidersForPreset(
+          mode,
+          presetId,
+          modeRoles,
+          statesRef.current,
+          activeProvidersForStandby(settingsRef.current.standbyProvider),
+          settingsRef.current.standbyProvider,
+        ) ?? []
       : freeModeTargets(targets, statesRef.current);
 
     const providersToFreshen = pendingProviderSessionResets(
@@ -1781,6 +1812,7 @@ export default function App() {
           serialGraph,
           workflowRoles,
           activeProvidersForStandby(settingsRef.current.standbyProvider),
+          settingsRef.current.standbyProvider,
         );
         if (!result.ok) {
           recordEventLog(eventFromWorkflowPreflightBlocked(mode, result.unavailable.length + result.aliased.length));
@@ -2343,6 +2375,7 @@ export default function App() {
                 states={states}
                 modeRoles={appSettings.modeRoles}
                 activeProviders={activeProviders}
+                standbyProvider={appSettings.standbyProvider}
                 disabled={isProcessing}
                 detailsPresetId={presetDetailsId}
                 layout="sidebar"
@@ -2397,17 +2430,29 @@ export default function App() {
                     <div className="mb-2 flex flex-wrap items-baseline gap-2">
                       <span className="text-xs font-semibold uppercase text-zinc-600 dark:text-zinc-400">{translate('input.sendSelectedProviders')}</span>
                       <span className="text-xs text-zinc-500 dark:text-zinc-500">{translate('input.sendTargetsByRole')}</span>
+                      {roleMode ? (
+                        <button
+                          type="button"
+                          disabled={isProcessing || isDefaultModeRoles(appSettings.modeRoles, roleMode)}
+                          onClick={() => void persistSettingsPatch({ modeRoles: restoreModeRoles(appSettings.modeRoles, roleMode) })}
+                          className="border border-zinc-300 px-2 py-0.5 text-xs text-zinc-700 hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                        >
+                          {translate('settings.restoreDefaults')}
+                        </button>
+                      ) : null}
                     </div>
                     <div className="flex flex-wrap gap-1.5">
-                      {/* The same chips, ticked and frozen. A tick means "this one is being asked"
-                          wherever it appears; a second way of saying it would only have to be
-                          learned. They cannot be cleared because the roles decide who takes part. */}
+                      {/* The same chips, ticked. A tick means "this one is being asked" wherever it
+                          appears; a second way of saying it would only have to be learned. The roles
+                          decide who takes part, so only a chip for an optional seat can be changed. */}
                       <TargetChips
                         providers={activeProviders}
                         states={states}
                         selected={requiredModeProviders}
-                        onChange={() => undefined}
-                        disabled
+                        onChange={(_next, provider) => void toggleSeatFromStrip(provider)}
+                        disabled={isProcessing}
+                        canToggle={(provider) => seatToggle(provider) !== undefined}
+                        roleBadges={modeRoleBadges}
                       />
                     </div>
                   </>

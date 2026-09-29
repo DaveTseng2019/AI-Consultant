@@ -23,11 +23,15 @@ export interface DebateRoles {
   summary: AIProvider;
 }
 
+// An optional seat may be left empty; 'none' is the stored value for "not used".
+export type SeatProvider = AIProvider | 'none';
+
 export interface ConsultRoles {
   first: AIProvider;
   second: AIProvider;
+  third: SeatProvider;
   reviewer: AIProvider;
-  summary: AIProvider;
+  summary: SeatProvider;
 }
 
 export interface CodingRoles {

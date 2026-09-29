@@ -22,7 +22,7 @@ import { host } from '../host';
 import { abortWorkflow, getInFlightProviders, resetCancelState } from '../workflow/cancel';
 import { hasPendingCheckpoint, onCheckpoint, resetCheckpointForTests, resolveCheckpoint, type PendingCheckpoint } from '../workflow/checkpoint';
 import { emitSystemError } from '../workflow/events';
-import { preflightSerialMode } from '../workflow/preflight';
+import { consultGraph, preflightGraph } from '../workflow/graph';
 import { isSendable } from '../workflow/sendability';
 import { sendAndWait } from '../workflow/sendAndWait';
 import { flushSessionCheckpointForTests, resetSessionCheckpointForTests } from '../workflow/sessionCheckpoint';
@@ -85,6 +85,18 @@ function state(provider: AIProvider, sendable = true): ProviderState {
     thinking: false,
     lastStatusAt: 1,
   };
+}
+
+const allFiveProviders: AIProvider[] = [...providers, 'meta'];
+
+// Every provider answers at once, and the prompts it was sent are returned in send order.
+function captureSends(): { provider: AIProvider; prompt: string }[] {
+  const sent: { provider: AIProvider; prompt: string }[] = [];
+  vi.mocked(host.provider.send).mockImplementation(async (provider, prompt) => {
+    sent.push({ provider, prompt });
+    publishBridgeMessage(done(provider, `answer from ${provider}`));
+  });
+  return sent;
 }
 
 function done(provider: AIProvider, payload = 'final', transport: BridgeMessage['transport'] = 'pull'): BridgeMessage {
@@ -252,14 +264,10 @@ describe('workflow engine', () => {
     await expect(promise).resolves.toEqual({ response: 'final', turn: 1 });
   });
 
-  it('blocks serial preflight for unavailable providers and same-provider consult aliasing', async () => {
-    vi.mocked(host.connections.get).mockResolvedValue([state('chatgpt'), state('claude', false), state('gemini'), state('grok')]);
-    await expect(preflightSerialMode('debate', { pro: 'chatgpt', con: 'claude', judge: 'grok', summary: 'gemini' })).resolves.toMatchObject({
-      ok: false,
-      unavailable: ['claude'],
-    });
+  // One provider cannot answer twice at the same time, so parallel consult answerers must differ.
+  it('blocks consult when two parallel answer seats share a provider', async () => {
     await expect(
-      preflightSerialMode('consult', { first: 'chatgpt', second: 'chatgpt', reviewer: 'claude', summary: 'gemini' }),
+      preflightGraph(consultGraph, { first: 'chatgpt', second: 'grok', third: 'chatgpt', reviewer: 'claude', summary: 'gemini' }),
     ).resolves.toMatchObject({ ok: false, aliased: ['chatgpt'] });
   });
 
@@ -862,9 +870,128 @@ describe('workflow engine', () => {
     expect(statuses).toEqual([
       `🔍 ${providerName(DEFAULT_CONSULT_ROLES.first)} and ${providerName(DEFAULT_CONSULT_ROLES.second)} answering in parallel…`,
       `🔍 ${providerName(DEFAULT_CONSULT_ROLES.reviewer)} — Review in progress…`,
-      `🔍 ${providerName(DEFAULT_CONSULT_ROLES.summary)} — Summary in progress…`,
+      `🔍 ${providerName(DEFAULT_CONSULT_ROLES.summary as AIProvider)} — Summary in progress…`,
       '',
     ]);
+  });
+
+  describe('consult third seat, anonymous review and standby substitution', () => {
+    const names = allFiveProviders.map(providerName);
+
+    it('asks three providers at once and shows the reviewer letters only, the summary the names', async () => {
+      vi.mocked(host.connections.get).mockResolvedValue(allFiveProviders.map((provider) => state(provider)));
+      const sent = captureSends();
+
+      await expect(runWorkflow({ text: 'q', mode: 'consult' })).resolves.toEqual({ ok: true });
+
+      expect(sent.slice(0, 3).map((item) => item.provider).sort()).toEqual(['chatgpt', 'grok', 'meta']);
+      const reviewer = sent.find((item) => item.provider === DEFAULT_CONSULT_ROLES.reviewer)!.prompt;
+      expect(reviewer).toContain('回答 A');
+      expect(reviewer).toContain('回答 C');
+      for (const name of names) expect(reviewer).not.toContain(name);
+      const summary = sent.find((item) => item.provider === DEFAULT_CONSULT_ROLES.summary)!.prompt;
+      expect(summary).toContain('回答 A（ChatGPT）');
+      expect(summary).toContain('回答 B（Grok）');
+      expect(summary).toContain('回答 C（Meta AI）');
+    });
+
+    it('runs with two answerers and no gap in the letters when the third seat is not used', async () => {
+      const sent = captureSends();
+
+      await expect(
+        runWorkflow({ text: 'q', mode: 'consult', roles: { ...DEFAULT_CONSULT_ROLES, third: 'none' } }),
+      ).resolves.toEqual({ ok: true });
+
+      expect(sent.map((item) => item.provider)).not.toContain('meta');
+      expect(sent).toHaveLength(4);
+      const reviewer = sent.find((item) => item.provider === DEFAULT_CONSULT_ROLES.reviewer)!.prompt;
+      expect(reviewer).toContain('回答 B');
+      expect(reviewer).not.toContain('回答 C');
+    });
+
+    it('ends at the review when the summary seat is not used', async () => {
+      const sent = captureSends();
+      const statuses: string[] = [];
+      const systemErrors: unknown[] = [];
+      const unsubscribe = onBridgeMessage((message) => {
+        if (message.action === 'WORKFLOW_STATUS' && typeof message.payload === 'string') statuses.push(message.payload);
+        if (message.action === 'RESPONSE_DONE' && (message.provider as string) === 'system') systemErrors.push(message.payload);
+      });
+
+      await expect(
+        runWorkflow({ text: 'q', mode: 'consult', roles: { ...DEFAULT_CONSULT_ROLES, third: 'none', summary: 'none' } }),
+      ).resolves.toEqual({ ok: true });
+      unsubscribe();
+
+      expect(sent.map((item) => item.provider)).toEqual([DEFAULT_CONSULT_ROLES.first, DEFAULT_CONSULT_ROLES.second, DEFAULT_CONSULT_ROLES.reviewer]);
+      expect(statuses[statuses.length - 1]).toBe('');
+      // runWorkflow swallows a thrown step into a system error bubble, so a clean end must show none.
+      expect(systemErrors).toEqual([]);
+    });
+
+    it('skips a third seat whose provider is not signed in instead of stopping the run', async () => {
+      const sent = captureSends();
+
+      await expect(runWorkflow({ text: 'q', mode: 'consult' })).resolves.toEqual({ ok: true });
+
+      expect(sent.map((item) => item.provider)).not.toContain('meta');
+      expect(sent).toHaveLength(4);
+    });
+
+    it('lets the standby take over an answerer who is not signed in and labels the swap', async () => {
+      vi.mocked(host.connections.get).mockResolvedValue(
+        allFiveProviders.map((provider) => state(provider, provider !== 'chatgpt')),
+      );
+      const sent = captureSends();
+      const labels: Record<string, string> = {};
+      const unsubscribe = onBridgeMessage((message) => {
+        if (message.action !== 'ROLE_ASSIGNMENT' || !message.provider) return;
+        labels[message.provider] = (message.payload as { label: string }).label;
+      });
+
+      await expect(
+        runWorkflow({
+          text: 'q',
+          mode: 'consult',
+          roles: { ...DEFAULT_CONSULT_ROLES, third: 'none' },
+          standbyProvider: 'meta',
+        }),
+      ).resolves.toEqual({ ok: true });
+      unsubscribe();
+
+      expect(sent.slice(0, 2).map((item) => item.provider).sort()).toEqual(['grok', 'meta']);
+      expect(sent.map((item) => item.provider)).not.toContain('chatgpt');
+      expect(labels.meta).toBe('Initial answer A (substitute for ChatGPT)');
+    });
+
+    it('drops the default third seat so the same standby can take a required answerer seat', async () => {
+      vi.mocked(host.connections.get).mockResolvedValue(
+        allFiveProviders.map((provider) => state(provider, provider !== 'chatgpt')),
+      );
+      const sent = captureSends();
+
+      await expect(runWorkflow({ text: 'q', mode: 'consult', standbyProvider: 'meta' })).resolves.toEqual({ ok: true });
+
+      expect(sent.filter((item) => item.provider === 'meta')).toHaveLength(1);
+      expect(sent.slice(0, 2).map((item) => item.provider).sort()).toEqual(['grok', 'meta']);
+    });
+
+    it('does not substitute a provider that another parallel answerer already holds', async () => {
+      vi.mocked(host.connections.get).mockResolvedValue(
+        allFiveProviders.map((provider) => state(provider, provider !== 'chatgpt')),
+      );
+      const sent = captureSends();
+
+      await expect(
+        runWorkflow({
+          text: 'q',
+          mode: 'consult',
+          roles: { ...DEFAULT_CONSULT_ROLES, third: 'none' },
+          standbyProvider: 'grok',
+        }),
+      ).resolves.toMatchObject({ ok: false, preflight: { unavailable: ['chatgpt'] } });
+      expect(sent).toHaveLength(0);
+    });
   });
 
   it('lets Brainstorm retry a provider error and complete the same workflow', async () => {

@@ -5,7 +5,7 @@ export { consultGraph } from './consultGraph';
 export { debateGraph } from './debateGraph';
 export { executeGraph } from './executor';
 export { freeGraph } from './freeGraph';
-export { preflightGraph, resolveGraphRoles, resolveRequiredRoles } from './preflight';
+export { isUsableProvider, planGraphRoles, preflightGraph, resolveGraphRoles, resolveRequiredRoles } from './preflight';
 export {
   evaluateTextCondition,
   hasPromptBuilder,

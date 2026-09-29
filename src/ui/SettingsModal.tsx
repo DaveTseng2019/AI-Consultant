@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { AI_PROVIDERS } from '../../shared/constants';
-import type { AIProvider, ProviderState } from '../../shared/types';
+import { AI_PROVIDERS, NO_PROVIDER } from '../../shared/constants';
+import type { AIProvider, ProviderState, SeatProvider } from '../../shared/types';
 import { buildAdapterPermissionSummary } from './adapterPermissions';
 import { AdapterAccessPanel } from './FocusPane';
 import { useI18n } from '../i18n/context';
@@ -22,6 +22,7 @@ import {
   MODE_ROLE_LABEL_KEYS,
   MODE_ROLE_MODE_LABEL_KEYS,
   assignModeRole,
+  isOptionalModeRole,
 
   type ModeRoleAssignments,
 } from './modeRoleAssignment';
@@ -816,15 +817,18 @@ export function SettingsModal({
                       <label key={role} className="block text-xs text-zinc-600 dark:text-zinc-400">
                         <span className="mb-1 block">{t(MODE_ROLE_LABEL_KEYS[roleMode][role])}</span>
                         <select
-                          value={(draft.modeRoles[roleMode] as unknown as Record<string, AIProvider>)[role]}
+                          value={(draft.modeRoles[roleMode] as unknown as Record<string, SeatProvider>)[role]}
                           onChange={(event) =>
                             void persistDraftFieldImmediately(
                               'modeRoles',
-                              assignModeRole(draft.modeRoles, roleMode, role, event.target.value as AIProvider),
+                              assignModeRole(draft.modeRoles, roleMode, role, event.target.value as SeatProvider),
                             )
                           }
                           className="w-full border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 px-2 py-1.5 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-sky-500 dark:focus:border-sky-600"
                         >
+                          {isOptionalModeRole(roleMode, role) ? (
+                            <option value={NO_PROVIDER}>{t('settings.modeRoles.none')}</option>
+                          ) : null}
                           {activeProvidersForStandby(draft.standbyProvider).map((provider) => (
                             <option key={provider} value={provider}>{AI_PROVIDERS[provider].name}</option>
                           ))}

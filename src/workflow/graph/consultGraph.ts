@@ -1,6 +1,7 @@
-import { DEFAULT_CONSULT_ROLES } from '../../../shared/constants';
+import { DEFAULT_CONSULT_ROLES, isSeatedProvider } from '../../../shared/constants';
+import type { SeatProvider } from '../../../shared/types';
 import { SKIP_RESPONSE } from '../state';
-import type { NodeId, TextCondition, WorkflowGraph } from './types';
+import type { NodeId, PromptArg, TextCondition, WorkflowGraph } from './types';
 
 const ERROR_RESPONSE_PATTERN = '^\\[Error:\\s*[\\s\\S]*?\\]$';
 
@@ -14,22 +15,39 @@ function notReady(node: NodeId): TextCondition {
   };
 }
 
+const seatDefault = (provider: SeatProvider) => (isSeatedProvider(provider) ? provider : undefined);
+
+const ANSWER_SEATS = ['first', 'second', 'third'] as const;
+
+// Answer text and provider name per seat, in seat order. An unused seat has an empty name.
+const ANSWER_ARGS: PromptArg[] = ANSWER_SEATS.flatMap((seat): PromptArg[] => [
+  { kind: 'output', node: seat },
+  { kind: 'providerName', provider: { type: 'role', role: seat } },
+]);
+
+const INITIAL_STATUS_ARGS: PromptArg[] = ANSWER_SEATS.map((seat): PromptArg => ({
+  kind: 'providerName',
+  provider: { type: 'role', role: seat },
+}));
+
 export const consultGraph: WorkflowGraph = {
   schemaVersion: 1,
   id: 'consult',
-  version: 6,
+  version: 7,
   mode: 'consult',
   start: 'first',
   roles: {
     first: { defaultProvider: DEFAULT_CONSULT_ROLES.first, uiLabel: 'First' },
     second: { defaultProvider: DEFAULT_CONSULT_ROLES.second, uiLabel: 'Second' },
+    third: { defaultProvider: seatDefault(DEFAULT_CONSULT_ROLES.third), uiLabel: 'Third', optional: true },
     reviewer: { defaultProvider: DEFAULT_CONSULT_ROLES.reviewer, uiLabel: 'Reviewer' },
-    summary: { defaultProvider: DEFAULT_CONSULT_ROLES.summary, uiLabel: 'Summary' },
+    // Optional: without a summary the run ends at the review, which already gives its own answer.
+    summary: { defaultProvider: seatDefault(DEFAULT_CONSULT_ROLES.summary), uiLabel: 'Summary', optional: true },
   },
   preflight: {
     kind: 'serial',
-    requiredRoles: ['first', 'second', 'reviewer', 'summary'],
-    aliasRules: [{ roles: ['first', 'second'], unique: true, reason: 'parallel' }],
+    requiredRoles: ['first', 'second', 'third', 'reviewer', 'summary'],
+    aliasRules: [{ roles: ['first', 'second', 'third'], unique: true, reason: 'parallel' }],
   },
   nodes: {
     first: {
@@ -37,13 +55,7 @@ export const consultGraph: WorkflowGraph = {
       provider: { type: 'role', role: 'first' },
       role: 'first',
       label: { builder: 'label.consult.first' },
-      status: {
-        builder: 'status.consult.initial',
-        args: [
-          { kind: 'providerName', provider: { type: 'role', role: 'first' } },
-          { kind: 'providerName', provider: { type: 'role', role: 'second' } },
-        ],
-      },
+      status: { builder: 'status.consult.initial', args: INITIAL_STATUS_ARGS },
       prompt: { builder: 'consult.first', args: [{ kind: 'input', name: 'question' }] },
       output: 'firstResponse',
       policy: 'serialRunStep',
@@ -54,15 +66,20 @@ export const consultGraph: WorkflowGraph = {
       provider: { type: 'role', role: 'second' },
       role: 'second',
       label: { builder: 'label.consult.second' },
-      status: {
-        builder: 'status.consult.initial',
-        args: [
-          { kind: 'providerName', provider: { type: 'role', role: 'first' } },
-          { kind: 'providerName', provider: { type: 'role', role: 'second' } },
-        ],
-      },
+      status: { builder: 'status.consult.initial', args: INITIAL_STATUS_ARGS },
       prompt: { builder: 'consult.second', args: [{ kind: 'input', name: 'question' }] },
       output: 'secondResponse',
+      policy: 'serialRunStep',
+      parallelGroup: 'initial',
+    },
+    third: {
+      kind: 'step',
+      provider: { type: 'role', role: 'third' },
+      role: 'third',
+      label: { builder: 'label.consult.third' },
+      status: { builder: 'status.consult.initial', args: INITIAL_STATUS_ARGS },
+      prompt: { builder: 'consult.third', args: [{ kind: 'input', name: 'question' }] },
+      output: 'thirdResponse',
       policy: 'serialRunStep',
       parallelGroup: 'initial',
     },
@@ -72,16 +89,7 @@ export const consultGraph: WorkflowGraph = {
       role: 'reviewer',
       label: { builder: 'label.consult.reviewer' },
       status: { builder: 'status.consult.reviewer' },
-      prompt: {
-        builder: 'consult.reviewer',
-        args: [
-          { kind: 'input', name: 'question' },
-          { kind: 'output', node: 'first' },
-          { kind: 'providerName', provider: { type: 'role', role: 'first' } },
-          { kind: 'output', node: 'second' },
-          { kind: 'providerName', provider: { type: 'role', role: 'second' } },
-        ],
-      },
+      prompt: { builder: 'consult.reviewer', args: [{ kind: 'input', name: 'question' }, ...ANSWER_ARGS] },
       output: 'reviewerResponse',
       policy: 'serialRunStep',
     },
@@ -93,15 +101,7 @@ export const consultGraph: WorkflowGraph = {
       status: { builder: 'status.consult.summary' },
       prompt: {
         builder: 'consult.summary',
-        args: [
-          { kind: 'input', name: 'question' },
-          { kind: 'output', node: 'first' },
-          { kind: 'providerName', provider: { type: 'role', role: 'first' } },
-          { kind: 'output', node: 'second' },
-          { kind: 'providerName', provider: { type: 'role', role: 'second' } },
-          { kind: 'output', node: 'reviewer' },
-          { kind: 'providerName', provider: { type: 'role', role: 'reviewer' } },
-        ],
+        args: [{ kind: 'input', name: 'question' }, ...ANSWER_ARGS, { kind: 'output', node: 'reviewer' }],
       },
       output: 'summaryResponse',
       policy: 'serialRunStep',
@@ -109,9 +109,12 @@ export const consultGraph: WorkflowGraph = {
   },
   edges: [
     {
-      from: ['first', 'second'],
+      from: ['first', 'second', 'third'],
       to: 'reviewer',
-      when: { type: 'not', condition: { type: 'all', conditions: [notReady('first'), notReady('second')] } },
+      when: {
+        type: 'not',
+        condition: { type: 'all', conditions: [notReady('first'), notReady('second'), notReady('third')] },
+      },
     },
     { from: 'reviewer', to: 'summary' },
   ],

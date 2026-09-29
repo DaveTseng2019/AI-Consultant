@@ -10,12 +10,18 @@ export function TargetChips({
   selected,
   onChange,
   disabled = false,
+  canToggle,
+  roleBadges,
 }: {
   providers: AIProvider[];
   states: Record<AIProvider, ProviderState>;
   selected: AIProvider[];
-  onChange: (selected: AIProvider[]) => void;
+  onChange: (selected: AIProvider[], toggled: AIProvider) => void;
   disabled?: boolean;
+  /** When set, only the chips it accepts can be clicked; the rest stay frozen. */
+  canToggle?: (provider: AIProvider) => boolean;
+  /** In a role mode the chip shows the role instead of the AI name; the name moves to the tooltip. */
+  roleBadges?: Partial<Record<AIProvider, string>>;
 }) {
   return (
     <>
@@ -23,13 +29,17 @@ export function TargetChips({
         const sendable = isSendable(states[provider]);
         const active = selected.includes(provider);
         const isCheckedOn = active && sendable;
+        const name = AI_PROVIDERS[provider].name;
+        const badge = roleBadges?.[provider];
         return (
           <button
             key={provider}
             type="button"
-            disabled={!sendable || disabled}
-            onClick={() => onChange(toggleTarget(selected, provider))}
+            disabled={!sendable || disabled || (canToggle !== undefined && !canToggle(provider))}
+            onClick={() => onChange(toggleTarget(selected, provider), provider)}
             aria-pressed={isCheckedOn}
+            title={roleBadges ? name : undefined}
+            aria-label={roleBadges ? (badge ? `${name} · ${badge}` : name) : undefined}
             className={`border-2 px-2 py-1 text-xs ${
               isCheckedOn
                 ? 'border-emerald-400 dark:border-emerald-500 bg-emerald-50 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200'
@@ -43,7 +53,7 @@ export function TargetChips({
                 </svg>
               ) : null}
               <ProviderLogo provider={provider} />
-              <span>{AI_PROVIDERS[provider].name}</span>
+              {roleBadges ? (badge ? <span>{badge}</span> : null) : <span>{name}</span>}
             </span>
           </button>
         );

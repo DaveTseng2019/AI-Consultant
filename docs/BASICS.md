@@ -162,7 +162,7 @@ They differ only in who speaks, how many rounds, and in what order (`shared/cons
 | Mode | Shape | Execution |
 |---|---|---|
 | Free | Sent at once to the providers you tick (up to five), each answers independently | Parallel |
-| Multi-party consultation | Two sources answer → review adds → research summary | Serial |
+| Multi-party consultation | Up to three sources answer → anonymous review → research summary | Serial |
 | Four-way dialectic | For → against → judge → summary | Serial |
 | Coding | Plan → review → implement → test → acceptance (8 steps) | Serial |
 | Reasoned dialectic | 5 dialectic-spiral rounds × 4 seats | Serial |

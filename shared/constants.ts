@@ -1,7 +1,7 @@
 // Portions adapted from teddashh/multi-ai-chat (MIT).
 // Extended for AI Consultant.
 
-import type { AIProvider, ChatMode, DebateRoles, ConsultRoles, CodingRoles, RoundtableRoles } from './types';
+import type { AIProvider, ChatMode, DebateRoles, ConsultRoles, CodingRoles, ModeRoles, RoundtableRoles, SeatProvider } from './types';
 
 // === AI Provider Info ===
 
@@ -71,7 +71,7 @@ export const CHAT_MODES: Record<ChatMode, {
   },
   consult: {
     name: '多方諮詢',
-    description: '雙源先答 → 審查補充 → 總結研究',
+    description: '最多三源先答 → 匿名審查 → 總結研究',
     icon: '🔍',
     serial: true,
   },
@@ -100,9 +100,21 @@ export const DEFAULT_DEBATE_ROLES: DebateRoles = {
   summary: 'gemini',
 };
 
+export const NO_PROVIDER = 'none' as const;
+
+export function isSeatedProvider(provider: SeatProvider | undefined): provider is AIProvider {
+  return provider !== undefined && provider !== NO_PROVIDER;
+}
+
+// Providers that actually hold a seat; an optional seat set to none is left out.
+export function seatedProviders(roles: ModeRoles | Record<string, SeatProvider>): AIProvider[] {
+  return [...new Set((Object.values(roles) as SeatProvider[]).filter(isSeatedProvider))];
+}
+
 export const DEFAULT_CONSULT_ROLES: ConsultRoles = {
   first: 'chatgpt',
   second: 'grok',
+  third: 'meta',
   reviewer: 'claude',
   summary: 'gemini',
 };
@@ -213,6 +225,19 @@ function brainstormBuildPrompt(
 
 // === Prompt Templates for Serial Modes ===
 
+export interface ConsultAnswer {
+  /** Empty when the seat was not used or was dropped before the run. */
+  name: string;
+  text: string;
+}
+
+// Letters follow the seats that actually answered, so an unused third seat never leaves a gap.
+function consultSeatedAnswers(answers: ConsultAnswer[]): (ConsultAnswer & { letter: string })[] {
+  return answers
+    .filter((answer) => answer.name !== '')
+    .map((answer, index) => ({ ...answer, letter: String.fromCharCode(65 + index) }));
+}
+
 export const PROMPTS = {
   brainstorm: {
     buildPrompt: brainstormBuildPrompt,
@@ -230,24 +255,18 @@ export const PROMPTS = {
   consult: {
     first: (question: string) => question,
     second: (question: string) => question,
-    reviewer: (
-      question: string,
-      firstResponse: string,
-      firstName: string,
-      secondResponse: string,
-      secondName: string,
-    ) =>
-      `使用者問了：「${question}」\n\n${firstName} 的回答：\n${firstResponse}\n\n${secondName} 的回答：\n${secondResponse}\n\n請檢查兩人說的對不對，對比他們的差異，指出誰的觀點更完整，有沒有遺漏或錯誤。也請你做些研究，補上你自己的答案。`,
-    summary: (
-      question: string,
-      firstResponse: string,
-      firstName: string,
-      secondResponse: string,
-      secondName: string,
-      reviewerResponse: string,
-      reviewerName: string,
-    ) =>
-      `使用者問了：「${question}」\n\n${firstName} 的回答：\n${firstResponse}\n\n${secondName} 的回答：\n${secondResponse}\n\n${reviewerName} 的審查：\n${reviewerResponse}\n\n請綜合以上三位的回答，找出共識與分歧，總結他們的說法，並做點研究補上你自己的最終答案。`,
+    third: (question: string) => question,
+    // The reviewer sees letters only, so it cannot favour a vendor; the summary gets the key.
+    reviewer: (question: string, answers: ConsultAnswer[]) => {
+      const seated = consultSeatedAnswers(answers);
+      const body = seated.map((answer) => `回答 ${answer.letter}：\n${answer.text}`).join('\n\n');
+      return `使用者問了：「${question}」\n\n${body}\n\n以上 ${seated.length} 份回答來自不同的 AI，已隱去來源。請檢查每一份說的對不對，對比它們的差異，指出哪一份的觀點更完整，有沒有遺漏或錯誤。請用「回答 A」這類代號指稱，不要猜測來源。也請你做些研究，補上你自己的答案。`;
+    },
+    summary: (question: string, answers: ConsultAnswer[], reviewerResponse: string) => {
+      const seated = consultSeatedAnswers(answers);
+      const body = seated.map((answer) => `回答 ${answer.letter}（${answer.name}）：\n${answer.text}`).join('\n\n');
+      return `使用者問了：「${question}」\n\n${body}\n\n審查者（只看到代號）的審查：\n${reviewerResponse}\n\n請綜合以上的回答與審查，找出共識與分歧，總結他們的說法，並做點研究補上你自己的最終答案。提到某份回答時，請寫出它的來源名稱。`;
+    },
   },
   roundtable: {
     /**

@@ -27,7 +27,7 @@ For the mechanism (the three layers, the bridge, connection state, the send path
 | Mode | Shape |
 |---|---|
 | Free mode | Send to all four at once, each answers on its own |
-| Multi-party consultation | Two sources answer → review and add → summarise the research |
+| Multi-party consultation | Up to three sources answer → anonymous review → summarise the research |
 | Four-way debate | For → against → judge → summary |
 | Coding mode | Plan → review → implement → test → accept (8 steps) |
 | Reasoned dialectic | 5 rounds of dialectic spiral × 4 seats |

@@ -230,6 +230,54 @@ describe('serializeResponseText', () => {
     expect(serialize(noSource)).toBe('約 $0.18 / 小時');
   });
 
+  it('keeps numerator before denominator when a fraction ships only its KaTeX glyphs', () => {
+    // Shape captured from ChatGPT: no katex-mathml, and the vlist lists the denominator first.
+    const span = (children: FakeNode[], className = '') => element('span', children, className ? { class: className } : {});
+    const row = (content: FakeNode[]) => span([span([], 'pstrut'), ...content]);
+    const fraction = (numerator: FakeNode[], denominator: FakeNode[]) =>
+      span([
+        span([], 'mopen nulldelimiter'),
+        span([
+          span([
+            span([row(denominator), row([span([], 'frac-line')]), row(numerator)], 'vlist'),
+            span([text('​')], 'vlist-s'),
+          ], 'vlist-r'),
+        ], 'mfrac'),
+        span([], 'mclose nulldelimiter'),
+      ], 'mord');
+    const glyphs = (content: FakeNode[]) =>
+      element('span', [span([span([], 'strut'), ...content], 'base')], { class: 'katex-html', 'aria-hidden': 'true' });
+    const displayMath = (content: FakeNode[]) =>
+      element('span', [span([glyphs(content)], 'katex')], { class: 'katex-display' });
+
+    const boxed = element('div', [
+      element('p', [text('可以寫成：')]),
+      displayMath([
+        span([
+          span([
+            span([text('實際價值')], 'mord cjk_fallback'),
+            span([text('=')], 'mrel'),
+            fraction(
+              [span([text('任務完成品質')], 'mord'), span([text('×')], 'mbin'), span([text('速度')], 'mord')],
+              [span([text('成本')], 'mord')],
+            ),
+          ], 'boxpad'),
+        ], 'mord'),
+      ]),
+      element('p', [text('例如：')]),
+    ]);
+    const numeric = displayMath([
+      span([text('實際價值')], 'mord'),
+      span([text('=')], 'mrel'),
+      fraction([span([text('90')], 'mord'), span([text('×')], 'mbin'), span([text('80')], 'mord')], [span([text('40')], 'mord')]),
+      span([text('=')], 'mrel'),
+      span([text('180')], 'mord'),
+    ]);
+
+    expect(serialize(boxed)).toBe('可以寫成：\n\n實際價值 = (任務完成品質 × 速度) / 成本\n\n例如：');
+    expect(serialize(numeric)).toBe('實際價值 = (90 × 80) / 40 = 180');
+  });
+
   it('ignores non-elements safely and falls back when childNodes is unavailable', () => {
     const root = element('div', [
       { nodeType: 8, textContent: 'hidden comment' },

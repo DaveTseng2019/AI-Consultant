@@ -1,4 +1,4 @@
-import type { AIProvider, ChatMode, ModeRoles } from '../../../shared/types';
+import type { AIProvider, ChatMode, ModeRoles, SeatProvider } from '../../../shared/types';
 import type { Locale } from '../../i18n/resolve';
 import type { ResponseLanguagePolicy } from '../responseLanguage';
 
@@ -23,6 +23,8 @@ export interface WorkflowGraph {
 export interface GraphRole {
   defaultProvider?: AIProvider;
   uiLabel?: string;
+  /** May be left unassigned ('none') or dropped at preflight; its step is then skipped. */
+  optional?: boolean;
 }
 
 export interface GraphPreflight {
@@ -153,7 +155,9 @@ export type TextCondition =
 export interface ExecuteGraphParams {
   text: string;
   context?: string;
-  roles?: ModeRoles | Partial<Record<RoleKey, AIProvider>>;
+  roles?: ModeRoles | Partial<Record<RoleKey, SeatProvider>>;
+  /** Role → the provider it was configured with, for roles the standby took over at preflight. */
+  substitutions?: Record<RoleKey, AIProvider>;
   targets?: AIProvider[];
   checkpoints?: boolean;
   locale?: Locale;

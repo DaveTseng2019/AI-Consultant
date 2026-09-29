@@ -48,6 +48,7 @@ interface ExecutionContext {
   question: string;
   conversationContext?: string;
   roles: Map<string, AIProvider>;
+  substitutions: Record<string, AIProvider>;
   targets: AIProvider[];
   outputs: Map<NodeId, StepOutput>;
   aggregates: Map<string, string>;
@@ -162,6 +163,7 @@ function createExecutionContext(graph: WorkflowGraph, params: ExecuteGraphParams
     question: params.text,
     conversationContext: params.context,
     roles: resolveGraphRoles(graph, params.roles),
+    substitutions: params.substitutions ?? {},
     targets: params.targets ?? [],
     outputs: new Map(),
     aggregates: new Map(),
@@ -229,6 +231,9 @@ function prepareStepNode(
   context: ExecutionContext,
   options: { fanoutChild?: boolean } = {},
 ): PreparedNode {
+  if (isUnassignedOptionalRole(node.provider, context)) {
+    return { nodeId, run: async () => ({ nodeId, output: { text: SKIP_RESPONSE } }) };
+  }
   const provider = resolveProviderRef(node.provider, context);
   const prompt = renderPromptSpec(node.prompt, context, nodeId, provider);
   if (node.policy === 'freeSendAndWait') {
@@ -258,7 +263,8 @@ function prepareStepNode(
 
   const turn = reserveProviderTurn(provider);
   const role = node.role ? renderTextTemplate(node.role, context, nodeId, provider) : undefined;
-  const label = node.label ? renderTextTemplate(node.label, context, nodeId, provider) : role;
+  const baseLabel = node.label ? renderTextTemplate(node.label, context, nodeId, provider) : role;
+  const label = baseLabel ? withSubstitutionNote(baseLabel, node.provider, context) : baseLabel;
   if (role) sendRoleAssignment(provider, role, label ?? role, turn);
 
   return {
@@ -459,6 +465,7 @@ function incomingEdges(context: ExecutionContext, nodeId: NodeId): number[] {
 function renderBatchStatus(batch: NodeId[], context: ExecutionContext): string | undefined {
   for (const nodeId of batch) {
     const node = context.graph.nodes[nodeId];
+    if (node.kind === 'step' && isUnassignedOptionalRole(node.provider, context)) continue;
     const status = node.kind === 'step' || node.kind === 'noop' ? node.status : node.kind === 'fanout' ? node.template.status : undefined;
     if (!status) continue;
     if (node.kind === 'fanout' && node.over.type === 'targets' && resolveFanoutProviders(node, context).length === 0) return undefined;
@@ -496,10 +503,24 @@ function renderPromptArg(promptArg: PromptArg, context: ExecutionContext): Rende
   if (promptArg.kind === 'input') return questionWithConversationContext(context.question, context.conversationContext);
   if (promptArg.kind === 'output') return context.outputs.get(promptArg.node)?.text ?? '';
   if (promptArg.kind === 'aggregate') return context.aggregates.get(promptArg.name) ?? '';
-  if (promptArg.kind === 'providerName') return AI_PROVIDERS[resolveProviderRef(promptArg.provider, context)].name;
+  if (promptArg.kind === 'providerName') {
+    if (isUnassignedOptionalRole(promptArg.provider, context)) return '';
+    return AI_PROVIDERS[resolveProviderRef(promptArg.provider, context)].name;
+  }
   if (promptArg.kind === 'history') return context.histories.get(promptArg.name) ?? [];
   if (promptArg.kind === 'literal') return promptArg.value;
   return String(context.loopValues.get(promptArg.name) ?? '');
+}
+
+function isUnassignedOptionalRole(ref: ProviderRef, context: ExecutionContext): boolean {
+  return ref.type === 'role' && context.graph.roles[ref.role]?.optional === true && !context.roles.has(ref.role);
+}
+
+function withSubstitutionNote(label: string, ref: ProviderRef, context: ExecutionContext): string {
+  const original = ref.type === 'role' ? context.substitutions[ref.role] : undefined;
+  if (!original) return label;
+  const note = formatI18n(t('workflowRole.substituteSuffix', context.locale), { provider: AI_PROVIDERS[original].name });
+  return `${label} ${note}`;
 }
 
 function resolveTextRef(ref: TextRef, context: ExecutionContext): string {

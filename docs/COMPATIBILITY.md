@@ -101,8 +101,9 @@ product-behaviour list below that is not named here.
 
 ### v0.0.23 Meta AI and startup restore (2026-09-29)
 
-This version adds Meta AI as a fifth provider, makes the standby provider sort last instead of being
-switched off, and fixes three startup-restore problems. Checked by hand by the maintainer.
+This version adds Meta AI as a fifth provider, renames the standby provider the substitute and lets
+it take over a role whose provider is not ready, gives Consult a third answerer and an anonymous
+review, and fixes three startup-restore problems. Checked by hand by the maintainer.
 
 Environment: Windows 11 Pro `10.0.26200`, **executables built locally with `pnpm build:local`**
 while the release was being prepared (the last one stamped `v0.0.22-48-ge2bdecb` with uncommitted changes, the same code as `5f96368`), not the CI artifacts
@@ -117,9 +118,19 @@ attached to the release.
 | Every open provider is still open after restarts | **Passed** — a trace showed partial `openProviders` writes during startup before the fix and none after; also checked over several graceful restarts |
 | Connection cards in one row | **Passed** |
 | Collaboration roles Defaults button | **Passed** |
-| Choosing the standby saves at once | **Automated test only** |
-| Claude and Gemini answering a question | **Not tested** — both opened and showed Ready |
-| A role mode (debate, consult, coding, roundtable, brainstorm) with Meta AI or the standby in a seat | **Not tested** |
+| Choosing the substitute saves at once | **Automated test only** |
+| Consult: ChatGPT, Grok and Meta AI answer at once, Claude reviews, Gemini summarises | **Passed** (dev build) |
+| Consult: removing and adding back answerers and the summary in "Send to selected AI", and the Defaults button | **Passed** (dev build) |
+| Role-mode chips show only the logo and the role | **Passed** (dev build) |
+| A ChatGPT fraction captured as "(numerator) / denominator" | **Passed** (dev build) |
+| The reviewer refers to the answers by letter only | **Automated test only** |
+| The substitute takes over a signed-out role | **Automated test only** — all five were signed in, so it never triggered |
+| The third answerer or the summary is skipped when its provider is not ready | **Automated test only** |
+| Claude and Gemini answering a question in free mode | **Not tested** — both answered inside Consult |
+| Meta AI or the substitute in a role mode other than Consult (debate, coding, roundtable, brainstorm) | **Not tested** |
+
+Rows marked "dev build" were run on the development build started with `pnpm agent:launch`: the same
+code as the released commit, but not a packaged executable.
 
 Not verified: the rows marked above, the CI artifacts themselves, and macOS and Linux.
 

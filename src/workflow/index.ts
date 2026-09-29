@@ -25,6 +25,7 @@ export interface RunWorkflowParams {
   roles?: ModeRoles;
   targets?: AIProvider[];
   activeProviders?: readonly AIProvider[];
+  standbyProvider?: AIProvider;
   checkpoints?: boolean;
   locale?: Locale;
   snapshotPersistence?: boolean;
@@ -59,6 +60,7 @@ async function runPreparedWorkflow({
   roles,
   targets,
   activeProviders,
+  standbyProvider,
   checkpoints,
   locale,
   snapshotPersistence,
@@ -78,10 +80,14 @@ async function runPreparedWorkflow({
     };
     if (presetId === 'brainstorm') {
       const graph = workflowGraphs.brainstorm;
-      const preflight = await preflightGraph(graph, roles, activeProviders);
+      const preflight = await preflightGraph(graph, roles, activeProviders, standbyProvider);
       if (!preflight.ok) return { ok: false, preflight };
 
-      await executeGraph(graph, { text, context, roles, checkpoints, locale, responseLanguagePolicy }, graphOptions);
+      await executeGraph(
+      graph,
+      { text, context, roles: preflight.roles ?? roles, substitutions: preflight.substitutions, checkpoints, locale, responseLanguagePolicy },
+      graphOptions,
+    );
       return { ok: true };
     }
 
@@ -103,10 +109,14 @@ async function runPreparedWorkflow({
 
     const serialMode = mode as Exclude<ChatMode, 'free'>;
     const graph = workflowGraphs[serialMode];
-    const preflight = await preflightGraph(graph, roles, activeProviders);
+    const preflight = await preflightGraph(graph, roles, activeProviders, standbyProvider);
     if (!preflight.ok) return { ok: false, preflight };
 
-    await executeGraph(graph, { text, context, roles, checkpoints, locale, responseLanguagePolicy }, graphOptions);
+    await executeGraph(
+        graph,
+        { text, context, roles: preflight.roles ?? roles, substitutions: preflight.substitutions, checkpoints, locale, responseLanguagePolicy },
+        graphOptions,
+      );
 
     return { ok: true };
   } catch (error) {

@@ -190,7 +190,7 @@ describe('snapshot replay', () => {
     ['debate', 4, 5],
     ['coding', 4, 5],
     ['roundtable', 4, 5],
-    ['consult', 5, 6],
+    ['consult', 5, 7],
   ] as const)('blocks interim %s snapshots after terminal error semantics are restored', (graphId, snapshotVersion, currentVersion) => {
     const snapshot = buildSnapshot({ graphId, graphVersion: snapshotVersion });
 
@@ -251,7 +251,7 @@ describe('snapshot replay', () => {
   it('uses the raw prompt-text userQuestion instead of rendered step inputs', () => {
     const snapshot = buildSnapshot({
       graphId: 'consult',
-      graphVersion: 6,
+      graphVersion: 7,
       redactionTier: 'prompt-text',
       roleMap: { first: 'chatgpt', second: 'grok', reviewer: 'claude', summary: 'gemini' },
       userQuestion: inlineRef('prompt text question', 'prompt-text'),

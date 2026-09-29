@@ -10,9 +10,24 @@ the release CI from the tag.
 
 - Meta AI joins as a fifth provider. All five can be opened, ticked in free mode and assigned to
   collaboration roles.
-- The standby provider now only sets the order: it is listed last but opens and works like the
-  rest. Upstream disables the standby entirely; this app deliberately does not.
-- Choosing the standby in Settings is saved at once, without pressing Save.
+- The standby provider is renamed the substitute. When a role's provider is not signed in or not
+  ready, the substitute takes over, and the role label says so ("substitute for ChatGPT"). It does
+  not step in when that would put one provider in two seats that answer at the same time. All five
+  still open and work as usual; the substitute is only listed last. Upstream disables the standby
+  entirely; this app deliberately does not.
+- Choosing the substitute in Settings is saved at once, without pressing Save.
+- Consult gains a third answerer, Meta AI by default, so three providers answer at once. The third
+  answerer and the summary can each be set to "Not used", and they are skipped when their provider
+  is not ready instead of blocking the run. Without a summary the run ends at the review.
+- Consult reviews anonymously: the reviewer sees the answers labelled A, B and C without knowing
+  which provider wrote which, and the summary gets the key.
+- In a role mode, the chips in "Send to selected AI" show the logo and the role (for example
+  "Review"); the provider name moves to the tooltip. In Consult, answerers and the summary can be
+  removed or added back right there, and a Defaults button beside them resets only that mode.
+- The send button, the mode cards' readiness count and the providers that actually run now follow
+  one rule set, which accounts for substitutes and skipped seats.
+- Fixed: a ChatGPT fraction was captured denominator first ("Cost Task Quality×Speed"). It now
+  reads "(Task Quality × Speed) / Cost". Superscripts, subscripts and roots are still flattened.
 - Collaboration roles have a Defaults button that resets only the role seats.
 - The AI connection cards sit in one row and share its width, wrapping only when the window is
   too narrow.

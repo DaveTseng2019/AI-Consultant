@@ -1,4 +1,4 @@
-import { AI_PROVIDERS, brainstormPhaseForRound, PROMPTS } from '../../../shared/constants';
+import { AI_PROVIDERS, brainstormPhaseForRound, PROMPTS, type ConsultAnswer } from '../../../shared/constants';
 import type { AIProvider } from '../../../shared/types';
 import type { I18nKey } from '../../i18n/keys';
 import type { Locale } from '../../i18n/resolve';
@@ -96,6 +96,11 @@ function numberArg(args: PromptBuilderArg[], index: number): number {
   return 0;
 }
 
+// Three seats as (text, name) pairs starting at `start`.
+function consultAnswers(args: PromptBuilderArg[], start: number): ConsultAnswer[] {
+  return [0, 1, 2].map((seat) => ({ text: arg(args, start + seat * 2), name: arg(args, start + seat * 2 + 1) }));
+}
+
 function historyArg(args: PromptBuilderArg[], index: number): { name: string; round: number; text: string }[] {
   const value = args[index];
   if (!Array.isArray(value)) return [];
@@ -138,16 +143,17 @@ export const promptBuilders: Record<string, PromptBuilder> = {
   'status.debate.summary': (_args, context) => providerStepStatus('⚔️', 'workflowRole.debate.summary', context),
   'consult.first': (args) => PROMPTS.consult.first(arg(args, 0)),
   'consult.second': (args) => PROMPTS.consult.second(arg(args, 0)),
-  'consult.reviewer': (args) => PROMPTS.consult.reviewer(arg(args, 0), arg(args, 1), arg(args, 2), arg(args, 3), arg(args, 4)),
-  'consult.summary': (args) =>
-    PROMPTS.consult.summary(arg(args, 0), arg(args, 1), arg(args, 2), arg(args, 3), arg(args, 4), arg(args, 5), arg(args, 6)),
+  'consult.third': (args) => PROMPTS.consult.third(arg(args, 0)),
+  'consult.reviewer': (args) => PROMPTS.consult.reviewer(arg(args, 0), consultAnswers(args, 1)),
+  'consult.summary': (args) => PROMPTS.consult.summary(arg(args, 0), consultAnswers(args, 1), arg(args, 7)),
   'label.consult.first': (_args, context) => roleLabel('workflowRole.consult.first', context),
   'label.consult.second': (_args, context) => roleLabel('workflowRole.consult.second', context),
+  'label.consult.third': (_args, context) => roleLabel('workflowRole.consult.third', context),
   'label.consult.reviewer': (_args, context) => roleLabel('workflowRole.consult.reviewer', context),
   'label.consult.summary': (_args, context) => roleLabel('workflowRole.consult.summary', context),
   'status.consult.initial': (args, context) =>
     translate('workflowStatus.consultInitial', context, {
-      providers: formatNameList([arg(args, 0), arg(args, 1)], uiLocale(context)),
+      providers: formatNameList([arg(args, 0), arg(args, 1), arg(args, 2)], uiLocale(context)),
     }),
   'status.consult.reviewer': (_args, context) => providerStepStatus('🔍', 'workflowRole.consult.reviewer', context),
   'status.consult.summary': (_args, context) => providerStepStatus('🔍', 'workflowRole.consult.summary', context),
