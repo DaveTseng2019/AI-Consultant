@@ -232,8 +232,8 @@ comparison), and reproducing a past flow while debugging.
 
 ## Custom action buttons
 
-You can add your own buttons to the conversation toolbar: **Settings → Advanced and diagnostics →
-Custom action buttons**. One button = one PowerShell script, and pressing it passes the current
+You can add your own buttons to the conversation toolbar: **Settings → Custom buttons**.
+One button = one PowerShell script, and pressing it passes the current
 execution record (`-SnapshotId`), the current conversation's `.md` (`-MarkdownPath`), or nothing at
 all.
 

@@ -16,6 +16,12 @@ the release CI from the tag.
   still open and work as usual; the substitute is only listed last. Upstream disables the standby
   entirely; this app deliberately does not.
 - Choosing the substitute in Settings is saved at once, without pressing Save.
+- Settings is split into tabs: General, Appearance, Collaboration roles, Privacy & history, Custom buttons,
+  Updates, and Advanced & diagnostics. Only the open tab scrolls.
+- Save and Cancel appear only while a setting that needs Save has an unsaved change. Everything else
+  is saved as you change it.
+- "One copy at a time" moves to General, and the substitute dropdown moves to Collaboration roles.
+  Adapter base URL has a short description.
 - Consult gains a third answerer, Meta AI by default, so three providers answer at once. The third
   answerer and the summary can each be set to "Not used", and they are skipped when their provider
   is not ready instead of blocking the run. Without a summary the run ends at the review.
