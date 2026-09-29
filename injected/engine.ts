@@ -555,7 +555,12 @@ class InactiveSendOperationError extends Error {
     let login: 'logged_in' | 'logged_out' | 'blocked' = 'logged_out';
     if (isProviderChallengeActive(adapter.provider)) {
       login = 'blocked';
-    } else if (hasDetector(adapter.loggedOutDetectors)) {
+    } else if (adapter.provider === 'meta' && queryInput(adapter) !== null) {
+      // A usable composer wins. After Facebook/Instagram login the page can still
+      // expose a login control or an inert prehydration field beside the real editor.
+      login = 'logged_in';
+    } else if (hasDetector(adapter.loggedOutDetectors) || adapter.provider === 'meta') {
+      // Meta does not treat a visible but gated composer, or Send alone, as logged in.
       login = 'logged_out';
       // notes: gemini.json is the only adapter with an empty loggedOutDetectors, and this reads
       //        like an oversight -- Gemini's signed-out page renders the composer that
@@ -565,9 +570,6 @@ class InactiveSendOperationError extends Error {
       //        from every fan-out. Tried and reverted on 2026-08-20. What it costs is a chip
       //        that says ready without saying "no account attached"; fixing that needs a state
       //        between logged_in and logged_out, not a detector.
-    } else if (adapter.provider === 'meta') {
-      // Meta's visible Send control alone does not prove that its composer can accept input.
-      if (queryInput(adapter) !== null) login = 'logged_in';
     } else if (
       hasDetector(adapter.loginDetectors) ||
       (adapter.provider === 'grok' &&
