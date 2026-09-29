@@ -136,7 +136,7 @@ never downloads or installs anything by itself.
 - Update [`COMPATIBILITY.md`](./COMPATIBILITY.md) with **evidence actually observed**. A successful
   CI package is not a successful user launch.
 - Test the Windows artifact for real before releasing. On Apple Silicon, confirm the first launch
-  and sign-in on all four providers, specifically requiring Grok to pass the Cloudflare
+  and sign-in on all five providers, specifically requiring Grok to pass the Cloudflare
   verification. Linux stays CI-only until there is a real-device report.
 
 ## Frozen release policy

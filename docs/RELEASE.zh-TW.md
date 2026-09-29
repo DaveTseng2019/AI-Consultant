@@ -127,7 +127,7 @@ tag 名稱含 `-pre` 會被標成 prerelease（例如 `v0.2.0-pre.1`）。
   打包後的控制台在正式 CSP 下仍能檢查更新與匯出。
 - 遠端 adapter 測試允許在已內建的 URL 範圍內改選擇器與時序，並拒絕擴張 provider／登入／match／SSO。
 - 用**實際觀察到的證據**更新 [`COMPATIBILITY.zh-TW.md`](./COMPATIBILITY.zh-TW.md)。CI 打包成功不等於使用者啟動成功。
-- 發佈前實測 Windows 產物。Apple Silicon 上要確認首次啟動與四家 provider 登入，
+- 發佈前實測 Windows 產物。Apple Silicon 上要確認首次啟動與五家 provider 登入，
   特別要求 Grok 能通過 Cloudflare 驗證。Linux 在拿到實機回報之前維持 CI-only。
 
 ## 凍結的發佈政策

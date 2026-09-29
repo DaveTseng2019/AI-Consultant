@@ -2,9 +2,9 @@
 
 # Compatibility and manual test matrix
 
-> Last reviewed: 2026-09-17. The newest real-device records are `v0.0.2` on Windows, `v0.0.17` on
-> Linux, and the single-provider check on `v0.0.19`; the versions in between were not re-run item
-> by item.
+> Last reviewed: 2026-09-29. The newest real-device records are `v0.0.2` on Windows, `v0.0.17` on
+> Linux, the single-provider check on `v0.0.19`, and the Meta AI and startup-restore checks on
+> `v0.0.23`; the versions in between were not re-run item by item.
 >
 > This document records **evidence actually observed**, not guarantees. Provider DOM and sign-in
 > flows can change at any time, and every piece of real-device evidence below comes from the
@@ -99,6 +99,30 @@ product-behaviour list below that is not named here.
 > repository's table carries a Grok entry as well. Without the fix Grok never completes at all. The
 > row above is the result after that fix.
 
+### v0.0.23 Meta AI and startup restore (2026-09-29)
+
+This version adds Meta AI as a fifth provider, makes the standby provider sort last instead of being
+switched off, and fixes three startup-restore problems. Checked by hand by the maintainer.
+
+Environment: Windows 11 Pro `10.0.26200`, **executables built locally with `pnpm build:local`**
+while the release was being prepared (the last one stamped `v0.0.22-48-ge2bdecb` with uncommitted changes, the same code as `5f96368`), not the CI artifacts
+attached to the release.
+
+| Item | Result |
+|---|---|
+| Meta AI sign-in inside the app | **Passed** |
+| Free mode, one long question to ChatGPT, Grok and Meta AI | **Passed** — all three answered in full and the run finished on its own |
+| Meta AI in the centre reopens after a restart | **Passed** — failed before the fix; a trace showed the restore skipped it |
+| Meta AI stays ticked in "Send to selected AI" after a restart | **Passed** |
+| Every open provider is still open after restarts | **Passed** — a trace showed partial `openProviders` writes during startup before the fix and none after; also checked over several graceful restarts |
+| Connection cards in one row | **Passed** |
+| Collaboration roles Defaults button | **Passed** |
+| Choosing the standby saves at once | **Automated test only** |
+| Claude and Gemini answering a question | **Not tested** — both opened and showed Ready |
+| A role mode (debate, consult, coding, roundtable, brainstorm) with Meta AI or the standby in a seat | **Not tested** |
+
+Not verified: the rows marked above, the CI artifacts themselves, and macOS and Linux.
+
 ## The agent source-launch lane
 
 | Evidence | Windows | macOS / Linux | State |
@@ -122,10 +146,11 @@ This requirement only affects source development; users of a packaged build need
 
 | Provider | Bundled adapter | Automated coverage | Real-device evidence |
 |---|---:|---|---|
-| ChatGPT | v6 | Structure, logged-out precedence, completion markers | Signed in and ready on the v0.0.2 packaged build |
+| ChatGPT | v8 | Structure, logged-out precedence, completion markers, ProseMirror composer | Signed in and ready on the v0.0.2 packaged build; long question answered in full on v0.0.23 (local build) |
 | Claude | v4 | Structure, sign-in page detection, explicit Google SSO scope | Signed in and ready on the v0.0.2 packaged build |
 | Gemini | v2 | Structure, bounded navigation and blocked state for Google `/sorry` | Signed in and ready on the v0.0.2 packaged build; live-page capture works |
 | Grok | v7 | Structure, challenge-first deferred takeover, watchdog recovery, DOM changes refused during a challenge | Signed in and ready on the v0.0.2 packaged build |
+| Meta AI | v3 | Structure, narrow seed contract, usable-composer login, gated composer stays logged out | Signed in and answered on v0.0.23 (local build) |
 
 The automated tests verify adapter structure, schema v1 / v2 parsing compatibility, rejection of
 typed detectors, logged-out precedence, permitted policies, HTTPS URL parsing and navigation
