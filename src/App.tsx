@@ -818,6 +818,10 @@ export default function App() {
         // Start on the remembered face so the stage does not flip once the login report lands.
         setCenterSurfaceMode(loaded.centerSurface);
         setPresentation(loaded.presentation);
+        // The pane and stage ref callbacks restore providers during the next commit, before the
+        // effect that syncs this ref runs. Left at the default, the ref still says 'chip' for the
+        // default standby (Meta), and a Meta saved as open was dropped without being opened.
+        presentationRef.current = loaded.presentation;
         pendingRestore.current = new Set(restorableOpenProviders(loaded.openProviders, loaded.presentation));
         setInitialRestoreComplete(pendingRestore.current.size === 0);
       })
