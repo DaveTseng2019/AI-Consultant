@@ -75,6 +75,86 @@ const dirtyDraft = (tree: ReactNode) =>
   control(tree, (element) => element.type === 'input' && element.props.value === SEED_URL)!
     .props.onChange!({ target: { value: NEXT_URL } });
 
+describe('SettingsModal tabs', () => {
+  interface TabbedProps extends ControlProps {
+    role?: string;
+    id?: string;
+    hidden?: boolean;
+  }
+  const elementById = (tree: ReactNode, id: string) => control(tree, (element) => (element.props as TabbedProps).id === id)!;
+  const byId = (tree: ReactNode, id: string) => elementById(tree, id).props as TabbedProps;
+  const tabIds = (tree: ReactNode): string[] => {
+    const ids: string[] = [];
+    const walk = (node: ReactNode) => {
+      if (!isValidElement<TabbedProps>(node)) return;
+      if (node.props.role === 'tab' && node.props.id) ids.push(node.props.id);
+      Children.toArray(node.props.children).forEach(walk);
+    };
+    walk(tree);
+    return ids;
+  };
+
+  const saveButton = (tree: ReactNode) =>
+    control(tree, (element) => element.type === 'button' && element.props.children === t('settings.save', 'en'));
+
+  // The page was one long scroll; now one group shows at a time.
+  it('shows one group at a time and switches on click', () => {
+    vi.stubGlobal('window', { setTimeout: vi.fn(), clearTimeout: vi.fn() });
+    const ui = harness(defaultSettings());
+
+    let tree = ui.render();
+    expect(byId(tree, 'settings-panel-general').hidden).toBe(false);
+    expect(byId(tree, 'settings-panel-appearance').hidden).toBe(true);
+
+    byId(tree, 'settings-tab-appearance').onClick!();
+    tree = ui.render();
+    expect(byId(tree, 'settings-panel-general').hidden).toBe(true);
+    expect(byId(tree, 'settings-panel-appearance').hidden).toBe(false);
+  });
+
+  // Most fields save the moment they change, so Save only appears when a field that waits for it
+  // has an unsaved change -- and then outside the tabs, so it is reachable from any of them.
+  it('shows Save only while a field that waits for it has an unsaved change', () => {
+    vi.stubGlobal('window', { setTimeout: vi.fn(), clearTimeout: vi.fn() });
+    const ui = harness(seeded());
+
+    expect(saveButton(ui.render())).toBeUndefined();
+
+    dirtyDraft(ui.render());
+    const tree = ui.render();
+    const save = saveButton(tree);
+    expect(save).toBeDefined();
+    expect(control(elementById(tree, 'settings-panel-advanced'), (element) => element === save)).toBeUndefined();
+  });
+
+  // "One copy at a time" is about launching the app, not about privacy, so it lives in General.
+  it('puts the single-instance switch in General', () => {
+    vi.stubGlobal('window', { setTimeout: vi.fn(), clearTimeout: vi.fn() });
+    const tree = harness(defaultSettings()).render();
+    const isSwitch = (element: ReactElement<ControlProps>) =>
+      element.type === 'span' && element.props.children === t('settings.singleInstance', 'en');
+    expect(control(elementById(tree, 'settings-panel-general'), isSwitch)).toBeDefined();
+    expect(control(elementById(tree, 'settings-panel-privacy'), isSwitch)).toBeUndefined();
+  });
+
+  // The long durable-snapshot note is read in four separate paragraphs, in every language.
+  it.each(['en', 'zh-TW', 'ja', 'de'] as const)('splits the durable snapshot note into paragraphs in %s', (locale) => {
+    expect(t('settings.durableSnapshotsDescription', locale).split('\n\n')).toHaveLength(4);
+  });
+
+  it('drops the custom actions tab when the section is hidden', () => {
+    vi.stubGlobal('window', { setTimeout: vi.fn(), clearTimeout: vi.fn() });
+    const withActions = tabIds(harness(defaultSettings()).render());
+    const redacted = tabIds(
+      harness({ ...defaultSettings(), snapshotPersistence: true, snapshotRedactionTier: 'hashes' }).render(),
+    );
+
+    expect(withActions).toContain('settings-tab-customActions');
+    expect(redacted).not.toContain('settings-tab-customActions');
+    expect(redacted).toHaveLength(withActions.length - 1);
+  });
+});
+
 describe('SettingsModal standby save ordering', () => {
   it('persists a standby change at once, without Save, and leaves every pane as it was', async () => {
     vi.stubGlobal('window', { setTimeout: vi.fn(), clearTimeout: vi.fn() });

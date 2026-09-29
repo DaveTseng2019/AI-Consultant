@@ -59,7 +59,7 @@ export const CHAT_MODES: Record<ChatMode, {
 }> = {
   free: {
     name: '自由模式',
-    description: '同時發給四家，各自獨立回答',
+    description: '同時發給勾選的幾家，各自獨立回答',
     icon: '⚡',
     serial: false,
   },

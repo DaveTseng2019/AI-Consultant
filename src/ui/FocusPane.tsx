@@ -742,15 +742,17 @@ export function AdapterAccessPanel({ id, summary }: { id: string; summary: Adapt
 
   return (
     <section id={id} className="border-b border-sky-300 dark:border-sky-900 bg-sky-50 dark:bg-sky-950/30 px-3 py-3 text-xs text-zinc-700 dark:text-zinc-300">
-      <div className="mb-2 flex items-center justify-between gap-2">
+      {/* Heading and the provider list on their own lines: side by side, five logos squeezed the
+          heading into two lines. */}
+      <div className="mb-3 space-y-2">
         <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{t('provider.access.heading')}</h3>
         {summary.provider ? (
-          <span className="flex shrink-0 items-center gap-1 text-xs text-sky-700 dark:text-sky-200">
+          <span className="flex items-center gap-1 text-xs text-sky-700 dark:text-sky-200">
             <ProviderLogo provider={summary.provider} />
             {summary.providerName}
           </span>
         ) : (
-          <span className="flex flex-wrap items-center justify-end gap-x-2 gap-y-1 text-xs text-sky-700 dark:text-sky-200">
+          <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-sky-700 dark:text-sky-200">
             <span>{t('provider.access.appliesTo')}</span>
             {ALL_AI_PROVIDERS.map((candidate) => (
               <span key={candidate} className="flex items-center gap-1">

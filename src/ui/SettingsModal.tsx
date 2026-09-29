@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { AI_PROVIDERS, NO_PROVIDER } from '../../shared/constants';
 import type { AIProvider, ProviderState, SeatProvider } from '../../shared/types';
 import { buildAdapterPermissionSummary } from './adapterPermissions';
 import { AdapterAccessPanel } from './FocusPane';
 import { useI18n } from '../i18n/context';
+import type { I18nKey } from '../i18n/keys';
 import { formatI18n } from '../i18n/t';
 import type { PresentationByProvider } from './presentation';
 import {
@@ -140,6 +141,33 @@ export function SettingsModal({
     if (!open) return;
     setExpandedRoleModes(activeModeRoleSettings ? [activeModeRoleSettings] : []);
   }, [activeModeRoleSettings, open]);
+
+  const [activeTabChoice, setActiveTab] = useState<SettingsTab>('general');
+  useEffect(() => {
+    if (open) setActiveTab('general');
+  }, [open]);
+  // Custom actions only exist where the run can be handed to them; the tab goes with the section.
+  const customActionsShown = draft ? !draft.snapshotPersistence || draft.snapshotRedactionTier === 'full-local' : false;
+  const visibleTabs = SETTINGS_TABS.filter((tab) => tab.id !== 'customActions' || customActionsShown);
+  const activeTab = visibleTabs.some((tab) => tab.id === activeTabChoice) ? activeTabChoice : 'general';
+  // Only the fields that wait for Save can leave anything unsaved; every other field is written the
+  // moment it changes. The bar also stays up while saving and for the "Saved" flash before closing.
+  const persistedSettings = settingsPersistenceRef.current.current();
+  const unsavedChanges = Boolean(
+    draft &&
+      persistedSettings &&
+      SAVE_GATED_FIELDS.some((key) => JSON.stringify(draft[key]) !== JSON.stringify(persistedSettings[key])),
+  );
+  const showSaveBar = unsavedChanges || saving || saved;
+  const moveTabFocus = (event: KeyboardEvent<HTMLDivElement>) => {
+    const step = event.key === 'ArrowDown' ? 1 : event.key === 'ArrowUp' ? -1 : 0;
+    if (step === 0) return;
+    event.preventDefault();
+    const index = visibleTabs.findIndex((tab) => tab.id === activeTab);
+    const next = visibleTabs[(index + step + visibleTabs.length) % visibleTabs.length];
+    setActiveTab(next.id);
+    document.getElementById(`settings-tab-${next.id}`)?.focus();
+  };
 
   // Read once per opening, before anything is clicked: which build the user is holding is the
   // first thing the update section has to answer, not something the check produces.
@@ -555,9 +583,9 @@ export function SettingsModal({
       titleId="settings-title"
       onEscape={closeSettings}
       onBackdrop={closeSettings}
-      panelClassName="max-h-[92vh] w-full max-w-2xl overflow-auto rounded-lg border border-zinc-300 bg-white p-5 shadow-2xl dark:border-zinc-700 dark:bg-zinc-950"
+      panelClassName="flex h-[85vh] max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-lg border border-zinc-300 bg-white shadow-2xl dark:border-zinc-700 dark:bg-zinc-950"
     >
-        <div className="mb-4 flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 pb-3">
+        <div className="flex shrink-0 items-center justify-between border-b border-zinc-200 px-5 py-3 dark:border-zinc-800">
           <h2 id="settings-title" className="text-base font-semibold text-zinc-900 dark:text-zinc-100">{t('settings.title')}</h2>
           <button type="button" className="border border-zinc-300 dark:border-zinc-700 px-2 py-1 text-xs text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-50" onClick={closeSettings} disabled={saving}>
             {t('settings.close')}
@@ -565,446 +593,544 @@ export function SettingsModal({
         </div>
 
         {draft ? (
-          <div className="space-y-5">
-            <SectionHeading>{t('settings.general')}</SectionHeading>
-            <section>
-              <label className="block text-xs text-zinc-600 dark:text-zinc-400">
-                <span className="mb-1 block font-medium text-zinc-700 dark:text-zinc-300">{t('settings.language')}</span>
-                <select
-                  value={draft.language}
-                  onChange={(event) => {
-                    void updateLanguage(event.target.value as AppSettings['language']);
-                  }}
-                  className="w-full border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 px-2 py-1.5 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-sky-500 dark:focus:border-sky-600"
-                >
-                  <option value="system">{t('settings.language.system')}</option>
-                  <option value="en">{t('settings.language.en')}</option>
-                  <option value="zh-TW">{t('settings.language.zhTW')}</option>
-                  <option value="ja">{t('settings.language.ja')}</option>
-                  <option value="de">{t('settings.language.de')}</option>
-                </select>
-              </label>
-            </section>
-
-            <section>
-              <label className="block text-xs text-zinc-600 dark:text-zinc-400">
-                <span className="mb-1 block font-medium text-zinc-700 dark:text-zinc-300">{t('settings.responseLanguage')}</span>
-                <select
-                  value={draft.responseLanguage}
-                  aria-describedby="settings-response-language-description"
-                  onChange={(event) =>
-                    void persistDraftFieldImmediately('responseLanguage', event.target.value as AppSettings['responseLanguage'])
-                  }
-                  className="w-full border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 px-2 py-1.5 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-sky-500 dark:focus:border-sky-600"
-                >
-                  <option value="auto">{t('settings.responseLanguage.auto')}</option>
-                  <option value="en">{t('settings.language.en')}</option>
-                  <option value="zh-TW">{t('settings.language.zhTW')}</option>
-                  <option value="ja">{t('settings.language.ja')}</option>
-                  <option value="de">{t('settings.language.de')}</option>
-                </select>
-              </label>
-              <p id="settings-response-language-description" className="mt-1 text-xs leading-relaxed text-zinc-500 dark:text-zinc-500">
-                {t('settings.responseLanguageDescription')}
-              </p>
-            </section>
-
-            <section>
-              <label className="block text-xs text-zinc-600 dark:text-zinc-400">
-                <span className="mb-1 block font-medium text-zinc-700 dark:text-zinc-300">{t('settings.theme')}</span>
-                <select
-                  value={draft.theme}
-                  onChange={(event) => void persistDraftFieldImmediately('theme', event.target.value as AppSettings['theme'])}
-                  className="w-full border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 px-2 py-1.5 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-sky-500 dark:focus:border-sky-600"
-                >
-                  <option value="light">{t('settings.themeLight')}</option>
-                  <option value="dark">{t('settings.themeDark')}</option>
-                  <option value="system">{t('settings.themeSystem')}</option>
-                </select>
-              </label>
-            </section>
-
-            <section className="grid grid-cols-2 gap-2">
-              <FontSizeField
-                label={t('settings.fontSize')}
-                field="fontSize"
-                value={draft.fontSize}
-                text={fontSizeText.fontSize}
-                onText={(text) => setFontSizeText((current) => ({ ...current, fontSize: text }))}
-                onCommit={(value) => scheduleFontSizeUpdate({ fontSize: value })}
-              />
-              <FontSizeField
-                label={t('settings.readingFontSize')}
-                field="readingFontSize"
-                value={draft.readingFontSize}
-                text={fontSizeText.readingFontSize}
-                onText={(text) => setFontSizeText((current) => ({ ...current, readingFontSize: text }))}
-                onCommit={(value) => scheduleFontSizeUpdate({ readingFontSize: value })}
-              />
-            </section>
-
-            <section>
-              <div className="flex items-center gap-2 text-xs text-zinc-600 dark:text-zinc-400">
-                <span className="font-medium text-zinc-700 dark:text-zinc-300">{t('settings.fontSizeSync')}</span>
-                <button
-                  type="button"
-                  aria-label={t('settings.fontSizeSyncSmaller')}
-                  onClick={() => nudgeFontSizes(-1)}
-                  className="border border-zinc-300 dark:border-zinc-700 px-2 py-1 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-                >
-                  −
-                </button>
-                <button
-                  type="button"
-                  aria-label={t('settings.fontSizeSyncLarger')}
-                  onClick={() => nudgeFontSizes(1)}
-                  className="border border-zinc-300 dark:border-zinc-700 px-2 py-1 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-                >
-                  +
-                </button>
-              </div>
-              <p className="mt-1 text-xs leading-relaxed text-zinc-500 dark:text-zinc-500">
-                {t('settings.fontSizeSyncDescription')}
-              </p>
-            </section>
-
-            <section>
-              <label className="flex items-start gap-3 text-xs text-zinc-600 dark:text-zinc-400">
-                <input
-                  type="checkbox"
-                  checked={draft.monospaceFont}
-                  onChange={(event) => void persistDraftFieldImmediately('monospaceFont', event.target.checked)}
-                  className="mt-0.5 h-4 w-4 accent-sky-700"
-                />
-                <span>
-                  <span className="block font-medium text-zinc-700 dark:text-zinc-300">{t('settings.monospaceFont')}</span>
-                  <span className="mt-1 block leading-relaxed">{t('settings.monospaceFontDescription')}</span>
-                </span>
-              </label>
-            </section>
-
-            <section>
-              <button
-                type="button"
-                onClick={() => void restoreInterfaceDefaults()}
-                className="border border-zinc-300 dark:border-zinc-700 px-2 py-1 text-xs text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-              >
-                {t('settings.restoreDefaults')}
-              </button>
-              <p className="mt-1 text-xs leading-relaxed text-zinc-500 dark:text-zinc-500">
-                {t('settings.restoreDefaultsDescription')}
-              </p>
-            </section>
-
-            <section>
-              <label className="flex items-start gap-3 text-xs text-zinc-600 dark:text-zinc-400">
-                <input
-                  type="checkbox"
-                  checked={draft.autoNewConversationOnStart}
-                  onChange={(event) => void persistDraftFieldImmediately('autoNewConversationOnStart', event.target.checked)}
-                  className="mt-0.5 h-4 w-4 accent-sky-700"
-                />
-                <span>
-                  <span className="block font-medium text-zinc-700 dark:text-zinc-300">{t('settings.autoNewConversationOnStart')}</span>
-                  <span className="mt-1 block leading-relaxed">{t('settings.autoNewConversationOnStartDescription')}</span>
-                </span>
-              </label>
-              <label className="mt-3 flex items-start gap-3 text-xs text-zinc-600 dark:text-zinc-400">
-                <input
-                  type="checkbox"
-                  checked={draft.startMaximized}
-                  onChange={(event) => void persistDraftFieldImmediately('startMaximized', event.target.checked)}
-                  className="mt-0.5 h-4 w-4 accent-sky-700"
-                />
-                <span>
-                  <span className="block font-medium text-zinc-700 dark:text-zinc-300">{t('settings.startMaximized')}</span>
-                  <span className="mt-1 block leading-relaxed">{t('settings.startMaximizedDescription')}</span>
-                </span>
-              </label>
-              <label className="mt-3 flex items-start gap-3 text-xs text-zinc-600 dark:text-zinc-400">
-                <input
-                  type="checkbox"
-                  checked={draft.collapseHistoryOnNewConversation}
-                  onChange={(event) => void persistDraftFieldImmediately('collapseHistoryOnNewConversation', event.target.checked)}
-                  className="mt-0.5 h-4 w-4 accent-sky-700"
-                />
-                <span>
-                  <span className="block font-medium text-zinc-700 dark:text-zinc-300">{t('settings.collapseHistoryOnNewConversation')}</span>
-                  <span className="mt-1 block leading-relaxed">{t('settings.collapseHistoryOnNewConversationDescription')}</span>
-                </span>
-              </label>
-            </section>
-
-            <section className="space-y-3 border-t border-zinc-200 pt-4 dark:border-zinc-800">
-              <div>
-                <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-                  {t('settings.providers')}
-                </h3>
-                <p id="settings-providers-description" className="mt-1 text-xs leading-relaxed text-zinc-500 dark:text-zinc-500">
-                  {t('settings.providersDescription')}
-                </p>
-              </div>
-              <label className="block text-xs text-zinc-600 dark:text-zinc-400">
-                <span className="mb-1 block font-medium text-zinc-700 dark:text-zinc-300">
-                  {t('settings.providersSelect')}
-                </span>
-                <select
-                  value={draft.standbyProvider}
-                  disabled={providerSelectionDisabled || saving}
-                  aria-describedby={
-                    providerSelectionDisabled ? 'settings-providers-unavailable' : 'settings-providers-description'
-                  }
-                  title={providerSelectionDisabled ? t('input.workflowRunning') : undefined}
-                  onChange={(event) => updateStandbyProvider(event.target.value as AIProvider)}
-                  className="w-full border border-zinc-300 bg-zinc-50 px-2 py-1.5 text-sm text-zinc-900 outline-none focus:border-sky-500 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:border-sky-600"
-                >
-                  {PROVIDERS.map((provider) => (
-                    <option key={provider} value={provider}>
-                      {AI_PROVIDERS[provider].name}{provider === 'meta' ? ` — ${t('settings.providersDefault')}` : ''}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              {providerSelectionDisabled ? (
-                <p id="settings-providers-unavailable" className="text-xs text-zinc-500 dark:text-zinc-500">
-                  {t('input.workflowRunning')}
-                </p>
-              ) : null}
-              <div className="flex flex-wrap gap-1.5" role="group" aria-label={t('settings.providers')}>
-                {activeProvidersForStandby(draft.standbyProvider)
-                  .filter((provider) => provider !== draft.standbyProvider)
-                  .map((provider) => (
-                    <span key={provider} className="rounded-full border border-emerald-300 bg-emerald-50 px-2 py-1 text-xs text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">
-                      {AI_PROVIDERS[provider].name} · {t('settings.providerActive')}
-                    </span>
-                  ))}
-                <span className="rounded-full border border-zinc-300 bg-zinc-100 px-2 py-1 text-xs text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">
-                  {AI_PROVIDERS[draft.standbyProvider].name} · {t('settings.providerStandby')}
-                </span>
-              </div>
-            </section>
-
-            <section className="space-y-3 border-t border-zinc-200 dark:border-zinc-800 pt-4">
-              <SectionHeading>{t('settings.modeRoles')}</SectionHeading>
-              <p className="text-xs leading-relaxed text-zinc-500 dark:text-zinc-500">{t('settings.modeRolesDescription')}</p>
-              <button
-                type="button"
-                aria-label={`${t('settings.restoreDefaults')}: ${t('settings.modeRoles')}`}
-                onClick={() => void restoreModeRoleDefaults()}
-                className="border border-zinc-300 dark:border-zinc-700 px-2 py-1 text-xs text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-              >
-                {t('settings.restoreDefaults')}
-              </button>
-              {orderedRoleModes.map((roleMode) => (
-                <details
-                  key={roleMode}
-                  open={expandedRoleModes.includes(roleMode)}
-                  onToggle={(event) => {
-                    const expanded = event.currentTarget.open;
-                    setExpandedRoleModes((current) =>
-                      expanded
-                        ? current.includes(roleMode) ? current : [...current, roleMode]
-                        : current.filter((currentMode) => currentMode !== roleMode),
-                    );
-                  }}
-                  className="rounded border border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900"
-                >
-                  <summary className="cursor-pointer px-3 py-2 text-xs font-medium text-zinc-700 dark:text-zinc-300">
-                    {t(MODE_ROLE_MODE_LABEL_KEYS[roleMode])}
-                  </summary>
-                  <div className="grid grid-cols-2 gap-2 border-t border-zinc-200 p-3 dark:border-zinc-800">
-                    {MODE_ROLE_FIELDS[roleMode].map((role) => (
-                      <label key={role} className="block text-xs text-zinc-600 dark:text-zinc-400">
-                        <span className="mb-1 block">{t(MODE_ROLE_LABEL_KEYS[roleMode][role])}</span>
-                        <select
-                          value={(draft.modeRoles[roleMode] as unknown as Record<string, SeatProvider>)[role]}
-                          onChange={(event) =>
-                            void persistDraftFieldImmediately(
-                              'modeRoles',
-                              assignModeRole(draft.modeRoles, roleMode, role, event.target.value as SeatProvider),
-                            )
-                          }
-                          className="w-full border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 px-2 py-1.5 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-sky-500 dark:focus:border-sky-600"
-                        >
-                          {isOptionalModeRole(roleMode, role) ? (
-                            <option value={NO_PROVIDER}>{t('settings.modeRoles.none')}</option>
-                          ) : null}
-                          {activeProvidersForStandby(draft.standbyProvider).map((provider) => (
-                            <option key={provider} value={provider}>{AI_PROVIDERS[provider].name}</option>
-                          ))}
-                        </select>
-                      </label>
-                    ))}
-                  </div>
-                </details>
-              ))}
-            </section>
-
-            <section className="space-y-3 border-t border-zinc-200 dark:border-zinc-800 pt-4">
-              <SectionHeading>{t('settings.privacyHistory')}</SectionHeading>
-              {/* Read by Rust before the window exists, so this one is saved like any other field
-                  but only answers at the next launch -- the description says so. */}
-              <label className="flex items-start gap-3 text-xs text-zinc-600 dark:text-zinc-400">
-                <input
-                  type="checkbox"
-                  checked={draft.singleInstance}
-                  onChange={(event) => void persistDraftFieldImmediately('singleInstance', event.target.checked)}
-                  className="mt-0.5 h-4 w-4 accent-sky-700"
-                />
-                <span>
-                  <span className="block font-medium text-zinc-700 dark:text-zinc-300">{t('settings.singleInstance')}</span>
-                  <span className="mt-1 block leading-relaxed">{t('settings.singleInstanceDescription')}</span>
-                </span>
-              </label>
-              <label className="flex items-start gap-3 text-xs text-zinc-600 dark:text-zinc-400">
-                <input
-                  type="checkbox"
-                  checked={draft.snapshotPersistence}
-                  onChange={(event) => updateDraft({ snapshotPersistence: event.target.checked })}
-                  className="mt-0.5 h-4 w-4 accent-sky-700"
-                />
-                <span>
-                  <span className="block font-medium text-zinc-700 dark:text-zinc-300">{t('settings.durableSnapshots')}</span>
-                  <span className="mt-1 block leading-relaxed">
-                    {t('settings.durableSnapshotsDescription')}
-                  </span>
-                </span>
-              </label>
-              {draft.snapshotPersistence ? (
+          <div className="flex min-h-0 flex-1">
+            {/* One group at a time, like ZeroType's rail: the list of groups stays in view while
+                only the page on the right scrolls. Every panel stays mounted and is just hidden,
+                so switching tabs never drops what is being typed. */}
+            <div
+              role="tablist"
+              aria-orientation="vertical"
+              aria-label={t('settings.title')}
+              onKeyDown={moveTabFocus}
+              className="flex w-44 shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-zinc-200 p-2 dark:border-zinc-800"
+            >
+              {visibleTabs.map((tab) => {
+                const selected = tab.id === activeTab;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    role="tab"
+                    id={`settings-tab-${tab.id}`}
+                    aria-selected={selected}
+                    aria-controls={`settings-panel-${tab.id}`}
+                    tabIndex={selected ? 0 : -1}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`flex items-center gap-2 rounded px-2 py-2 text-left text-sm ${
+                      selected
+                        ? 'bg-sky-50 font-medium text-sky-800 dark:bg-sky-950 dark:text-sky-100'
+                        : 'text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800'
+                    }`}
+                  >
+                    <SettingsTabIcon tab={tab.id} />
+                    <span>{t(tab.labelKey)}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="min-w-0 flex-1 overflow-y-auto p-5">
+            <div role="tabpanel" id="settings-panel-general" aria-labelledby="settings-tab-general" hidden={activeTab !== 'general'} className="space-y-5">
+              <SectionHeading>{t('settings.general')}</SectionHeading>
+              <section>
                 <label className="block text-xs text-zinc-600 dark:text-zinc-400">
-                  <span className="mb-1 block">{t('settings.snapshotRedactionTier')}</span>
+                  <span className="mb-1 block font-medium text-zinc-700 dark:text-zinc-300">{t('settings.language')}</span>
                   <select
-                    value={draft.snapshotRedactionTier}
+                    value={draft.language}
+                    onChange={(event) => {
+                      void updateLanguage(event.target.value as AppSettings['language']);
+                    }}
+                    className="w-full border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 px-2 py-1.5 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-sky-500 dark:focus:border-sky-600"
+                  >
+                    <option value="system">{t('settings.language.system')}</option>
+                    <option value="en">{t('settings.language.en')}</option>
+                    <option value="zh-TW">{t('settings.language.zhTW')}</option>
+                    <option value="ja">{t('settings.language.ja')}</option>
+                    <option value="de">{t('settings.language.de')}</option>
+                  </select>
+                </label>
+              </section>
+
+              <section>
+                <label className="block text-xs text-zinc-600 dark:text-zinc-400">
+                  <span className="mb-1 block font-medium text-zinc-700 dark:text-zinc-300">{t('settings.responseLanguage')}</span>
+                  <select
+                    value={draft.responseLanguage}
+                    aria-describedby="settings-response-language-description"
                     onChange={(event) =>
-                      updateDraft({ snapshotRedactionTier: event.target.value as AppSettings['snapshotRedactionTier'] })
+                      void persistDraftFieldImmediately('responseLanguage', event.target.value as AppSettings['responseLanguage'])
                     }
                     className="w-full border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 px-2 py-1.5 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-sky-500 dark:focus:border-sky-600"
                   >
-                    <option value="metadata-only">{t('settings.snapshotTierMetadataOnly')}</option>
-                    <option value="hashes">{t('settings.snapshotTierHashes')}</option>
-                    <option value="prompt-text">{t('settings.snapshotTierPromptText')}</option>
-                    <option value="full-local">{t('settings.snapshotTierFullLocal')}</option>
+                    <option value="auto">{t('settings.responseLanguage.auto')}</option>
+                    <option value="en">{t('settings.language.en')}</option>
+                    <option value="zh-TW">{t('settings.language.zhTW')}</option>
+                    <option value="ja">{t('settings.language.ja')}</option>
+                    <option value="de">{t('settings.language.de')}</option>
                   </select>
                 </label>
-              ) : null}
-            </section>
+                <p id="settings-response-language-description" className="mt-1 text-xs leading-relaxed text-zinc-500 dark:text-zinc-500">
+                  {t('settings.responseLanguageDescription')}
+                </p>
+              </section>
 
-            {/* Its own section: these buttons are a feature of the toolbar, not of the privacy
-                settings they used to hang off. Hidden only where an action that asks for the run
-                would receive placeholders -- durable snapshots ON at a redacting tier. With them
-                OFF the app writes its own full-local file for the run. */}
-            {!draft.snapshotPersistence || draft.snapshotRedactionTier === 'full-local' ? (
-              <section className="space-y-3 border-t border-zinc-200 pt-4 dark:border-zinc-800">
-                  <SectionHeading>{t('settings.customActions')}</SectionHeading>
-                  <span className="block text-xs leading-relaxed text-zinc-600 dark:text-zinc-400">
-                    {t('settings.customActionsDescription')}
+              <section>
+                <label className="flex items-start gap-3 text-xs text-zinc-600 dark:text-zinc-400">
+                  <input
+                    type="checkbox"
+                    checked={draft.autoNewConversationOnStart}
+                    onChange={(event) => void persistDraftFieldImmediately('autoNewConversationOnStart', event.target.checked)}
+                    className="mt-0.5 h-4 w-4 shrink-0 accent-sky-700"
+                  />
+                  <span>
+                    <span className="block font-medium text-zinc-700 dark:text-zinc-300">{t('settings.autoNewConversationOnStart')}</span>
+                    <span className="mt-1 block leading-relaxed">{t('settings.autoNewConversationOnStartDescription')}</span>
                   </span>
-                  {draft.customActions.map((action, index) => (
-                    <div key={action.id} className="space-y-2 border border-zinc-200 p-3 dark:border-zinc-800">
-                      <div className="flex gap-2">
-                        <label className="min-w-0 flex-1 text-xs text-zinc-600 dark:text-zinc-400">
-                          <span className="mb-1 block">{t('settings.customActionName')}</span>
+                </label>
+                <label className="mt-3 flex items-start gap-3 text-xs text-zinc-600 dark:text-zinc-400">
+                  <input
+                    type="checkbox"
+                    checked={draft.startMaximized}
+                    onChange={(event) => void persistDraftFieldImmediately('startMaximized', event.target.checked)}
+                    className="mt-0.5 h-4 w-4 shrink-0 accent-sky-700"
+                  />
+                  <span>
+                    <span className="block font-medium text-zinc-700 dark:text-zinc-300">{t('settings.startMaximized')}</span>
+                    <span className="mt-1 block leading-relaxed">{t('settings.startMaximizedDescription')}</span>
+                  </span>
+                </label>
+                <label className="mt-3 flex items-start gap-3 text-xs text-zinc-600 dark:text-zinc-400">
+                  <input
+                    type="checkbox"
+                    checked={draft.collapseHistoryOnNewConversation}
+                    onChange={(event) => void persistDraftFieldImmediately('collapseHistoryOnNewConversation', event.target.checked)}
+                    className="mt-0.5 h-4 w-4 shrink-0 accent-sky-700"
+                  />
+                  <span>
+                    <span className="block font-medium text-zinc-700 dark:text-zinc-300">{t('settings.collapseHistoryOnNewConversation')}</span>
+                    <span className="mt-1 block leading-relaxed">{t('settings.collapseHistoryOnNewConversationDescription')}</span>
+                  </span>
+                </label>
+                {/* Read by Rust before the window exists, so this one is saved like any other field
+                    but only answers at the next launch -- the description says so. */}
+                <label className="mt-3 flex items-start gap-3 text-xs text-zinc-600 dark:text-zinc-400">
+                  <input
+                    type="checkbox"
+                    checked={draft.singleInstance}
+                    onChange={(event) => void persistDraftFieldImmediately('singleInstance', event.target.checked)}
+                    className="mt-0.5 h-4 w-4 shrink-0 accent-sky-700"
+                  />
+                  <span>
+                    <span className="block font-medium text-zinc-700 dark:text-zinc-300">{t('settings.singleInstance')}</span>
+                    <span className="mt-1 block leading-relaxed">{t('settings.singleInstanceDescription')}</span>
+                  </span>
+                </label>
+              </section>
+            </div>
+            <div role="tabpanel" id="settings-panel-appearance" aria-labelledby="settings-tab-appearance" hidden={activeTab !== 'appearance'} className="space-y-5">
+              <SectionHeading>{t('settings.appearance')}</SectionHeading>
+              <section>
+                <label className="block text-xs text-zinc-600 dark:text-zinc-400">
+                  <span className="mb-1 block font-medium text-zinc-700 dark:text-zinc-300">{t('settings.theme')}</span>
+                  <select
+                    value={draft.theme}
+                    onChange={(event) => void persistDraftFieldImmediately('theme', event.target.value as AppSettings['theme'])}
+                    className="w-full border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 px-2 py-1.5 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-sky-500 dark:focus:border-sky-600"
+                  >
+                    <option value="light">{t('settings.themeLight')}</option>
+                    <option value="dark">{t('settings.themeDark')}</option>
+                    <option value="system">{t('settings.themeSystem')}</option>
+                  </select>
+                </label>
+              </section>
+
+              <section className="grid grid-cols-2 gap-2">
+                <FontSizeField
+                  label={t('settings.fontSize')}
+                  field="fontSize"
+                  value={draft.fontSize}
+                  text={fontSizeText.fontSize}
+                  onText={(text) => setFontSizeText((current) => ({ ...current, fontSize: text }))}
+                  onCommit={(value) => scheduleFontSizeUpdate({ fontSize: value })}
+                />
+                <FontSizeField
+                  label={t('settings.readingFontSize')}
+                  field="readingFontSize"
+                  value={draft.readingFontSize}
+                  text={fontSizeText.readingFontSize}
+                  onText={(text) => setFontSizeText((current) => ({ ...current, readingFontSize: text }))}
+                  onCommit={(value) => scheduleFontSizeUpdate({ readingFontSize: value })}
+                />
+              </section>
+
+              <section>
+                <div className="flex items-center gap-2 text-xs text-zinc-600 dark:text-zinc-400">
+                  <span className="font-medium text-zinc-700 dark:text-zinc-300">{t('settings.fontSizeSync')}</span>
+                  <button
+                    type="button"
+                    aria-label={t('settings.fontSizeSyncSmaller')}
+                    onClick={() => nudgeFontSizes(-1)}
+                    className="border border-zinc-300 dark:border-zinc-700 px-2 py-1 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                  >
+                    −
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={t('settings.fontSizeSyncLarger')}
+                    onClick={() => nudgeFontSizes(1)}
+                    className="border border-zinc-300 dark:border-zinc-700 px-2 py-1 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                  >
+                    +
+                  </button>
+                </div>
+                <p className="mt-1 text-xs leading-relaxed text-zinc-500 dark:text-zinc-500">
+                  {t('settings.fontSizeSyncDescription')}
+                </p>
+              </section>
+
+              <section>
+                <label className="flex items-start gap-3 text-xs text-zinc-600 dark:text-zinc-400">
+                  <input
+                    type="checkbox"
+                    checked={draft.monospaceFont}
+                    onChange={(event) => void persistDraftFieldImmediately('monospaceFont', event.target.checked)}
+                    className="mt-0.5 h-4 w-4 shrink-0 accent-sky-700"
+                  />
+                  <span>
+                    <span className="block font-medium text-zinc-700 dark:text-zinc-300">{t('settings.monospaceFont')}</span>
+                    <span className="mt-1 block leading-relaxed">{t('settings.monospaceFontDescription')}</span>
+                  </span>
+                </label>
+              </section>
+
+              <section>
+                <button
+                  type="button"
+                  onClick={() => void restoreInterfaceDefaults()}
+                  className="border border-zinc-300 dark:border-zinc-700 px-2 py-1 text-xs text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                >
+                  {t('settings.restoreDefaults')}
+                </button>
+                <p className="mt-1 text-xs leading-relaxed text-zinc-500 dark:text-zinc-500">
+                  {t('settings.restoreDefaultsDescription')}
+                </p>
+              </section>
+            </div>
+            <div role="tabpanel" id="settings-panel-modeRoles" aria-labelledby="settings-tab-modeRoles" hidden={activeTab !== 'modeRoles'} className="space-y-5">
+              <section className="space-y-3">
+                <SectionHeading>{t('settings.modeRoles')}</SectionHeading>
+                <p className="text-xs leading-relaxed text-zinc-500 dark:text-zinc-500">{t('settings.modeRolesDescription')}</p>
+                <label className="block text-xs text-zinc-600 dark:text-zinc-400">
+                  <span className="mb-1 block font-medium text-zinc-700 dark:text-zinc-300">
+                    {t('settings.providersSelect')}
+                  </span>
+                  <select
+                    value={draft.standbyProvider}
+                    disabled={providerSelectionDisabled || saving}
+                    title={providerSelectionDisabled ? t('input.workflowRunning') : undefined}
+                    onChange={(event) => updateStandbyProvider(event.target.value as AIProvider)}
+                    className="w-full border border-zinc-300 bg-zinc-50 px-2 py-1.5 text-sm text-zinc-900 outline-none focus:border-sky-500 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:border-sky-600"
+                  >
+                    {PROVIDERS.map((provider) => (
+                      <option key={provider} value={provider}>
+                        {AI_PROVIDERS[provider].name}{provider === 'meta' ? ` — ${t('settings.providersDefault')}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button
+                  type="button"
+                  aria-label={`${t('settings.restoreDefaults')}: ${t('settings.modeRoles')}`}
+                  onClick={() => void restoreModeRoleDefaults()}
+                  className="border border-zinc-300 dark:border-zinc-700 px-2 py-1 text-xs text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                >
+                  {t('settings.restoreDefaults')}
+                </button>
+                {orderedRoleModes.map((roleMode) => (
+                  <details
+                    key={roleMode}
+                    open={expandedRoleModes.includes(roleMode)}
+                    onToggle={(event) => {
+                      const expanded = event.currentTarget.open;
+                      setExpandedRoleModes((current) =>
+                        expanded
+                          ? current.includes(roleMode) ? current : [...current, roleMode]
+                          : current.filter((currentMode) => currentMode !== roleMode),
+                      );
+                    }}
+                    className="rounded border border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900"
+                  >
+                    <summary className="cursor-pointer px-3 py-2 text-xs font-medium text-zinc-700 dark:text-zinc-300">
+                      {t(MODE_ROLE_MODE_LABEL_KEYS[roleMode])}
+                    </summary>
+                    <div className="grid grid-cols-2 gap-2 border-t border-zinc-200 p-3 dark:border-zinc-800">
+                      {MODE_ROLE_FIELDS[roleMode].map((role) => (
+                        <label key={role} className="block text-xs text-zinc-600 dark:text-zinc-400">
+                          <span className="mb-1 block">{t(MODE_ROLE_LABEL_KEYS[roleMode][role])}</span>
+                          <select
+                            value={(draft.modeRoles[roleMode] as unknown as Record<string, SeatProvider>)[role]}
+                            onChange={(event) =>
+                              void persistDraftFieldImmediately(
+                                'modeRoles',
+                                assignModeRole(draft.modeRoles, roleMode, role, event.target.value as SeatProvider),
+                              )
+                            }
+                            className="w-full border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 px-2 py-1.5 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-sky-500 dark:focus:border-sky-600"
+                          >
+                            {isOptionalModeRole(roleMode, role) ? (
+                              <option value={NO_PROVIDER}>{t('settings.modeRoles.none')}</option>
+                            ) : null}
+                            {activeProvidersForStandby(draft.standbyProvider).map((provider) => (
+                              <option key={provider} value={provider}>{AI_PROVIDERS[provider].name}</option>
+                            ))}
+                          </select>
+                        </label>
+                      ))}
+                    </div>
+                  </details>
+                ))}
+              </section>
+            </div>
+            <div role="tabpanel" id="settings-panel-privacy" aria-labelledby="settings-tab-privacy" hidden={activeTab !== 'privacy'} className="space-y-5">
+              <section className="space-y-3">
+                <SectionHeading>{t('settings.privacyHistory')}</SectionHeading>
+                <label className="flex items-start gap-3 text-xs text-zinc-600 dark:text-zinc-400">
+                  <input
+                    type="checkbox"
+                    checked={draft.snapshotPersistence}
+                    onChange={(event) => updateDraft({ snapshotPersistence: event.target.checked })}
+                    aria-describedby="settings-durable-snapshots-description"
+                    className="mt-0.5 h-4 w-4 shrink-0 accent-sky-700"
+                  />
+                  <span className="block font-medium text-zinc-700 dark:text-zinc-300">{t('settings.durableSnapshots')}</span>
+                </label>
+                {draft.snapshotPersistence ? (
+                  <label className="block text-xs text-zinc-600 dark:text-zinc-400">
+                    <span className="mb-1 block">{t('settings.snapshotRedactionTier')}</span>
+                    <select
+                      value={draft.snapshotRedactionTier}
+                      onChange={(event) =>
+                        updateDraft({ snapshotRedactionTier: event.target.value as AppSettings['snapshotRedactionTier'] })
+                      }
+                      className="w-full border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 px-2 py-1.5 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-sky-500 dark:focus:border-sky-600"
+                    >
+                      <option value="metadata-only">{t('settings.snapshotTierMetadataOnly')}</option>
+                      <option value="hashes">{t('settings.snapshotTierHashes')}</option>
+                      <option value="prompt-text">{t('settings.snapshotTierPromptText')}</option>
+                      <option value="full-local">{t('settings.snapshotTierFullLocal')}</option>
+                    </select>
+                  </label>
+                ) : null}
+                {/* Under the options it explains: one paragraph per question the reader has. */}
+                <div id="settings-durable-snapshots-description" className="space-y-2 text-xs leading-relaxed text-zinc-500 dark:text-zinc-500">
+                  {t('settings.durableSnapshotsDescription').split('\n\n').map((paragraph) => (
+                    <p key={paragraph}>{paragraph}</p>
+                  ))}
+                </div>
+              </section>
+            </div>
+            <div role="tabpanel" id="settings-panel-customActions" aria-labelledby="settings-tab-customActions" hidden={activeTab !== 'customActions'} className="space-y-5">
+              {/* Its own section: these buttons are a feature of the toolbar, not of the privacy
+                  settings they used to hang off. Hidden only where an action that asks for the run
+                  would receive placeholders -- durable snapshots ON at a redacting tier. With them
+                  OFF the app writes its own full-local file for the run. */}
+              {customActionsShown ? (
+                <section className="space-y-3">
+                    <SectionHeading>{t('settings.customActions')}</SectionHeading>
+                    <span className="block text-xs leading-relaxed text-zinc-600 dark:text-zinc-400">
+                      {t('settings.customActionsDescription')}
+                    </span>
+                    {draft.customActions.map((action, index) => (
+                      <div key={action.id} className="space-y-2 border border-zinc-200 p-3 dark:border-zinc-800">
+                        <div className="flex gap-2">
+                          <label className="min-w-0 flex-1 text-xs text-zinc-600 dark:text-zinc-400">
+                            <span className="mb-1 block">{t('settings.customActionName')}</span>
+                            <input
+                              type="text"
+                              value={action.name}
+                              onChange={(event) => updateAction(index, { name: event.target.value })}
+                              className="w-full border border-zinc-300 bg-zinc-50 px-2 py-1.5 text-sm text-zinc-900 outline-none focus:border-sky-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:border-sky-600"
+                            />
+                          </label>
+                          <button
+                            type="button"
+                            className="mt-5 h-8 w-8 shrink-0 border border-zinc-300 text-xs text-zinc-800 hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                            aria-label={t('settings.customActionMoveUp')}
+                            title={t('settings.customActionMoveUp')}
+                            disabled={index === 0}
+                            onClick={() => moveAction(index, -1)}
+                          >
+                            ↑
+                          </button>
+                          <button
+                            type="button"
+                            className="mt-5 h-8 w-8 shrink-0 border border-zinc-300 text-xs text-zinc-800 hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                            aria-label={t('settings.customActionMoveDown')}
+                            title={t('settings.customActionMoveDown')}
+                            disabled={index === draft.customActions.length - 1}
+                            onClick={() => moveAction(index, 1)}
+                          >
+                            ↓
+                          </button>
+                          <button
+                            type="button"
+                            className="mt-5 h-8 shrink-0 border border-zinc-300 px-3 text-xs text-zinc-800 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                            onClick={() => removeAction(index)}
+                          >
+                            {t('settings.customActionRemove')}
+                          </button>
+                        </div>
+                        <label className="block text-xs text-zinc-600 dark:text-zinc-400">
+                          <span className="mb-1 block">{t('settings.customActionScript')}</span>
+                          <span className="flex gap-2">
+                            <input
+                              type="text"
+                              spellCheck={false}
+                              value={action.script}
+                              onChange={(event) => updateAction(index, { script: event.target.value })}
+                              className="min-w-0 flex-1 border border-zinc-300 bg-zinc-50 px-2 py-1.5 text-sm text-zinc-900 outline-none focus:border-sky-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:border-sky-600"
+                            />
+                            <button
+                              type="button"
+                              className="shrink-0 border border-zinc-300 px-3 py-1.5 text-xs text-zinc-800 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                              onClick={() => void pickActionScript(index)}
+                            >
+                              {t('settings.archiveScriptBrowse')}
+                            </button>
+                          </span>
+                        </label>
+                        <label className="block text-xs text-zinc-600 dark:text-zinc-400">
+                          <span className="mb-1 block">{t('settings.customActionNote')}</span>
                           <input
                             type="text"
-                            value={action.name}
-                            onChange={(event) => updateAction(index, { name: event.target.value })}
+                            value={action.note}
+                            onChange={(event) => updateAction(index, { note: event.target.value })}
                             className="w-full border border-zinc-300 bg-zinc-50 px-2 py-1.5 text-sm text-zinc-900 outline-none focus:border-sky-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:border-sky-600"
                           />
                         </label>
-                        <button
-                          type="button"
-                          className="mt-5 h-8 w-8 shrink-0 border border-zinc-300 text-xs text-zinc-800 hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
-                          aria-label={t('settings.customActionMoveUp')}
-                          title={t('settings.customActionMoveUp')}
-                          disabled={index === 0}
-                          onClick={() => moveAction(index, -1)}
-                        >
-                          ↑
-                        </button>
-                        <button
-                          type="button"
-                          className="mt-5 h-8 w-8 shrink-0 border border-zinc-300 text-xs text-zinc-800 hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
-                          aria-label={t('settings.customActionMoveDown')}
-                          title={t('settings.customActionMoveDown')}
-                          disabled={index === draft.customActions.length - 1}
-                          onClick={() => moveAction(index, 1)}
-                        >
-                          ↓
-                        </button>
-                        <button
-                          type="button"
-                          className="mt-5 h-8 shrink-0 border border-zinc-300 px-3 text-xs text-zinc-800 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
-                          onClick={() => removeAction(index)}
-                        >
-                          {t('settings.customActionRemove')}
-                        </button>
-                      </div>
-                      <label className="block text-xs text-zinc-600 dark:text-zinc-400">
-                        <span className="mb-1 block">{t('settings.customActionScript')}</span>
-                        <span className="flex gap-2">
+                        <label className="block text-xs text-zinc-600 dark:text-zinc-400">
+                          <span className="mb-1 block">{t('settings.customActionPayload')}</span>
+                          <select
+                            value={action.payload}
+                            onChange={(event) => updateAction(index, { payload: event.target.value as CustomActionPayload })}
+                            className="w-full border border-zinc-300 bg-zinc-50 px-2 py-1.5 text-sm text-zinc-900 outline-none focus:border-sky-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:border-sky-600"
+                          >
+                            <option value="none">{t('settings.customActionPayloadNone')}</option>
+                            <option value="run">{t('settings.customActionPayloadRun')}</option>
+                            <option value="markdown">{t('settings.customActionPayloadMarkdown')}</option>
+                          </select>
+                          <span className="mt-1 block leading-relaxed">{t('settings.customActionPayloadDescription')}</span>
+                        </label>
+                        <label className="flex items-start gap-3 text-xs text-zinc-600 dark:text-zinc-400">
                           <input
-                            type="text"
-                            spellCheck={false}
-                            value={action.script}
-                            onChange={(event) => updateAction(index, { script: event.target.value })}
-                            className="min-w-0 flex-1 border border-zinc-300 bg-zinc-50 px-2 py-1.5 text-sm text-zinc-900 outline-none focus:border-sky-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:border-sky-600"
+                            type="checkbox"
+                            checked={action.confirm}
+                            onChange={(event) => updateAction(index, { confirm: event.target.checked })}
+                            className="mt-0.5 h-4 w-4 shrink-0 accent-sky-700"
                           />
+                          <span>
+                            <span className="block font-medium text-zinc-700 dark:text-zinc-300">{t('settings.archiveConfirm')}</span>
+                            <span className="mt-1 block leading-relaxed">{t('settings.archiveConfirmDescription')}</span>
+                          </span>
+                        </label>
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      className="border border-zinc-300 px-3 py-1.5 text-xs text-zinc-800 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                      onClick={addAction}
+                    >
+                      {t('settings.customActionAdd')}
+                    </button>
+                </section>
+              ) : null}
+            </div>
+            <div role="tabpanel" id="settings-panel-updates" aria-labelledby="settings-tab-updates" hidden={activeTab !== 'updates'} className="space-y-5">
+              {/* Portable builds check too. The button only opens a page in the browser -- exactly
+                  what README-portable.txt used to ask the user to do by hand -- so there was nothing
+                  for the marker to protect them from. */}
+              <section className="space-y-3">
+                  <SectionHeading>{t('settings.updates')}</SectionHeading>
+                  <span className="block text-xs text-zinc-800 dark:text-zinc-200">
+                    {t('settings.currentVersion')}: {versionLabel || '—'}
+                  </span>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <button
+                      type="button"
+                      className="border border-zinc-300 dark:border-zinc-700 px-3 py-1.5 text-xs text-zinc-800 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50"
+                      onClick={() => void checkForUpdates()}
+                      disabled={updateCheck.status === 'checking'}
+                    >
+                      {updateCheck.status === 'checking' ? t('settings.checking') : t('settings.checkForUpdates')}
+                    </button>
+                    {updateCheck.status === 'up-to-date' ? (
+                      <span className="text-xs text-zinc-600 dark:text-zinc-400">{t('settings.upToDate').replace('{version}', updateCheck.version)}</span>
+                    ) : null}
+                    {updateCheck.status === 'local-build' ? (
+                      <span className="text-xs text-zinc-600 dark:text-zinc-400">{t('settings.localBuildNoUpdate').replace('{version}', updateCheck.tagName)}</span>
+                    ) : null}
+                    {updateCheck.status === 'available' ? (
+                      <span className="text-xs text-sky-700 dark:text-sky-300">
+                        {t('settings.newVersionAvailable').replace('{version}', updateCheck.tagName)} {'->'}{' '}
+                        {/* A portable install replaces itself by unzipping, so it does that itself
+                            rather than sending the user to a page and a manual copy over this folder.
+                            Anything else goes to the release page, which lists the installer. */}
+                        {draft.portable && updateCheck.portableAssetUrl ? (
                           <button
                             type="button"
-                            className="shrink-0 border border-zinc-300 px-3 py-1.5 text-xs text-zinc-800 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
-                            onClick={() => void pickActionScript(index)}
+                            className="underline hover:text-sky-800 dark:hover:text-sky-200"
+                            onClick={() => void startUpdate(updateCheck.portableAssetUrl, updateCheck.htmlUrl)}
                           >
-                            {t('settings.archiveScriptBrowse')}
+                            {t('settings.installPortableUpdate')}
                           </button>
-                        </span>
-                      </label>
-                      <label className="block text-xs text-zinc-600 dark:text-zinc-400">
-                        <span className="mb-1 block">{t('settings.customActionNote')}</span>
-                        <input
-                          type="text"
-                          value={action.note}
-                          onChange={(event) => updateAction(index, { note: event.target.value })}
-                          className="w-full border border-zinc-300 bg-zinc-50 px-2 py-1.5 text-sm text-zinc-900 outline-none focus:border-sky-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:border-sky-600"
-                        />
-                      </label>
-                      <label className="block text-xs text-zinc-600 dark:text-zinc-400">
-                        <span className="mb-1 block">{t('settings.customActionPayload')}</span>
-                        <select
-                          value={action.payload}
-                          onChange={(event) => updateAction(index, { payload: event.target.value as CustomActionPayload })}
-                          className="w-full border border-zinc-300 bg-zinc-50 px-2 py-1.5 text-sm text-zinc-900 outline-none focus:border-sky-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:border-sky-600"
-                        >
-                          <option value="none">{t('settings.customActionPayloadNone')}</option>
-                          <option value="run">{t('settings.customActionPayloadRun')}</option>
-                          <option value="markdown">{t('settings.customActionPayloadMarkdown')}</option>
-                        </select>
-                        <span className="mt-1 block leading-relaxed">{t('settings.customActionPayloadDescription')}</span>
-                      </label>
-                      <label className="flex items-start gap-3 text-xs text-zinc-600 dark:text-zinc-400">
-                        <input
-                          type="checkbox"
-                          checked={action.confirm}
-                          onChange={(event) => updateAction(index, { confirm: event.target.checked })}
-                          className="mt-0.5 h-4 w-4 accent-sky-700"
-                        />
-                        <span>
-                          <span className="block font-medium text-zinc-700 dark:text-zinc-300">{t('settings.archiveConfirm')}</span>
-                          <span className="mt-1 block leading-relaxed">{t('settings.archiveConfirmDescription')}</span>
-                        </span>
-                      </label>
-                    </div>
-                  ))}
-                  <button
-                    type="button"
-                    className="border border-zinc-300 px-3 py-1.5 text-xs text-zinc-800 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
-                    onClick={addAction}
-                  >
-                    {t('settings.customActionAdd')}
-                  </button>
+                        ) : (
+                          <DownloadPageLink key={updateCheck.htmlUrl} url={updateCheck.htmlUrl} />
+                        )}
+                      </span>
+                    ) : null}
+                    {updateCheck.status === 'unavailable' ? (
+                      <span className="text-xs text-amber-700 dark:text-amber-300">{t('settings.releasesUnavailable')}</span>
+                    ) : null}
+                    {updateCheck.status === 'error' ? (
+                      <span className="text-xs text-red-700 dark:text-red-300">{updateCheck.message}</span>
+                    ) : null}
+                  </div>
               </section>
-            ) : null}
+            </div>
+            <div role="tabpanel" id="settings-panel-advanced" aria-labelledby="settings-tab-advanced" hidden={activeTab !== 'advanced'} className="space-y-5">
+              <SectionHeading>{t('settings.advanced')}</SectionHeading>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">{t('settings.advancedDescription')}</p>
+              <section>
+                <label className="block text-xs text-zinc-600 dark:text-zinc-400">
+                  <span className="mb-1 block">{t('settings.adapterBaseUrl')}</span>
+                  <input
+                    value={draft.adapterBaseUrl}
+                    onChange={(event) => updateDraft({ adapterBaseUrl: event.target.value })}
+                    aria-describedby="settings-adapter-base-url-description"
+                    className="w-full border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 px-2 py-1.5 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-sky-500 dark:focus:border-sky-600"
+                  />
+                </label>
+                <p id="settings-adapter-base-url-description" className="mt-1 text-xs leading-relaxed text-zinc-500 dark:text-zinc-500">
+                  {t('settings.adapterBaseUrlDescription')}
+                </p>
+              </section>
+              <details className="group/access rounded border border-zinc-200 px-3 py-2 dark:border-zinc-800">
+                <summary className="cursor-pointer text-xs font-medium text-zinc-700 dark:text-zinc-300">{t('provider.access')}</summary>
+                <AccessTransparencySection />
+              </details>
+              <details className="group/diagnostics rounded border border-zinc-200 px-3 py-2 dark:border-zinc-800">
+                <summary className="cursor-pointer text-xs font-medium text-zinc-700 dark:text-zinc-300">{t('settings.diagnostics')}</summary>
+                <DiagnosticsSection providerStates={providerStates} settings={draft} />
+              </details>
+            </div>
+            </div>
+          </div>
+        ) : (
+          <div className="py-8 text-sm text-zinc-500 dark:text-zinc-500">{t('settings.loading')}</div>
+        )}
 
-            <div className="flex items-center justify-end gap-2 border-t border-zinc-200 pt-4 dark:border-zinc-800">
+        <div className="shrink-0 space-y-3 border-t border-zinc-200 px-5 py-3 dark:border-zinc-800">
+          {draft && showSaveBar ? (
+            <div className="flex items-center justify-end gap-2">
               <button type="button" className="px-3 py-1.5 text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 disabled:opacity-50" onClick={closeSettings} disabled={saving}>
                 {t('settings.cancel')}
               </button>
@@ -1017,117 +1143,26 @@ export function SettingsModal({
                 {saved ? t('settings.saved') : t('settings.save')}
               </button>
             </div>
-
-            {/* Portable builds check too. The button only opens a page in the browser -- exactly
-                what README-portable.txt used to ask the user to do by hand -- so there was nothing
-                for the marker to protect them from. */}
-            <section className="space-y-3 border-t border-zinc-200 dark:border-zinc-800 pt-4">
-                <SectionHeading>{t('settings.updates')}</SectionHeading>
-                <span className="block text-xs text-zinc-800 dark:text-zinc-200">
-                  {t('settings.currentVersion')}: {versionLabel || '—'}
-                </span>
-                <div className="flex flex-wrap items-center gap-3">
-                  <button
-                    type="button"
-                    className="border border-zinc-300 dark:border-zinc-700 px-3 py-1.5 text-xs text-zinc-800 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50"
-                    onClick={() => void checkForUpdates()}
-                    disabled={updateCheck.status === 'checking'}
-                  >
-                    {updateCheck.status === 'checking' ? t('settings.checking') : t('settings.checkForUpdates')}
-                  </button>
-                  {updateCheck.status === 'up-to-date' ? (
-                    <span className="text-xs text-zinc-600 dark:text-zinc-400">{t('settings.upToDate').replace('{version}', updateCheck.version)}</span>
-                  ) : null}
-                  {updateCheck.status === 'local-build' ? (
-                    <span className="text-xs text-zinc-600 dark:text-zinc-400">{t('settings.localBuildNoUpdate').replace('{version}', updateCheck.tagName)}</span>
-                  ) : null}
-                  {updateCheck.status === 'available' ? (
-                    <span className="text-xs text-sky-700 dark:text-sky-300">
-                      {t('settings.newVersionAvailable').replace('{version}', updateCheck.tagName)} {'->'}{' '}
-                      {/* A portable install replaces itself by unzipping, so it does that itself
-                          rather than sending the user to a page and a manual copy over this folder.
-                          Anything else goes to the release page, which lists the installer. */}
-                      {draft.portable && updateCheck.portableAssetUrl ? (
-                        <button
-                          type="button"
-                          className="underline hover:text-sky-800 dark:hover:text-sky-200"
-                          onClick={() => void startUpdate(updateCheck.portableAssetUrl, updateCheck.htmlUrl)}
-                        >
-                          {t('settings.installPortableUpdate')}
-                        </button>
-                      ) : (
-                        <DownloadPageLink key={updateCheck.htmlUrl} url={updateCheck.htmlUrl} />
-                      )}
-                    </span>
-                  ) : null}
-                  {updateCheck.status === 'unavailable' ? (
-                    <span className="text-xs text-amber-700 dark:text-amber-300">{t('settings.releasesUnavailable')}</span>
-                  ) : null}
-                  {updateCheck.status === 'error' ? (
-                    <span className="text-xs text-red-700 dark:text-red-300">{updateCheck.message}</span>
-                  ) : null}
-                </div>
-            </section>
-
-            <details className="group border-t border-zinc-200 pt-4 dark:border-zinc-800">
-              <summary className="cursor-pointer list-none rounded px-1 py-2 focus-visible:outline-offset-2">
-                <span className="flex items-start justify-between gap-3">
-                  <span>
-                    <span className="block border-l-2 border-sky-500 pl-2 text-sm font-semibold uppercase tracking-wide text-zinc-900 dark:border-sky-400 dark:text-zinc-50">
-                      {t('settings.advanced')}
-                    </span>
-                    <span className="mt-1 block text-xs text-zinc-500 dark:text-zinc-400">{t('settings.advancedDescription')}</span>
-                  </span>
-                  <span className="text-zinc-500 transition group-open:rotate-180" aria-hidden="true">⌄</span>
-                </span>
-              </summary>
-              <div className="mt-3 space-y-4 border-l-2 border-zinc-200 pl-4 dark:border-zinc-800">
-                <section>
-                  <label className="block text-xs text-zinc-600 dark:text-zinc-400">
-                    <span className="mb-1 block">{t('settings.adapterBaseUrl')}</span>
-                    <input
-                      value={draft.adapterBaseUrl}
-                      onChange={(event) => updateDraft({ adapterBaseUrl: event.target.value })}
-                      className="w-full border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 px-2 py-1.5 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-sky-500 dark:focus:border-sky-600"
-                    />
-                  </label>
-                </section>
-                <details className="group/access rounded border border-zinc-200 px-3 py-2 dark:border-zinc-800">
-                  <summary className="cursor-pointer text-xs font-medium text-zinc-700 dark:text-zinc-300">{t('provider.access')}</summary>
-                  <AccessTransparencySection />
+          ) : null}
+          {error ? (
+            <div className="border border-red-300 dark:border-red-900 bg-red-50 dark:bg-red-950 px-3 py-2 text-xs text-red-800 dark:text-red-200" role="alert">
+              <div>{t(error.messageKey)}</div>
+              {error.detail ? (
+                <details className="mt-2">
+                  <summary className="cursor-pointer font-medium">{t('settings.technicalDetails')}</summary>
+                  <code className="mt-1 block break-words text-xs opacity-80">{error.detail}</code>
                 </details>
-                <details className="group/diagnostics rounded border border-zinc-200 px-3 py-2 dark:border-zinc-800">
-                  <summary className="cursor-pointer text-xs font-medium text-zinc-700 dark:text-zinc-300">{t('settings.diagnostics')}</summary>
-                  <DiagnosticsSection providerStates={providerStates} settings={draft} />
-                </details>
-              </div>
-            </details>
-          </div>
-        ) : (
-          <div className="py-8 text-sm text-zinc-500 dark:text-zinc-500">{t('settings.loading')}</div>
-        )}
-
-        {error ? (
-          <div className="mt-4 border border-red-300 dark:border-red-900 bg-red-50 dark:bg-red-950 px-3 py-2 text-xs text-red-800 dark:text-red-200" role="alert">
-            <div>{t(error.messageKey)}</div>
-            {error.detail ? (
-              <details className="mt-2">
-                <summary className="cursor-pointer font-medium">{t('settings.technicalDetails')}</summary>
-                <code className="mt-1 block break-words text-xs opacity-80">{error.detail}</code>
-              </details>
-            ) : null}
-          </div>
-        ) : null}
-
-        <div className="mt-5 border-t border-zinc-200 pt-4 dark:border-zinc-800">
-          <div className="text-xs text-zinc-500 dark:text-zinc-400">
-            <SettingsExternalLink
-              url="https://github.com/DaveTseng2019/AI-Consultant"
-              label={t('settings.sourceRepo')}
-              errorMessage={t('settings.externalLinkFailed')}
-              className="text-sky-700 underline underline-offset-2 hover:text-sky-900 dark:text-sky-300 dark:hover:text-sky-100"
-            />
-          </div>
+              ) : null}
+            </div>
+          ) : null}
+            <div className="text-xs text-zinc-500 dark:text-zinc-400">
+              <SettingsExternalLink
+                url="https://github.com/DaveTseng2019/AI-Consultant"
+                label={t('settings.sourceRepo')}
+                errorMessage={t('settings.externalLinkFailed')}
+                className="text-sky-700 underline underline-offset-2 hover:text-sky-900 dark:text-sky-300 dark:hover:text-sky-100"
+              />
+            </div>
         </div>
     </ModalDialog>
   );
@@ -1147,6 +1182,50 @@ type DebugBundleExportState =
 // brightest text colour the theme has, with an accent rule down the side. The old headings were the
 // dimmest text on the page, which put the section boundaries -- the thing you scan for -- last in
 // line for the eye.
+// The fields that write private content, run a script or change a trusted network source: a change
+// to them takes effect only on Save. Everything else in this dialog is saved as soon as it changes.
+const SAVE_GATED_FIELDS = ['snapshotPersistence', 'snapshotRedactionTier', 'customActions', 'adapterBaseUrl'] as const satisfies readonly (keyof AppSettings)[];
+
+type SettingsTab =
+  | 'general'
+  | 'appearance'
+  | 'modeRoles'
+  | 'privacy'
+  | 'customActions'
+  | 'updates'
+  | 'advanced';
+
+const SETTINGS_TABS: { id: SettingsTab; labelKey: I18nKey }[] = [
+  { id: 'general', labelKey: 'settings.general' },
+  { id: 'appearance', labelKey: 'settings.appearance' },
+  { id: 'modeRoles', labelKey: 'settings.modeRoles' },
+  { id: 'privacy', labelKey: 'settings.privacyHistory' },
+  { id: 'customActions', labelKey: 'settings.customActions' },
+  { id: 'updates', labelKey: 'settings.updates' },
+  { id: 'advanced', labelKey: 'settings.advanced' },
+];
+
+// Stroke icons drawn inline, like the rest of the app's icons; there is no icon package.
+const SETTINGS_TAB_ICON_PATHS: Record<SettingsTab, string[]> = {
+  general: ['M4 6h16', 'M4 12h16', 'M4 18h16', 'M8 4v4', 'M16 10v4', 'M10 16v4'],
+  appearance: ['M12 3a9 9 0 1 0 0 18a9 9 0 0 0 0-18z', 'M12 3v18', 'M12 3a9 9 0 0 1 0 18'],
+  modeRoles: ['M8 11a3 3 0 1 0 0-6a3 3 0 0 0 0 6z', 'M2 20a6 6 0 0 1 12 0', 'M17 11a3 3 0 1 0 0-6', 'M22 20a6 6 0 0 0-5-5.9'],
+  privacy: ['M12 3l8 3v6c0 5-3.5 8-8 9c-4.5-1-8-4-8-9V6z'],
+  customActions: ['M13 3L5 14h6l-1 7l8-11h-6z'],
+  updates: ['M20 12a8 8 0 1 1-2.3-5.7', 'M20 4v5h-5'],
+  advanced: ['M14.7 6.3a4 4 0 0 0-5.4 5.4L4 17v3h3l5.3-5.3a4 4 0 0 0 5.4-5.4l-2.6 2.6l-2.4-.6l-.6-2.4z'],
+};
+
+function SettingsTabIcon({ tab }: { tab: SettingsTab }) {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      {SETTINGS_TAB_ICON_PATHS[tab].map((d) => (
+        <path key={d} d={d} />
+      ))}
+    </svg>
+  );
+}
+
 function SectionHeading({ children }: { children: ReactNode }) {
   return (
     <h3 className="border-l-2 border-sky-500 pl-2 text-sm font-semibold uppercase tracking-wide text-zinc-900 dark:border-sky-400 dark:text-zinc-50">
@@ -1156,14 +1235,12 @@ function SectionHeading({ children }: { children: ReactNode }) {
 }
 
 function AccessTransparencySection() {
-  const { locale, t } = useI18n();
+  const { locale } = useI18n();
   const summary = useMemo(() => buildAdapterPermissionSummary(undefined, undefined, locale), [locale]);
 
+  // The <details> summary around it already reads "Access", so no second heading here.
   return (
-    <section className="space-y-3 border-t border-zinc-200 dark:border-zinc-800 pt-4">
-      <div>
-        <h3 className="text-xs font-medium text-zinc-700 dark:text-zinc-300">{t('provider.access')}</h3>
-      </div>
+    <section className="pt-3">
       <AdapterAccessPanel id="settings-adapter-access" summary={summary} />
     </section>
   );
@@ -1260,12 +1337,10 @@ export function DiagnosticsSection({
   };
 
   return (
-    <section className="space-y-3 border-t border-zinc-200 dark:border-zinc-800 pt-4">
+    // The <details> summary around it already reads "Diagnostics", so no second heading here.
+    <section className="space-y-3 pt-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h3 className="text-xs font-medium text-zinc-700 dark:text-zinc-300">{t('settings.diagnostics')}</h3>
-          <div className="mt-1 text-xs text-zinc-500 dark:text-zinc-500">{t('settings.diagnosticsDescription')}</div>
-        </div>
+        <div className="text-xs text-zinc-500 dark:text-zinc-500">{t('settings.diagnosticsDescription')}</div>
         <div className="flex flex-wrap items-center gap-2">
           <label className="flex items-center gap-2 text-xs text-zinc-600 dark:text-zinc-400">
             {t('settings.provider')}

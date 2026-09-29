@@ -30,7 +30,7 @@ describe('M0 shared constants and adapter seeds', () => {
   it('keeps original extension mode labels and prompt data available', () => {
     expect(CHAT_MODES.free).toMatchObject({
       name: '自由模式',
-      description: '同時發給四家，各自獨立回答',
+      description: '同時發給勾選的幾家，各自獨立回答',
       icon: '⚡',
       serial: false,
     });
