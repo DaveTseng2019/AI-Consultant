@@ -39,13 +39,11 @@ describe('settings persistence', () => {
 
     const result = applyStandbyProviderToLiveSettings('meta', 'grok', live.openProviders, live.presentation);
 
-    expect(result.openProviders).toEqual(['chatgpt', 'claude']);
-    expect(result.presentation).toEqual({
-      ...live.presentation,
-      meta: 'side',
-      grok: 'chip',
-    });
-    expect(result.presentation.chatgpt).toBe('center');
+    // The new standby only moves to the end of the lineup: it stays open and keeps its pane.
+    expect(result.openProviders).toEqual(['chatgpt', 'claude', 'grok']);
+    expect(result.presentation).toEqual(live.presentation);
+    expect(result.openProviders).not.toBe(live.openProviders);
+    expect(result.presentation).not.toBe(live.presentation);
     expect(live.openProviders).toEqual(['chatgpt', 'claude', 'grok']);
     expect(live.presentation.meta).toBe('chip');
   });

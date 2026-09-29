@@ -68,14 +68,36 @@ function harness(initial: AppSettings) {
   return { render, onSaved, onClose };
 }
 
+const SEED_URL = 'https://seed.example';
+const NEXT_URL = 'https://next.example';
+const seeded = (): AppSettings => ({ ...defaultSettings(), adapterBaseUrl: SEED_URL });
+const dirtyDraft = (tree: ReactNode) =>
+  control(tree, (element) => element.type === 'input' && element.props.value === SEED_URL)!
+    .props.onChange!({ target: { value: NEXT_URL } });
+
 describe('SettingsModal standby save ordering', () => {
-  it('coalesces Save clicks and keeps the modal open while a standby save is in flight', async () => {
+  it('persists a standby change at once, without Save, and leaves every pane as it was', async () => {
+    vi.stubGlobal('window', { setTimeout: vi.fn(), clearTimeout: vi.fn() });
+    const write = vi.spyOn(host.settings, 'set').mockResolvedValue(undefined);
+    const initial = defaultSettings();
+    const ui = harness(initial);
+
+    control(ui.render(), (element) => element.type === 'select' && element.props.value === 'meta')!
+      .props.onChange!({ target: { value: 'grok' } });
+
+    await vi.waitFor(() => expect(write).toHaveBeenCalledTimes(1));
+    const persisted = write.mock.calls[0][0] as AppSettings;
+    expect(persisted.standbyProvider).toBe('grok');
+    expect(persisted.presentation).toEqual(initial.presentation);
+    expect(persisted.openProviders).toEqual(initial.openProviders);
+  });
+
+  it('coalesces Save clicks and keeps the modal open while a save is in flight', async () => {
     vi.stubGlobal('window', { setTimeout: vi.fn(), clearTimeout: vi.fn() });
     let finishSwap!: () => void;
     const write = vi.spyOn(host.settings, 'set').mockReturnValue(new Promise<void>((resolve) => { finishSwap = resolve; }));
-    const ui = harness(defaultSettings());
-    control(ui.render(), (element) => element.type === 'select' && element.props.value === 'meta')!
-      .props.onChange!({ target: { value: 'grok' } });
+    const ui = harness(seeded());
+    dirtyDraft(ui.render());
     const tree = ui.render();
     const save = control(tree, (element) => element.type === 'button' && element.props.children === t('settings.save', 'en'))!
       .props.onClick!;
@@ -93,15 +115,14 @@ describe('SettingsModal standby save ordering', () => {
     expect(ui.onClose).toHaveBeenCalledTimes(1);
   });
 
-  it('keeps the newly activated provider visible through an autosave queued before the parent renders', async () => {
+  it('keeps a saved draft through an autosave queued before the parent renders', async () => {
     vi.stubGlobal('window', { setTimeout: vi.fn(), clearTimeout: vi.fn() });
     let finishSwap!: () => void;
     const swap = new Promise<void>((resolve) => { finishSwap = resolve; });
     const write = vi.spyOn(host.settings, 'set').mockResolvedValue(undefined).mockReturnValueOnce(swap);
-    const ui = harness(defaultSettings());
+    const ui = harness(seeded());
 
-    control(ui.render(), (element) => element.type === 'select' && element.props.value === 'meta')!
-      .props.onChange!({ target: { value: 'grok' } });
+    dirtyDraft(ui.render());
     const tree = ui.render();
     control(tree, (element) => element.type === 'button' && element.props.children === t('settings.save', 'en'))!
       .props.onClick!();
@@ -112,9 +133,7 @@ describe('SettingsModal standby save ordering', () => {
     finishSwap();
     await vi.waitFor(() => expect(ui.onSaved).toHaveBeenCalledTimes(2));
     const persisted = write.mock.calls.map(([settings]) => settings as AppSettings);
-    expect(persisted.map((settings) => settings.standbyProvider)).toEqual(['grok', 'grok']);
-    expect(persisted.map((settings) => settings.presentation.meta)).toEqual(['side', 'side']);
-    expect(persisted[1].presentation.grok).toBe('chip');
+    expect(persisted.map((settings) => settings.adapterBaseUrl)).toEqual([NEXT_URL, NEXT_URL]);
     expect(persisted[1].language).toBe('ja');
   });
 
@@ -125,9 +144,8 @@ describe('SettingsModal standby save ordering', () => {
     const font = new Promise<void>((resolve) => { finishFont = resolve; });
     const swap = new Promise<void>((resolve) => { finishSwap = resolve; });
     const write = vi.spyOn(host.settings, 'set').mockReturnValueOnce(font).mockReturnValueOnce(swap);
-    const ui = harness(defaultSettings());
-    control(ui.render(), (element) => element.type === 'select' && element.props.value === 'meta')!
-      .props.onChange!({ target: { value: 'grok' } });
+    const ui = harness(seeded());
+    dirtyDraft(ui.render());
     // This repo renders the box through FontSizeField, which a shallow walk does not expand; its
     // onText/onCommit pair is exactly what the input's onChange calls.
     const fontField = control(ui.render(), (element) => (element.props as { field?: string }).field === 'fontSize')!

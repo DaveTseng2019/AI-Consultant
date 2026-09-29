@@ -79,18 +79,11 @@ export function applyStandbyProviderToLiveSettings(
   openProviders: readonly AIProvider[],
   presentation: PresentationByProvider,
 ): Pick<AppSettings, 'openProviders' | 'presentation'> {
-  if (previousStandbyProvider === nextStandbyProvider) {
-    return { openProviders: [...openProviders], presentation: { ...presentation } };
-  }
-
-  return {
-    openProviders: openProviders.filter((provider) => provider !== nextStandbyProvider),
-    presentation: {
-      ...presentation,
-      [previousStandbyProvider]: 'side',
-      [nextStandbyProvider]: 'chip',
-    },
-  };
+  // A standby change only reorders the lineup here, so the live panes carry over untouched.
+  // Upstream closes the new standby and turns it into a chip.
+  void previousStandbyProvider;
+  void nextStandbyProvider;
+  return { openProviders: [...openProviders], presentation: { ...presentation } };
 }
 
 export function SettingsModal({
@@ -435,7 +428,8 @@ export function SettingsModal({
   const updateStandbyProvider = (standbyProvider: AIProvider) => {
     if (!draft || standbyProvider === draft.standbyProvider || providerSelectionDisabled || saveInFlightRef.current) return;
     // Only the order changes: the standby keeps its roles, its open pane and its presentation.
-    updateDraft({ standbyProvider });
+    // That makes it a low-risk field, so it persists on change like the role pickers do.
+    void persistDraftFieldImmediately('standbyProvider', standbyProvider);
   };
 
   const closeSettings = async () => {
