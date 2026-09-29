@@ -2,15 +2,15 @@
 
 # AI Consultant
 
-Put the **web versions** of ChatGPT, Claude, Gemini and Grok side by side in one desktop
-window. Ask once and all four answer at the same time, or bring one provider's own view
+Put the **web versions** of ChatGPT, Claude, Gemini, Grok and Meta AI side by side in one
+desktop window. Ask once and they all answer at the same time, or bring one provider's own view
 to the centre and ask it alone in its own input box — that question and answer reach the
 transcript too. Or let them run a preset flow in relay — reviewing each other, or debating.
 Tauri 2 + React + Rust.
 
 ## No API key
 
-The main window holds four child webviews that load the same four sites you use every day.
+The main window holds five child webviews that load the same five sites you use every day.
 Sending does not call any API. It **uses the browser session you are already logged in
 with**: it types into the site's own input box, presses the site's own send button, and
 reads the answer back.
@@ -26,7 +26,7 @@ For the mechanism (the three layers, the bridge, connection state, the send path
 
 | Mode | Shape |
 |---|---|
-| Free mode | Send to all four at once, each answers on its own |
+| Free mode | Send to the ticked providers at once, each answers on its own |
 | Multi-party consultation | Up to three sources answer → anonymous review → summarise the research |
 | Four-way debate | For → against → judge → summary |
 | Coding mode | Plan → review → implement → test → accept (8 steps) |
@@ -35,6 +35,11 @@ For the mechanism (the three layers, the bridge, connection state, the send path
 
 Every mode except free mode is serial — **a later step gets the earlier answers as
 material**. That is the basic difference from free mode.
+
+Which provider plays each role is set in Settings. The "Send to selected AI" strip marks the
+current line-up with each logo and its role, and in Consult you can remove or add back answerers
+and the summary right there. Pick one provider in Settings as the **substitute**: when a role's
+provider is not signed in or not ready, it takes over.
 
 A send leaves a transcript and a snapshot behind, and both export to Markdown. "Replay"
 **runs the question again**, so the AIs answer afresh; it does not play back the old
@@ -47,9 +52,14 @@ redaction tier: `full-local` keeps both the question and the AI answers in plain
 `prompt-text` keeps the question in plain text and hashes the answers, and `metadata-only`
 and `hashes` keep no text at all — you have to type the question again to replay.
 
-## Running it
+## Installing
 
-There is no installer. Build one yourself.
+Download from [Releases](https://github.com/DaveTseng2019/AI-Consultant/releases/latest): a Windows
+installer or a portable zip that needs no install, a macOS (Apple Silicon) `.dmg`, or a Linux
+`.AppImage`. The app is not code-signed, so the system warns the first time you open it. That is
+expected; each release's notes say how to let it through on each platform.
+
+## Running from source
 
 Prerequisites: Node.js `^22.13.0 || >=24.0.0`, pnpm 11 (`corepack enable`), Rust stable
 (on Windows, "Desktop development with C++" from the MSVC Build Tools), and WebView2
@@ -66,7 +76,7 @@ check). For release builds, the portable build and the agent launch scripts, see
 [`docs/RUN-AND-UPDATE.md`](../docs/RUN-AND-UPDATE.md).
 
 The data directory is `%APPDATA%\tw.micasa.aiconsultant`, and it holds a separate login
-profile for each of the four providers.
+profile for each of the five providers.
 
 ## Where it stands
 
@@ -100,8 +110,8 @@ Four things about Grok are invisible to the app, and all four catch first-time u
    Ready, but what comes back to your question is that age question, and the sequential modes
    feed it to the next step as material. Put Grok on the stage, switch to the real page and
    answer it once; a new profile or a fresh sign-in asks again.
-4. **The Firsting Time A card sitting at "Opening..." means the page has not reported a sign-in state yet, not
-   that you are signed out.** Press Sign in above the card, or close and reopen the app, and
+4. **On first registration, a card sitting at "Opening..." means the page has not reported a sign-in
+   state yet, not that you are signed out.** Press Sign in above the card, or close and reopen the app, and
    it usually settles into ready.
 
 A signed-out Grok on the stage says 1, 3 and 4 on screen. The long version is in

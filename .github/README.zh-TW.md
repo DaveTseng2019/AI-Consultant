@@ -2,13 +2,13 @@
 
 # AI Consultant
 
-把 ChatGPT、Claude、Gemini、Grok 的**網頁版**並排在同一個桌面視窗裡，一次提問四家同時作答，
+把 ChatGPT、Claude、Gemini、Grok、Meta AI 的**網頁版**並排在同一個桌面視窗裡，一次提問各家同時作答，
 也可以把某一家的原生視窗叫到中央，直接在它自己的輸入框個別提問——那一問一答同樣會進逐字稿。
 或讓它們依照預設流程接力、互審、辯論。Tauri 2 ＋ React ＋ Rust。
 
 ## 沒有 API key
 
-主視窗掛四個子 webview，載入你平常用的那四個網站。送出時不呼叫任何 API，而是**用你已登入的
+主視窗掛五個子 webview，載入你平常用的那五個網站。送出時不呼叫任何 API，而是**用你已登入的
 網頁 session**——把字打進那個網站自己的輸入框、按它自己的送出鈕、再把回答抓回來。
 
 所以帳號、額度、模型版本都是你自己的，沒有金鑰要保管。代價是 **provider 改版就會壞**，
@@ -20,7 +20,7 @@
 
 | 模式 | 形狀 |
 |---|---|
-| 自由模式 | 同時發給四家，各自獨立回答 |
+| 自由模式 | 同時發給勾選的幾家，各自獨立回答 |
 | 多方諮詢 | 最多三源先答 → 匿名審查 → 總結研究 |
 | 四方辯證 | 正方 → 反方 → 判官 → 總結 |
 | Coding 模式 | 規劃 → 審查 → 實作 → 測試 → 驗收（8 步） |
@@ -28,6 +28,10 @@
 | 腦力激盪 | 12 輪 · 48 次發言 · 5 階段 |
 
 除了自由模式，其餘都是串行——**後續步驟拿得到前面的回答當材料**，這是它們與自由模式的根本差別。
+
+每個角色由哪一家擔任，可以在設定裡改。「傳送給已選的 AI」那一列會用 logo 加角色標出目前的分配；
+多方諮詢還能直接在那裡取消或加回回答者與總結。設定裡選一家當**替補 AI**：某個角色的 AI 沒登入或
+沒就緒時，由它自動接手。
 
 送出後會留下 transcript 與 snapshot，可匯出 Markdown。「重播」是**按提問重跑一次**，
 AI 會重新回答，不是回放舊畫面。
@@ -37,9 +41,13 @@ snapshot 預設只存在記憶體裡，關掉 app 就沒了。要留到下次開
 `full-local` 才會把問題與 AI 回覆都以明文留下；`prompt-text` 只留問題明文，回覆存雜湊；
 `metadata-only` 與 `hashes` 不留文字，重播時要自己把問題再打一次。
 
-## 執行
+## 安裝
 
-沒有發佈任何安裝檔，自己建一支來用。
+到 [Releases](https://github.com/DaveTseng2019/AI-Consultant/releases/latest) 下載：Windows 安裝檔或免安裝的
+可攜版 zip、macOS（Apple Silicon）的 `.dmg`、Linux 的 `.AppImage`。程式沒有數位簽章，第一次開啟時
+系統會警告，這是正常的；各平台怎麼放行寫在每一版的 release 說明裡。
+
+## 從原始碼執行
 
 前置需求：Node.js `^22.13.0 || >=24.0.0`、pnpm 11（`corepack enable`）、Rust stable
 （Windows 需 MSVC Build Tools 的「Desktop development with C++」）、WebView2（Windows 10/11 通常已內建）。
@@ -53,7 +61,7 @@ pnpm tauri dev        # 第一次 Rust 編譯較久
 改完跑 `pnpm verify`（typecheck ＋ lint ＋ test ＋ agent 契約 ＋ adapter 檢查）。
 建 release 版、可攜版、agent 腳本啟動法見 [`docs/RUN-AND-UPDATE.zh-TW.md`](../docs/RUN-AND-UPDATE.zh-TW.md)。
 
-資料目錄在 `%APPDATA%\tw.micasa.aiconsultant`，四家各自獨立的登入 profile 都在裡面。
+資料目錄在 `%APPDATA%\tw.micasa.aiconsultant`，五家各自獨立的登入 profile 都在裡面。
 
 ## 現況
 
