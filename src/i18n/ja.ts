@@ -342,6 +342,7 @@ export const ja: Record<I18nKey, string> = {
   'settings.installPortableUpdate': 'ダウンロードして更新',
   'settings.portableUpdateConfirm': 'アプリを終了し、新しいポータブル版をダウンロードして再起動します。続けますか？',
   'settings.portableUpdateFailed': 'アップデートに失敗しました:',
+  'settings.downloadPageFailed': "ダウンロードページを開けませんでした。もう一度お試しください。",
   'settings.releasesUnavailable': 'リリースを確認できませんでした。後でもう一度お試しください。',
   'settings.updateCheckFailed': 'アップデートの確認に失敗：',
   'settings.telemetryNone': 'テレメトリー：なし',

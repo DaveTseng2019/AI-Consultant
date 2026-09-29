@@ -329,6 +329,7 @@ export const zhTW: Record<I18nKey, string> = {
   'settings.installPortableUpdate': '下載並自動更新',
   'settings.portableUpdateConfirm': '程式會關閉、下載新版可攜檔並自動重新開啟。要繼續嗎？',
   'settings.portableUpdateFailed': '更新失敗：',
+  'settings.downloadPageFailed': "無法開啟下載頁，請再試一次。",
   'settings.releasesUnavailable': '無法檢查 releases。請稍後再試。',
   'settings.updateCheckFailed': '更新檢查失敗：',
   'settings.telemetryNone': 'telemetry：無',

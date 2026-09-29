@@ -317,6 +317,7 @@ export const I18N_KEYS = [
   'settings.installPortableUpdate',
   'settings.portableUpdateConfirm',
   'settings.portableUpdateFailed',
+  'settings.downloadPageFailed',
   'settings.releasesUnavailable',
   'settings.updateCheckFailed',
   'settings.telemetryNone',
