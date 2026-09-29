@@ -269,7 +269,7 @@ describe('workflow engine', () => {
     { mode: 'coding' },
     { mode: 'roundtable' },
     { mode: 'free', presetId: 'brainstorm' },
-  ] as const)('blocks standby roles before any send despite stale Ready state: %j', async (workflow) => {
+  ] as const)('runs roles held by the standby, which only sorts last: %j', async (workflow) => {
     vi.mocked(host.connections.get).mockResolvedValue([...providers, 'meta' as const].map((provider) => state(provider)));
     vi.mocked(host.provider.send).mockImplementation(async (provider) => {
       publishBridgeMessage(done(provider, `${provider}-answer`));
@@ -277,16 +277,13 @@ describe('workflow engine', () => {
 
     await expect(runWorkflow({
       ...workflow,
-      text: 'stale standby must not run',
+      text: 'the standby keeps its seat',
       activeProviders: activeProvidersForStandby('grok'),
-    })).resolves.toEqual({
-      ok: false,
-      preflight: { ok: false, unavailable: ['grok'], aliased: [] },
-    });
-    expect(host.provider.send).not.toHaveBeenCalled();
+    })).resolves.toEqual({ ok: true });
+    expect(vi.mocked(host.provider.send).mock.calls.map(([provider]) => provider)).toContain('grok');
   });
 
-  it.each(providers)('preserves all four debate steps when Meta replaces %s', async (standbyProvider) => {
+  it.each(providers)('keeps every debate seat when %s is the standby', async (standbyProvider) => {
     const settings = normalizeSettings({ standbyProvider });
     const activeProviders = activeProvidersForStandby(standbyProvider);
     vi.mocked(host.connections.get).mockResolvedValue(activeProviders.map((provider) => state(provider)));
@@ -301,14 +298,14 @@ describe('workflow engine', () => {
       activeProviders,
     })).resolves.toEqual({ ok: true });
 
-    const expected = Object.values(DEFAULT_DEBATE_ROLES).map((provider) => provider === standbyProvider ? 'meta' : provider);
+    const expected = Object.values(DEFAULT_DEBATE_ROLES);
     expect(vi.mocked(host.provider.send).mock.calls.map(([provider]) => provider)).toEqual(expected);
-    expect(new Set(expected)).toEqual(new Set(activeProviders));
+    expect(expected).toContain(standbyProvider);
   });
 
   it.each(providers.flatMap((standbyProvider) =>
     (['consult', 'coding', 'roundtable', 'brainstorm'] as const).map((workflow) => ({ standbyProvider, workflow })),
-  ))('preserves $workflow sequence and recorded roles when Meta replaces $standbyProvider', async ({ standbyProvider, workflow }) => {
+  ))('keeps the $workflow sequence and recorded roles when $standbyProvider is the standby', async ({ standbyProvider, workflow }) => {
     const settings = normalizeSettings({ standbyProvider });
     const activeProviders = activeProvidersForStandby(standbyProvider);
     // Include a stale Ready standby to prove the saved lineup controls every send.
@@ -337,9 +334,9 @@ describe('workflow engine', () => {
           : Array.from({ length: BRAINSTORM_ROUND_COUNT }, (_, round) =>
             roundtableSeats.map((_, seat) => roundtableSeats[(round + seat) % 4]),
           ).flat();
-    const expected = baseline.map((provider) => provider === standbyProvider ? 'meta' : provider);
+    const expected = baseline;
     expect(vi.mocked(host.provider.send).mock.calls.map(([provider]) => provider)).toEqual(expected);
-    expect(new Set(expected)).toEqual(new Set(activeProviders));
+    expect(expected).toContain(standbyProvider);
     expect(getLastSnapshot()?.roleMap).toEqual(roles);
     expect(getLastSnapshot()?.steps.map((step) => step.provider)).toEqual(expected);
     expect(getLastSnapshot()?.steps.every((step) => step.status === 'done')).toBe(true);

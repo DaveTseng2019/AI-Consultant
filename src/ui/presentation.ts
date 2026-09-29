@@ -1,4 +1,4 @@
-import { AI_PROVIDERS, DEFAULT_STANDBY_PROVIDER } from '../../shared/constants';
+import { AI_PROVIDERS } from '../../shared/constants';
 import type { AIProvider, ProviderState } from '../../shared/types';
 import type { CenterSurface } from './FocusPane';
 
@@ -54,8 +54,9 @@ export function normalizePresentation(value: unknown, fallback: PresentationByPr
   return next;
 }
 
-function defaultPresentationState(provider: AIProvider): WebviewPresentationState {
-  return provider === DEFAULT_STANDBY_PROVIDER ? 'chip' : 'side';
+// The standby opens like the others; it only sorts last in the lineup.
+function defaultPresentationState(_provider: AIProvider): WebviewPresentationState {
+  return 'side';
 }
 
 export function setProviderPresentation(

@@ -104,8 +104,11 @@ const PROVIDERS = Object.keys(AI_PROVIDERS) as AIProvider[];
 export const SETTINGS_SCHEMA_VERSION = 2;
 const LEGACY_MODE_ROLE_MIGRATION_VERSION = 1;
 
+// Every provider is usable. Upstream removes the standby from the lineup; here it only sorts last,
+// so the page, free mode and role assignment all see all five.
 export function activeProvidersForStandby(standbyProvider: AIProvider): AIProvider[] {
-  return (ALL_AI_PROVIDERS as readonly AIProvider[]).filter((provider) => provider !== standbyProvider);
+  const others = (ALL_AI_PROVIDERS as readonly AIProvider[]).filter((provider) => provider !== standbyProvider);
+  return [...others, standbyProvider];
 }
 
 export function normalizeStandbyProvider(value: unknown): AIProvider {
@@ -268,13 +271,8 @@ export function normalizeSettings(value: unknown): AppSettings {
     storedSchemaVersion < LEGACY_MODE_ROLE_MIGRATION_VERSION
       ? migrateLegacyModeRoleAssignments(input.modeRoles, defaults.modeRoles)
       : normalizeModeRoleAssignments(input.modeRoles, defaults.modeRoles);
-  const standbyPresentation = Object.fromEntries(
-    PROVIDERS.map((provider) => [provider, provider === normalizedStandbyProvider ? 'chip' : 'side']),
-  ) as PresentationByProvider;
-  const presentationInput = input.presentation && typeof input.presentation === 'object'
-    ? { ...(input.presentation as Record<string, unknown>), [normalizedStandbyProvider]: 'chip' }
-    : input.presentation;
-  const normalizedPresentation = normalizePresentation(presentationInput, standbyPresentation);
+  // The standby is presented like any other provider; it only sorts last in activeProviders.
+  const normalizedPresentation = normalizePresentation(input.presentation);
 
   return {
     settingsSchemaVersion: SETTINGS_SCHEMA_VERSION,
@@ -296,7 +294,7 @@ export function normalizeSettings(value: unknown): AppSettings {
     slotAssignment: normalizeSlotAssignment(input.slotAssignment, defaults.slotAssignment),
     modeRoles: keepModeRolesWithinProviders(normalizedModeRoles, activeProviders),
     standbyProvider: normalizedStandbyProvider,
-    openProviders: Array.from(new Set(providerList(input.openProviders))).filter((provider) => provider !== normalizedStandbyProvider),
+    openProviders: Array.from(new Set(providerList(input.openProviders))),
     adapterBaseUrl: stringValue(input.adapterBaseUrl, defaults.adapterBaseUrl),
     updaterChannel: stringValue(input.updaterChannel, defaults.updaterChannel),
     portable: input.portable === true,
@@ -305,7 +303,7 @@ export function normalizeSettings(value: unknown): AppSettings {
     snapshotRedactionTier: snapshotRedactionTier(input.snapshotRedactionTier, defaults.snapshotRedactionTier),
     customActions: customActions(input as Record<string, unknown>),
     singleInstance: input.singleInstance !== false,
-    presentation: { ...normalizedPresentation, [normalizedStandbyProvider]: 'chip' },
+    presentation: normalizedPresentation,
     centerSurface: centerSurface(input.centerSurface, defaults.centerSurface),
   };
 }

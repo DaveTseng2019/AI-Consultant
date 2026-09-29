@@ -1546,14 +1546,6 @@ fn close_provider(app: &AppHandle, provider: &str) -> Result<(), String> {
     Ok(())
 }
 
-pub(crate) fn close_standby_provider(app: &AppHandle, provider: &str) -> Result<(), String> {
-    let has_webview = app.get_webview(&provider_label(provider)).is_some();
-    if !has_webview && current_state(provider).webview == "none" {
-        return Ok(());
-    }
-    close_provider(app, provider)
-}
-
 #[tauri::command]
 pub async fn provider_show(
     app: AppHandle,

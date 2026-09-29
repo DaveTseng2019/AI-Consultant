@@ -22,7 +22,7 @@ import {
   MODE_ROLE_LABEL_KEYS,
   MODE_ROLE_MODE_LABEL_KEYS,
   assignModeRole,
-  replaceModeRoleProvider,
+
   type ModeRoleAssignments,
 } from './modeRoleAssignment';
 import { compareVersions, fetchLatestRelease, isLocalBuild } from './updateCheck';
@@ -434,17 +434,8 @@ export function SettingsModal({
 
   const updateStandbyProvider = (standbyProvider: AIProvider) => {
     if (!draft || standbyProvider === draft.standbyProvider || providerSelectionDisabled || saveInFlightRef.current) return;
-    const previousStandby = draft.standbyProvider;
-    updateDraft({
-      standbyProvider,
-      modeRoles: replaceModeRoleProvider(draft.modeRoles, standbyProvider, previousStandby),
-      openProviders: draft.openProviders.filter((provider) => provider !== standbyProvider),
-      presentation: {
-        ...draft.presentation,
-        [previousStandby]: 'side',
-        [standbyProvider]: 'chip',
-      },
-    });
+    // Only the order changes: the standby keeps its roles, its open pane and its presentation.
+    updateDraft({ standbyProvider });
   };
 
   const closeSettings = async () => {
@@ -782,11 +773,13 @@ export function SettingsModal({
                 </p>
               ) : null}
               <div className="flex flex-wrap gap-1.5" role="group" aria-label={t('settings.providers')}>
-                {activeProvidersForStandby(draft.standbyProvider).map((provider) => (
-                  <span key={provider} className="rounded-full border border-emerald-300 bg-emerald-50 px-2 py-1 text-xs text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">
-                    {AI_PROVIDERS[provider].name} · {t('settings.providerActive')}
-                  </span>
-                ))}
+                {activeProvidersForStandby(draft.standbyProvider)
+                  .filter((provider) => provider !== draft.standbyProvider)
+                  .map((provider) => (
+                    <span key={provider} className="rounded-full border border-emerald-300 bg-emerald-50 px-2 py-1 text-xs text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">
+                      {AI_PROVIDERS[provider].name} · {t('settings.providerActive')}
+                    </span>
+                  ))}
                 <span className="rounded-full border border-zinc-300 bg-zinc-100 px-2 py-1 text-xs text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">
                   {AI_PROVIDERS[draft.standbyProvider].name} · {t('settings.providerStandby')}
                 </span>

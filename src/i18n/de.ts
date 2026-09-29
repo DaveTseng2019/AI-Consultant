@@ -252,7 +252,7 @@ export const de: Record<I18nKey, string> = {
   'settings.close': 'Schließen',
   'settings.general': 'Allgemein',
   'settings.providers': 'Aktive KI-Anbieter',
-  'settings.providersDescription': 'Vier aktiv, einer in Reserve. Anmeldungen bleiben gespeichert.',
+  'settings.providersDescription': 'Alle fünf sind nutzbar; die Reserve steht am Ende. Anmeldungen bleiben gespeichert.',
   'settings.providersDefault': 'Standardmäßig in Reserve',
   'settings.providersSelect': 'Anbieter in Reserve',
   'settings.providerActive': 'Aktiv',

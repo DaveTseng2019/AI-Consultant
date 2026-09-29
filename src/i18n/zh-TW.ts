@@ -240,7 +240,7 @@ export const zhTW: Record<I18nKey, string> = {
   'settings.close': '關閉',
   'settings.general': '一般',
   'settings.providers': '啟用的 AI',
-  'settings.providersDescription': '四家啟用、一家備用，切換保留登入。',
+  'settings.providersDescription': '五家都能使用，備用的排在最後，切換保留登入。',
   'settings.providersDefault': '預設備用',
   'settings.providersSelect': '備用 AI',
   'settings.providerActive': '已啟用',

@@ -184,7 +184,7 @@ pub fn normalize_settings_value(settings: Value) -> Value {
             Value::String(standby_provider.clone()),
         );
 
-        let presentation = normalize_presentation_value(map.get("presentation"), &standby_provider);
+        let presentation = normalize_presentation_value(map.get("presentation"));
         map.insert("presentation".to_string(), presentation);
     }
     settings
@@ -388,13 +388,10 @@ fn normalize_standby_provider(value: Option<&Value>) -> String {
         .to_string()
 }
 
-fn active_providers_for_settings(settings: &Value) -> Vec<&'static str> {
-    let standby_provider = normalize_standby_provider(settings.get("standbyProvider"));
-    PROVIDERS
-        .iter()
-        .copied()
-        .filter(|provider| *provider != standby_provider)
-        .collect()
+// Every provider is active. Upstream keeps the standby out of the lineup; here it only sorts last,
+// which is the frontend's concern, so the native side no longer gates on it.
+fn active_providers_for_settings(_settings: &Value) -> Vec<&'static str> {
+    PROVIDERS.to_vec()
 }
 
 fn ensure_provider_active_value(settings: &Value, provider: &str) -> Result<(), String> {
@@ -404,9 +401,7 @@ fn ensure_provider_active_value(settings: &Value, provider: &str) -> Result<(), 
     if active_providers_for_settings(settings).contains(&provider) {
         return Ok(());
     }
-    Err(format!(
-        "{provider} is configured as the standby provider; select it in Settings before opening it"
-    ))
+    Err(format!("inactive provider: {provider}"))
 }
 
 pub(crate) fn ensure_provider_active(app: &AppHandle, provider: &str) -> Result<(), String> {
@@ -419,8 +414,6 @@ pub(crate) fn ensure_provider_active_locked(app: &AppHandle, provider: &str) -> 
     // to the default lineup, so the native guard uses the same safe Meta-standby default.
     let settings =
         read_settings(&settings_path(app)?).unwrap_or_else(|_| Value::Object(Map::new()));
-    let standby_provider = normalize_standby_provider(settings.get("standbyProvider"));
-    crate::webviews::close_standby_provider(app, &standby_provider)?;
     ensure_provider_active_value(&settings, provider)
 }
 
@@ -428,21 +421,17 @@ fn read_settings_for_provider_guard(path: &Path) -> Value {
     read_settings(path).unwrap_or_else(|_| Value::Object(Map::new()))
 }
 
-fn normalize_presentation_value(value: Option<&Value>, standby_provider: &str) -> Value {
+fn normalize_presentation_value(value: Option<&Value>) -> Value {
     let input = value.and_then(|value| value.as_object());
     let mut map = Map::new();
     let mut center_seen = false;
 
     for provider in PROVIDERS {
-        let candidate = if *provider == standby_provider {
-            "chip"
-        } else {
-            input
-                .and_then(|object| object.get(*provider))
-                .and_then(|value| value.as_str())
-                .filter(|value| PRESENTATION_STATES.contains(value))
-                .unwrap_or("side")
-        };
+        let candidate = input
+            .and_then(|object| object.get(*provider))
+            .and_then(|value| value.as_str())
+            .filter(|value| PRESENTATION_STATES.contains(value))
+            .unwrap_or("side");
         let normalized = if candidate == "center" {
             if center_seen {
                 "side"
@@ -536,11 +525,6 @@ pub async fn settings_get(app: AppHandle) -> Result<serde_json::Value, String> {
     let _lifecycle_guard = lock_provider_lifecycle()?;
     let path = settings_path(&app)?;
     let mut settings = normalize_settings_value(read_settings_for_provider_guard(&path));
-    let standby_provider = settings
-        .get("standbyProvider")
-        .and_then(Value::as_str)
-        .unwrap_or(DEFAULT_STANDBY_PROVIDER);
-    crate::webviews::close_standby_provider(&app, standby_provider)?;
     if let Value::Object(map) = &mut settings {
         map.insert(
             "portable".to_string(),
@@ -556,16 +540,8 @@ pub async fn settings_set(app: AppHandle, settings: serde_json::Value) -> Result
     let path = settings_path(&app)?;
     let previous = read_settings(&path).unwrap_or_else(|_| Value::Object(Map::new()));
     let settings = normalize_settings_value(settings);
-    let standby_provider = settings
-        .get("standbyProvider")
-        .and_then(Value::as_str)
-        .unwrap_or(DEFAULT_STANDBY_PROVIDER);
     let bytes = serialized_settings(&settings)?;
-    // Prepare and validate the complete write before retiring the new standby. The final atomic
-    // replace happens only after the WebView close succeeds.
-    write_atomic_before_replace(&path, &bytes, || {
-        crate::webviews::close_standby_provider(&app, standby_provider)
-    })?;
+    write_atomic(&path, &bytes)?;
     let changed = |key: &str| {
         previous.get(key).and_then(|value| value.as_str())
             != settings.get(key).and_then(|value| value.as_str())
@@ -1051,7 +1027,7 @@ mod tests {
         active_providers_for_settings, build_stamp_from_json, ensure_provider_active_value,
         is_release_asset_url, normalize_settings_value, read_settings,
         read_settings_for_provider_guard, write_atomic_before_replace, write_settings,
-        ARCHIVE_LABEL_MAX_CHARS,
+        ARCHIVE_LABEL_MAX_CHARS, PROVIDERS,
     };
     use serde_json::{json, Value};
     use std::path::PathBuf;
@@ -1116,14 +1092,14 @@ mod tests {
 
     #[test]
     fn malformed_settings_fall_back_to_the_safe_provider_lineup() {
+        // A damaged settings file must not brick any provider, the default standby included.
         let path = unique_path("malformed-provider-guard");
         std::fs::write(&path, b"{not-json").expect("write malformed settings");
 
         let settings = read_settings_for_provider_guard(&path);
-        for provider in ["chatgpt", "claude", "gemini", "grok"] {
+        for provider in ["chatgpt", "claude", "gemini", "grok", "meta"] {
             assert!(ensure_provider_active_value(&settings, provider).is_ok());
         }
-        assert!(ensure_provider_active_value(&settings, "meta").is_err());
 
         let _ = std::fs::remove_file(path);
     }
@@ -1303,7 +1279,7 @@ mod tests {
                     "claude": "side",
                     "gemini": "side",
                     "grok": "side",
-                    "meta": "chip"
+                    "meta": "side"
                 }
             })
         );
@@ -1334,7 +1310,7 @@ mod tests {
                     "claude": "center",
                     "gemini": "side",
                     "grok": "side",
-                    "meta": "chip"
+                    "meta": "side"
                 }
             })
         );
@@ -1365,55 +1341,47 @@ mod tests {
                     "claude": "side",
                     "gemini": "side",
                     "grok": "side",
-                    "meta": "chip"
+                    "meta": "side"
                 }
             })
         );
     }
 
     #[test]
-    fn normalizes_standby_provider_and_keeps_exactly_four_active() {
+    fn normalizes_standby_provider_and_keeps_all_five_active() {
+        // The standby only sorts last in the UI; natively every provider stays usable.
         for standby in ["chatgpt", "claude", "gemini", "grok", "meta"] {
             let normalized = normalize_settings_value(json!({ "standbyProvider": standby }));
             assert_eq!(normalized.get("standbyProvider"), Some(&json!(standby)));
-
-            let active = active_providers_for_settings(&normalized);
-            assert_eq!(active.len(), 4);
-            assert!(!active.contains(&standby));
+            assert_eq!(
+                active_providers_for_settings(&normalized),
+                PROVIDERS.to_vec()
+            );
         }
 
         for invalid in [json!(null), json!("unknown"), json!(42)] {
             let normalized = normalize_settings_value(json!({ "standbyProvider": invalid }));
             assert_eq!(normalized.get("standbyProvider"), Some(&json!("meta")));
-            assert_eq!(
-                active_providers_for_settings(&normalized),
-                vec!["chatgpt", "claude", "gemini", "grok"]
-            );
         }
     }
 
     #[test]
-    fn standby_provider_is_denied_until_selected() {
-        let default_settings = json!({});
-        for provider in ["chatgpt", "claude", "gemini", "grok"] {
-            assert!(ensure_provider_active_value(&default_settings, provider).is_ok());
+    fn standby_provider_can_be_opened() {
+        // Free mode can send to the standby, so opening it must never be refused.
+        for settings in [json!({}), json!({ "standbyProvider": "grok" })] {
+            for provider in ["chatgpt", "claude", "gemini", "grok", "meta"] {
+                assert!(ensure_provider_active_value(&settings, provider).is_ok());
+            }
         }
         assert_eq!(
-            ensure_provider_active_value(&default_settings, "meta").unwrap_err(),
-            "meta is configured as the standby provider; select it in Settings before opening it"
-        );
-
-        let grok_standby = json!({ "standbyProvider": "grok" });
-        assert!(ensure_provider_active_value(&grok_standby, "meta").is_ok());
-        assert!(ensure_provider_active_value(&grok_standby, "grok").is_err());
-        assert_eq!(
-            ensure_provider_active_value(&grok_standby, "not-a-provider").unwrap_err(),
+            ensure_provider_active_value(&json!({}), "not-a-provider").unwrap_err(),
             "unknown provider: not-a-provider"
         );
     }
 
     #[test]
-    fn standby_provider_is_forced_to_chip_presentation() {
+    fn standby_provider_keeps_its_presentation() {
+        // The standby is shown like any other provider, so its saved presentation survives.
         let normalized = normalize_settings_value(json!({
             "standbyProvider": "grok",
             "presentation": {
@@ -1421,15 +1389,15 @@ mod tests {
                 "claude": "side",
                 "gemini": "side",
                 "grok": "center",
-                "meta": "center"
+                "meta": "side"
             }
         }));
 
-        assert_eq!(normalized["presentation"]["grok"], json!("chip"));
-        assert_eq!(normalized["presentation"]["meta"], json!("center"));
+        assert_eq!(normalized["presentation"]["grok"], json!("center"));
+        assert_eq!(normalized["presentation"]["meta"], json!("side"));
 
         let missing_presentation = normalize_settings_value(json!({ "standbyProvider": "grok" }));
-        assert_eq!(missing_presentation["presentation"]["grok"], json!("chip"));
+        assert_eq!(missing_presentation["presentation"]["grok"], json!("side"));
         assert_eq!(missing_presentation["presentation"]["meta"], json!("side"));
     }
 

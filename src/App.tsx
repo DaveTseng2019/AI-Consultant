@@ -2172,33 +2172,7 @@ export default function App() {
   );
 
   const applySavedSettings = (settings: AppSettings) => {
-    const previousStandby = settingsRef.current.standbyProvider;
-    const nextActiveProviders = activeProvidersForStandby(settings.standbyProvider);
-    if (previousStandby !== settings.standbyProvider) {
-      setTargetSelection((current) => {
-        if (!current.userTouched) {
-          return { targets: [...nextActiveProviders], defaultsInitialized: true, userTouched: false };
-        }
-        const nextTargets = Array.from(
-          new Set(
-            current.targets
-              .map((provider) => (provider === settings.standbyProvider ? previousStandby : provider))
-              .filter((provider) => nextActiveProviders.includes(provider)),
-          ),
-        );
-        return { ...current, targets: nextTargets, defaultsInitialized: true };
-      });
-      pendingRestore.current.delete(settings.standbyProvider);
-      pendingProviderResetRef.current.delete(settings.standbyProvider);
-      setUserHidden((current) => {
-        const next = new Set(current);
-        next.delete(settings.standbyProvider);
-        return next;
-      });
-      if (statesRef.current[settings.standbyProvider].webview !== 'none') {
-        void host.provider.close(settings.standbyProvider).catch(() => undefined);
-      }
-    }
+    // A standby change only reorders the lineup; nothing is closed, untargeted or re-assigned.
     settingsRef.current = settings;
     presentationRef.current = settings.presentation;
     setAppSettings(settings);

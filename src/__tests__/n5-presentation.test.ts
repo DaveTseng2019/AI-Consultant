@@ -64,10 +64,10 @@ function deferred(): { promise: Promise<void>; resolve: () => void } {
 }
 
 describe('N5 webview presentation model', () => {
-  it('defaults the active four providers to side and Meta AI to standby chip presentation', () => {
+  it('defaults every provider, the standby included, to side presentation', () => {
     const presentation = defaultPresentation();
 
-    expect(presentation).toEqual({ chatgpt: 'side', claude: 'side', gemini: 'side', grok: 'side', meta: 'chip' });
+    expect(presentation).toEqual({ chatgpt: 'side', claude: 'side', gemini: 'side', grok: 'side', meta: 'side' });
     expect(sideProviders(presentation, providers)).toEqual(providers);
     expect(chipProviders(presentation, providers)).toEqual([]);
     expect(centerPresentationProvider(presentation)).toBeUndefined();
@@ -93,7 +93,7 @@ describe('N5 webview presentation model', () => {
     let presentation = setProviderPresentation(defaultPresentation(), 'chatgpt', 'center');
     presentation = setProviderPresentation(presentation, 'claude', 'center');
 
-    expect(presentation).toEqual({ chatgpt: 'side', claude: 'center', gemini: 'side', grok: 'side', meta: 'chip' });
+    expect(presentation).toEqual({ chatgpt: 'side', claude: 'center', gemini: 'side', grok: 'side', meta: 'side' });
     expect(centerHiddenProviders(presentation, states({ grok: state('grok', 'none') }), new Set<AIProvider>(['gemini']), providers)).toEqual([
       'chatgpt',
     ]);
@@ -105,7 +105,7 @@ describe('N5 webview presentation model', () => {
       presentation: { chatgpt: 'chip', claude: 'center', gemini: 'bad', grok: 'side' },
     });
 
-    expect(normalized.presentation).toEqual({ chatgpt: 'chip', claude: 'center', gemini: 'side', grok: 'side', meta: 'chip' });
+    expect(normalized.presentation).toEqual({ chatgpt: 'chip', claude: 'center', gemini: 'side', grok: 'side', meta: 'side' });
     expect(restorableOpenProviders(normalized.openProviders, normalized.presentation)).toEqual(['claude', 'gemini']);
 
     const persisted = mergeSettings(normalized, {

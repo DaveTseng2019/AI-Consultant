@@ -252,7 +252,7 @@ export const ja: Record<I18nKey, string> = {
   'settings.close': '閉じる',
   'settings.general': '一般',
   'settings.providers': '有効なAI',
-  'settings.providersDescription': '4つが有効、1つが予備。ログイン情報は保持されます。',
+  'settings.providersDescription': '5つすべて使えます。予備は最後に並びます。ログイン情報は保持されます。',
   'settings.providersDefault': 'デフォルトの予備',
   'settings.providersSelect': '予備のAI',
   'settings.providerActive': '有効',

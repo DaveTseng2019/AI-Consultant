@@ -11,25 +11,27 @@ import {
 } from '../ui/settingsModel';
 
 describe('optional standby provider', () => {
-  it('keeps the original four providers active and Meta AI on standby by default', () => {
+  // Here the standby only sorts last: it is shown, opened, targetable in free mode and can hold
+  // role seats like any other provider. Upstream removes it from the lineup instead.
+  it('lists all five providers by default, Meta AI (the default standby) last', () => {
     const settings = defaultSettings();
 
     expect(settings.standbyProvider).toBe(DEFAULT_STANDBY_PROVIDER);
-    expect(activeProvidersForStandby(settings.standbyProvider)).toEqual(DEFAULT_FREE_TARGET_PROVIDERS);
-    expect(settings.presentation.meta).toBe('chip');
+    expect(activeProvidersForStandby(settings.standbyProvider)).toEqual([...DEFAULT_FREE_TARGET_PROVIDERS, 'meta']);
+    expect(settings.presentation.meta).toBe('side');
   });
 
-  it('repairs invalid standby values to Meta AI and excludes standby from restore-open providers', () => {
+  it('repairs invalid standby values to Meta AI and keeps the standby in restore-open providers', () => {
     const settings = normalizeSettings({
       standbyProvider: 'not-a-provider',
       openProviders: ['chatgpt', 'meta'],
     });
 
     expect(settings.standbyProvider).toBe('meta');
-    expect(settings.openProviders).toEqual(['chatgpt']);
+    expect(settings.openProviders).toEqual(['chatgpt', 'meta']);
   });
 
-  it('activates Meta AI when a core provider becomes standby and repairs its workflow seats', () => {
+  it('moves a core provider that becomes standby to the end and keeps its seats and pane', () => {
     const settings = normalizeSettings({
       settingsSchemaVersion: 2,
       standbyProvider: 'grok',
@@ -42,17 +44,15 @@ describe('optional standby provider', () => {
       'claude',
       'gemini',
       'meta',
+      'grok',
     ]);
-    expect(settings.openProviders).toEqual(['meta']);
-    expect(settings.presentation.grok).toBe('chip');
+    expect(settings.openProviders).toEqual(['grok', 'meta']);
+    expect(settings.presentation.grok).toBe('side');
     expect(settings.presentation.meta).toBe('side');
-    expect(JSON.stringify(settings.modeRoles)).not.toContain('grok');
-    for (const roles of Object.values(settings.modeRoles)) {
-      expect(new Set(Object.values(roles))).toEqual(new Set(['chatgpt', 'claude', 'gemini', 'meta']));
-    }
+    expect(settings.modeRoles).toEqual(DEFAULT_MODE_ROLE_ASSIGNMENTS);
   });
 
-  it('does not let a stale standby center consume the active provider center slot', () => {
+  it('lets the standby hold the center like any other provider', () => {
     const settings = normalizeSettings({
       standbyProvider: 'grok',
       presentation: {
@@ -60,12 +60,12 @@ describe('optional standby provider', () => {
         claude: 'side',
         gemini: 'side',
         grok: 'center',
-        meta: 'center',
+        meta: 'side',
       },
     });
 
-    expect(settings.presentation.grok).toBe('chip');
-    expect(settings.presentation.meta).toBe('center');
+    expect(settings.presentation.grok).toBe('center');
+    expect(settings.presentation.meta).toBe('side');
   });
 
   it('moves every seat owned by the newly selected standby to the previous standby', () => {

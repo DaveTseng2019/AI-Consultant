@@ -250,7 +250,7 @@ export const en: Record<I18nKey, string> = {
   'settings.close': 'Close',
   'settings.general': 'General',
   'settings.providers': 'Active AI providers',
-  'settings.providersDescription': 'Four active, one standby. Logins stay saved.',
+  'settings.providersDescription': 'All five can be used; the standby is listed last. Logins stay saved.',
   'settings.providersDefault': 'Default standby',
   'settings.providersSelect': 'Standby provider',
   'settings.providerActive': 'Active',
