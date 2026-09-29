@@ -129,7 +129,7 @@ export const en: Record<I18nKey, string> = {
   'provider.currentlyReading': 'Currently reading',
   'provider.clickToRecover': 'Click to reload and recover the connection',
   'provider.login': 'Go to sign-in',
-  'provider.metaLoginGuidance': 'On the Meta page, choose email or mobile login if offered. Facebook and Instagram login are not supported inside this app. If redirected there, use Go to sign-in above to return to Meta. If neither option is available, this session cannot sign in inside the app. An available guest composer can be used without signing in.',
+  'provider.metaLoginGuidance': 'Use guest chat or email/mobile login if offered. Facebook/Instagram login is unavailable here.',
   'provider.moreActions': 'More provider actions',
   'provider.reload': 'Reload',
   'provider.report': 'Report',
@@ -249,8 +249,7 @@ export const en: Record<I18nKey, string> = {
   'settings.close': 'Close',
   'settings.general': 'General',
   'settings.providers': 'Active AI providers',
-  'settings.providersDescription':
-    'Four providers stay active at a time. Selecting a different standby deactivates that provider and activates the previous standby; both logins stay saved.',
+  'settings.providersDescription': 'Four active, one standby. Logins stay saved.',
   'settings.providersDefault': 'Default standby',
   'settings.providersSelect': 'Standby provider',
   'settings.providerActive': 'Active',

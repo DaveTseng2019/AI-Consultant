@@ -131,7 +131,7 @@ export const de: Record<I18nKey, string> = {
   'provider.currentlyReading': 'Wird gerade gelesen',
   'provider.clickToRecover': 'Zum Neuladen und Wiederherstellen klicken',
   'provider.login': 'Zur Anmeldung',
-  'provider.metaLoginGuidance': 'Wähle auf der Meta-Seite die Anmeldung per E-Mail oder Mobilnummer, falls angeboten. Facebook- und Instagram-Anmeldungen werden innerhalb dieser App nicht unterstützt. Bei einer Weiterleitung dorthin gelangst du über „Zur Anmeldung“ oben zurück zu Meta. Fehlen beide Optionen, ist in dieser Sitzung keine Anmeldung innerhalb der App möglich. Ein verfügbarer Gast-Chat kann ohne Anmeldung genutzt werden.',
+  'provider.metaLoginGuidance': 'Gastchat oder E-Mail/Mobilnummer nutzen, falls angeboten. Facebook/Instagram-Anmeldung wird hier nicht unterstützt.',
   'provider.moreActions': 'Weitere Anbieteraktionen',
   'provider.reload': 'Neu laden',
   'provider.report': 'Melden',
@@ -251,8 +251,7 @@ export const de: Record<I18nKey, string> = {
   'settings.close': 'Schließen',
   'settings.general': 'Allgemein',
   'settings.providers': 'Aktive KI-Anbieter',
-  'settings.providersDescription':
-    'Es bleiben immer vier Anbieter aktiv. Wird eine andere Reserve gewählt, wird dieser Anbieter deaktiviert und die bisherige Reserve aktiviert; beide Anmeldungen bleiben gespeichert.',
+  'settings.providersDescription': 'Vier aktiv, einer in Reserve. Anmeldungen bleiben gespeichert.',
   'settings.providersDefault': 'Standardmäßig in Reserve',
   'settings.providersSelect': 'Anbieter in Reserve',
   'settings.providerActive': 'Aktiv',

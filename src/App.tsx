@@ -2621,6 +2621,7 @@ export default function App() {
               onReplaySettled={settleReplayTrace}
               onSnapshotComplete={persistReplaySnapshot}
               onOpenLogin={openProviderLoginReported}
+              onOpenSettings={() => setSettingsOpen(true)}
             />
           </div>
           {sessionCheckpointNotice ? (
@@ -2686,7 +2687,12 @@ export default function App() {
         <PreflightDialog
           model={buildPreflightDialogModel(preflight.mode, preflight.result, states, locale)}
           hidden={preflightLoginPending}
+          activeProviders={activeProviders}
           onOpenLogin={openPreflightLogin}
+          onOpenSettings={() => {
+            setPreflight(undefined);
+            setSettingsOpen(true);
+          }}
           onClose={() => setPreflight(undefined)}
           onSwitchMode={() => {
             setMode('free');
