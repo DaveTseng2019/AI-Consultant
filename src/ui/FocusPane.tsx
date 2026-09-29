@@ -643,7 +643,9 @@ function StatusStrip({
           </button>
         </div>
       </div>
-      <div className="grid grid-cols-4 gap-1.5">
+      {/* Rows break on each card's content width, then the cards grow to share the row: one row when the history sidebar is
+          hidden and there is room for all five, wrapping only when there is not. */}
+      <div className="flex flex-wrap gap-1.5">
         {providers.map((provider) => (
           <StatusStripItem
             key={provider}
@@ -711,7 +713,7 @@ function StatusStripItem({
       aria-pressed={centered}
       title={stuck || scrollFocused ? accessibleLabel : undefined}
       disabled={state.webview === 'creating' || openingProvider !== undefined}
-      className={`relative min-w-0 rounded border px-2 py-1.5 text-left transition-colors disabled:cursor-wait disabled:opacity-70 ${
+      className={`relative min-w-fit flex-1 basis-0 rounded border px-2 py-1.5 text-left transition-colors disabled:cursor-wait disabled:opacity-70 ${
         centered
           ? 'cursor-default border-sky-400 bg-sky-50 dark:border-sky-700 dark:bg-sky-950/40'
           : 'cursor-pointer border-zinc-200 bg-zinc-50 hover:border-sky-400 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-sky-700'
@@ -723,7 +725,7 @@ function StatusStripItem({
       ) : null}
       <span className="flex min-w-0 items-center gap-2">
         <ProviderLogo provider={provider} />
-        <span className="min-w-0 flex-1">
+        <span className="min-w-0">
           <span className="block truncate text-xs font-medium text-zinc-900 dark:text-zinc-100">{AI_PROVIDERS[provider].name}</span>
           <span className="mt-1 flex min-w-0 items-center gap-1">
             <span className={`h-2 w-2 shrink-0 rounded-full ${status.dotClassName}`} aria-hidden="true" />
