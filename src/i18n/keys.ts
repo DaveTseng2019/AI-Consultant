@@ -111,6 +111,7 @@ export const I18N_KEYS = [
   'provider.currentlyReading',
   'provider.clickToRecover',
   'provider.login',
+  'provider.metaLoginGuidance',
   'provider.moreActions',
   'provider.reload',
   'provider.report',
