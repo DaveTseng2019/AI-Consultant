@@ -18,7 +18,7 @@ export type CenterSurface = 'text' | 'native';
 
 type ProviderActionState = {
   provider: AIProvider;
-  action: 'open' | 'login' | 'reload' | 'browser';
+  action: 'open' | 'login' | 'reload' | 'browser' | 'reconnect';
   status: 'opening' | 'error';
 };
 
@@ -102,7 +102,11 @@ export function FocusPane({
         await host.provider.reload(provider);
         await syncBounds(provider);
       } else if (action === 'browser') await host.provider.openLoginExternal(provider);
-      else await changeProviderPresentation(provider, 'center');
+      else if (action === 'reconnect') {
+        resetProviderBootState(provider);
+        await host.provider.reconnect(provider);
+        await changeProviderPresentation(provider, 'center');
+      } else await changeProviderPresentation(provider, 'center');
       if (generation === providerActionGeneration.current) setProviderAction(undefined);
     } catch {
       if (generation === providerActionGeneration.current) setProviderAction({ provider, action, status: 'error' });
@@ -113,6 +117,7 @@ export function FocusPane({
   const openProviderLogin = (provider: AIProvider) => runProviderAction(provider, 'login');
   const reloadProvider = (provider: AIProvider) => runProviderAction(provider, 'reload');
   const openProviderInBrowser = (provider: AIProvider) => runProviderAction(provider, 'browser');
+  const reconnectProvider = (provider: AIProvider) => runProviderAction(provider, 'reconnect');
   const openingProvider = providerAction?.status === 'opening' ? providerAction.provider : undefined;
 
   return (
@@ -189,6 +194,7 @@ export function FocusPane({
         presentation={presentation}
         setPaneRef={setPaneRef}
         activateProvider={activateProvider}
+        reconnectProvider={reconnectProvider}
         openingProvider={openingProvider}
         onChipClick={onChipClick}
         providers={providers}
@@ -576,6 +582,7 @@ function StatusStrip({
   presentation,
   setPaneRef,
   activateProvider,
+  reconnectProvider,
   openingProvider,
   onChipClick,
   providers,
@@ -586,6 +593,7 @@ function StatusStrip({
   presentation: PresentationByProvider;
   setPaneRef: (provider: AIProvider, el: HTMLElement | null) => void;
   activateProvider: (provider: AIProvider) => Promise<void>;
+  reconnectProvider: (provider: AIProvider) => Promise<void>;
   openingProvider?: AIProvider;
   onChipClick?: (provider: AIProvider) => void;
   onOpenSettings: () => void;
@@ -621,6 +629,7 @@ function StatusStrip({
             scrollFocused={provider === scrollFocusedProvider}
             setPaneRef={setPaneRef}
             activateProvider={activateProvider}
+            reconnectProvider={reconnectProvider}
             openingProvider={openingProvider}
             onChipClick={onChipClick}
           />
@@ -638,6 +647,7 @@ function StatusStripItem({
   scrollFocused,
   setPaneRef,
   activateProvider,
+  reconnectProvider,
   openingProvider,
   onChipClick,
 }: {
@@ -648,6 +658,7 @@ function StatusStripItem({
   scrollFocused: boolean;
   setPaneRef: (provider: AIProvider, el: HTMLElement | null) => void;
   activateProvider: (provider: AIProvider) => Promise<void>;
+  reconnectProvider: (provider: AIProvider) => Promise<void>;
   openingProvider?: AIProvider;
   onChipClick?: (provider: AIProvider) => void;
 }) {
@@ -660,11 +671,7 @@ function StatusStripItem({
   const focusProvider = () => {
     onChipClick?.(provider);
     if (stuck) {
-      resetProviderBootState(provider);
-      void host.provider.reconnect(provider).then(
-        () => activateProvider(provider),
-        () => activateProvider(provider),
-      );
+      void reconnectProvider(provider);
       return;
     }
     if (centered && state.webview === 'loaded') return;
