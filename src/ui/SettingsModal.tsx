@@ -1140,6 +1140,7 @@ export function DiagnosticsSection({
   const [copyState, setCopyState] = useState<'idle' | 'copied' | 'error'>('idle');
   const copyGeneration = useRef(0);
   const [exportState, setExportState] = useState<DebugBundleExportState>({ status: 'idle' });
+  const exportInFlight = useRef(false);
   const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
@@ -1186,6 +1187,8 @@ export function DiagnosticsSection({
   };
 
   const exportDebugBundle = async () => {
+    if (exportInFlight.current) return;
+    exportInFlight.current = true;
     setExportState({ status: 'exporting' });
     try {
       const generatedAt = new Date();
@@ -1202,6 +1205,8 @@ export function DiagnosticsSection({
       setExportState(saved ? { status: 'saved', message: formatI18n(t('share.exported'), { path: saved }) } : { status: 'cancelled' });
     } catch (reason) {
       setExportState({ status: 'error', message: reason instanceof Error ? reason.message : String(reason) });
+    } finally {
+      exportInFlight.current = false;
     }
   };
 
