@@ -2,9 +2,10 @@
 
 # Compatibility and manual test matrix
 
-> Last reviewed: 2026-09-29. The newest real-device records are `v0.0.2` on Windows, `v0.0.17` on
-> Linux, the single-provider check on `v0.0.19`, and the Meta AI and startup-restore checks on
-> `v0.0.23`; the versions in between were not re-run item by item.
+> Last reviewed: 2026-10-01. The newest real-device records are `v0.0.2` on Windows, `v0.0.17` on
+> Linux, the single-provider check on `v0.0.19`, the Meta AI and startup-restore checks on
+> `v0.0.23`, and the Grok sign-in / sign-out check on `v0.0.24`; the versions in between were not
+> re-run item by item.
 >
 > This document records **evidence actually observed**, not guarantees. Provider DOM and sign-in
 > flows can change at any time, and every piece of real-device evidence below comes from the
@@ -99,6 +100,31 @@ product-behaviour list below that is not named here.
 > repository's table carries a Grok entry as well. Without the fix Grok never completes at all. The
 > row above is the result after that fix.
 
+### v0.0.24 Grok sign-in and sign-out (2026-10-01)
+
+This version lets Grok finish sign-in and sign-out inside the app, and ports an upstream fix for
+ChatGPT's new Chat/Work layout. Checked by hand by the maintainer.
+
+Environment: Windows 11 Pro `10.0.26200`, **an executable built locally with `pnpm build:local`**
+from the same code as the release commit (stamped `v0.0.23-1-ga404bc8` with uncommitted changes),
+not the CI artifacts attached to the release.
+
+| Item | Result |
+|---|---|
+| Grok sign-in with a Google account inside the app | **Passed** (local release build). Before the fix it opened an external browser and asked for the account again (observed 2026-10-01, development build) |
+| Grok sign-out inside the app | **Passed** (local release build). Before the fix it opened an external browser, signed that browser out, and retried forever with fresh tokens (observed 2026-10-01, development build) |
+| ChatGPT long answer finishes under the new Chat/Work layout | **Automated test only** |
+| Signed-out Grok detected under the new layout | **Automated test only** |
+| macOS and Linux | **Not tested** for this version |
+
+What the fix allows: only the cookie set / clear steps (`/set-cookie`, `/delete-cookie`) on
+`auth.x.ai` and `auth.cursor.com`. `auth.x.ai/oauth/authorize` still goes to the system browser on
+purpose. That Grok's chain passes through `auth.cursor.com` is an **inference** from a web search
+(Grok Bot uses a Cursor account) and from a trace of the blocked URLs; no official page says so.
+
+Known quirk, not investigated: in a development build (`pnpm tauri dev`) the mouse pointer is
+invisible over the window; the release build is not affected.
+
 ### v0.0.23 Meta AI and startup restore (2026-09-29)
 
 This version adds Meta AI as a fifth provider, adds a substitute provider that takes
@@ -157,10 +183,10 @@ This requirement only affects source development; users of a packaged build need
 
 | Provider | Bundled adapter | Automated coverage | Real-device evidence |
 |---|---:|---|---|
-| ChatGPT | v8 | Structure, logged-out precedence, completion markers, ProseMirror composer | Signed in and ready on the v0.0.2 packaged build; long question answered in full on v0.0.23 (local build) |
+| ChatGPT | v9 | Structure, logged-out precedence, completion markers, ProseMirror composer | Signed in and ready on the v0.0.2 packaged build; long question answered in full on v0.0.23 (local build) |
 | Claude | v4 | Structure, sign-in page detection, explicit Google SSO scope | Signed in and ready on the v0.0.2 packaged build |
 | Gemini | v2 | Structure, bounded navigation and blocked state for Google `/sorry` | Signed in and ready on the v0.0.2 packaged build; live-page capture works |
-| Grok | v7 | Structure, challenge-first deferred takeover, watchdog recovery, DOM changes refused during a challenge | Signed in and ready on the v0.0.2 packaged build |
+| Grok | v9 | Structure, challenge-first deferred takeover, watchdog recovery, DOM changes refused during a challenge | Signed in and ready on the v0.0.2 packaged build |
 | Meta AI | v3 | Structure, narrow seed contract, usable-composer login, gated composer stays logged out | Signed in and answered on v0.0.23 (local build) |
 
 The automated tests verify adapter structure, schema v1 / v2 parsing compatibility, rejection of

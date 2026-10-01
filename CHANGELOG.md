@@ -6,6 +6,15 @@ The full notes for each version are on [GitHub releases](https://github.com/Dave
 Dates are the release date (UTC). The repo pins `0.0.0` on purpose; the real number is injected by
 the release CI from the tag.
 
+## [v0.0.24](https://github.com/DaveTseng2019/AI-Consultant/releases/tag/v0.0.24) — 2026-10-01
+
+- Fixed: Grok sign-in and sign-out now finish inside the app. Sign-out used to open an external
+  browser, sign that browser out instead, and retry forever, opening new tabs; the app's Grok pane
+  did not change. Only the cookie set / clear steps on `auth.x.ai` and `auth.cursor.com` are allowed
+  in the app; every other page still goes to the system browser.
+- Fixed: ChatGPT's new Chat/Work layout. A long answer is recognised as finished again, and a
+  signed-out Grok is detected more reliably.
+
 ## [v0.0.23](https://github.com/DaveTseng2019/AI-Consultant/releases/tag/v0.0.23) — 2026-09-29
 
 - Meta AI joins as a fifth provider. All five can be opened, ticked in free mode and assigned to

@@ -2,8 +2,9 @@
 
 # 相容性與人工測試矩陣
 
-> 最後檢視：2026-09-29。最新的實機紀錄是 Windows 的 `v0.0.2`、Linux 的 `v0.0.17`、
-> `v0.0.19` 的單項 provider 測試，以及 `v0.0.23` 的 Meta AI 與啟動恢復測試；中間那些版本沒有逐項重跑。
+> 最後檢視：2026-10-01。最新的實機紀錄是 Windows 的 `v0.0.2`、Linux 的 `v0.0.17`、
+> `v0.0.19` 的單項 provider 測試、`v0.0.23` 的 Meta AI 與啟動恢復測試，以及 `v0.0.24` 的 Grok 登入／登出測試；
+> 中間那些版本沒有逐項重跑。
 >
 > 這份文件記錄的是**實際觀察到的證據**，不是保證。provider 的 DOM 與登入流程隨時可能改變，
 > 而且下面每一筆實機證據都只來自維護者這一台機器。
@@ -89,6 +90,29 @@ repo 的 `0.0.0`），**不是 CI 掛在 release 上的那個 `.AppImage`**。
 > provider 查表，而本專案的表另有 Grok 一項。沒修的話 Grok 永遠不會完成。上面那一列就是修好
 > 之後的實測結果。
 
+### v0.0.24 Grok 登入與登出（2026-10-01）
+
+這一版讓 Grok 的登入與登出都在 app 裡完成，並移植上游針對 ChatGPT 新 Chat/Work 版面的修正。
+由維護者手動檢查。
+
+環境：Windows 11 Pro `10.0.26200`，**用 `pnpm build:local` 在本機建置的執行檔**，程式碼與發佈 commit 相同
+（版本戳記 `v0.0.23-1-ga404bc8`，含未提交的修改），不是掛在 release 上的 CI 產物。
+
+| 項目 | 結果 |
+|---|---|
+| 在 app 內用 Google 帳號登入 Grok | **通過**（本機 release 建置）。修正前會開外部瀏覽器、要重選一次帳號（2026-10-01 觀察，開發建置） |
+| 在 app 內登出 Grok | **通過**（本機 release 建置）。修正前會開外部瀏覽器、把那個瀏覽器登出，並用新 token 無限重試（2026-10-01 觀察，開發建置） |
+| ChatGPT 長回答在新 Chat/Work 版面下能完成 | **僅自動化測試** |
+| 新版面下偵測到沒登入的 Grok | **僅自動化測試** |
+| macOS 與 Linux | 這一版**未測試** |
+
+修正放行的範圍：只有 `auth.x.ai` 與 `auth.cursor.com` 的「設定／清除 cookie」步驟
+（`/set-cookie`、`/delete-cookie`）。`auth.x.ai/oauth/authorize` 仍刻意走系統瀏覽器。
+Grok 的流程會經過 `auth.cursor.com` 是**推論**：來自一次網路搜尋（Grok Bot 使用 Cursor 帳號）與被擋網址的追蹤紀錄，
+沒有任何官方頁面明說。
+
+已知現象，未調查：開發建置（`pnpm tauri dev`）時，滑鼠游標在視窗上方會看不到；release 建置不受影響。
+
 ### v0.0.23 Meta AI 與啟動恢復實測（2026-09-29）
 
 這一版加入第五家 Meta AI，新增替補 AI 接手沒就緒的角色，多方諮詢加入第三位回答者與匿名審查，並修掉三個啟動恢復的問題。由維護者實際操作。
@@ -142,10 +166,10 @@ v2.0.0 的原始碼契約支援 Node.js `^22.13.0 || >=24.0.0`，對應鎖定的
 
 | Provider | 內建 adapter | 自動化覆蓋 | 實機證據 |
 |---|---:|---|---|
-| ChatGPT | v8 | 結構、logged-out 優先序、完成標記、ProseMirror 輸入框 | v0.0.2 打包版登入就緒；v0.0.23 本機建置長問題回答完整 |
+| ChatGPT | v9 | 結構、logged-out 優先序、完成標記、ProseMirror 輸入框 | v0.0.2 打包版登入就緒；v0.0.23 本機建置長問題回答完整 |
 | Claude | v4 | 結構、登入頁偵測、明確的 Google SSO 範圍 | v0.0.2 打包版登入就緒 |
 | Gemini | v2 | 結構、Google `/sorry` 的有界導航與 blocked 狀態 | v0.0.2 打包版登入就緒，原生畫面問答擷取正常 |
-| Grok | v7 | 結構、challenge 優先的延後接手、watchdog 復原、challenge 期間拒絕變更 DOM | v0.0.2 打包版登入就緒 |
+| Grok | v9 | 結構、challenge 優先的延後接手、watchdog 復原、challenge 期間拒絕變更 DOM | v0.0.2 打包版登入就緒 |
 | Meta AI | v3 | 結構、窄範圍 seed 合約、可用輸入框即視為登入、被鎖住的輸入框維持未登入 | v0.0.23 本機建置登入並回答 |
 
 自動化測試驗證 adapter 結構、schema v1／v2 解析相容性、型別化 detector 的拒絕、logged-out 優先序、

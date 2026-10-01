@@ -5,6 +5,13 @@
 每個版本的完整說明在 [GitHub releases](https://github.com/DaveTseng2019/AI-Consultant/releases)。日期是發佈日（UTC）。
 版號在 repo 裡永遠釘死 `0.0.0`，真正的號碼由發佈 CI 從 tag 注入。
 
+## [v0.0.24](https://github.com/DaveTseng2019/AI-Consultant/releases/tag/v0.0.24) — 2026-10-01
+
+- 修正：Grok 的登入與登出現在都在 app 裡完成。以前登出會開外部瀏覽器、把外部瀏覽器登出，
+  而且不斷重試、一直開新分頁，app 裡的 Grok 面板卻沒變化。現在只放行 `auth.x.ai` 與
+  `auth.cursor.com` 的「設定／清除 cookie」步驟，其他頁面仍交給系統瀏覽器。
+- 修正：ChatGPT 新的 Chat/Work 版面。長回答又能正確判斷為完成，沒登入的 Grok 也更準確地被偵測到。
+
 ## [v0.0.23](https://github.com/DaveTseng2019/AI-Consultant/releases/tag/v0.0.23) — 2026-09-29
 
 - 新增第五家 AI：Meta AI。五家全部可以開啟、在自由模式勾選、在協作角色裡指派。
