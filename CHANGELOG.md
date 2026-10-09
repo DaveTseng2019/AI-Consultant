@@ -16,9 +16,9 @@ the release CI from the tag.
   only an answer newer than the question, never an earlier one.
 - Changed: when an AI showed no answer text for 10 minutes, or "Answer is done" was pressed before
   any text appeared, the run now pauses with retry / skip / cancel instead of ending.
-- Fixed: at startup, Claude and Gemini no longer show "sign in" for the first seconds, and a
-  debate no longer hands their roles to Meta AI meanwhile. The card says "Opening…" and the mode
-  waits for them.
+- Fixed: a card says "Opening…" until its page has loaded. In the first seconds after start the app
+  cannot yet tell whether you are signed in, so the roles keep their assignment and the mode waits
+  for the pages before you can send.
 - Fixed: the window opens fully inside the screen's usable area, centred. On a screen smaller than
   the default size the window shrinks to fit, so the composer at the bottom stays reachable.
 - Changed: maximizing or restoring the window keeps the split between the two columns.
