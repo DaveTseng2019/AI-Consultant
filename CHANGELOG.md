@@ -8,9 +8,9 @@ the release CI from the tag.
 
 ## [v0.0.25](https://github.com/DaveTseng2019/AI-Consultant/releases/tag/v0.0.25) — 2026-10-09
 
-- Fixed: Claude's answers are read again. Claude changed its page, so no answer was ever seen: every
-  Claude step waited the full 10 minutes and failed, and a debate stopped before the judge and the
-  summary. Only the answer text is read, so the timestamp under it no longer ends up in the answer.
+- Fixed: Claude's answers are read from its new page markup. The old way of reading found no answer:
+  every Claude step waited the full 10 minutes and failed, and a debate stopped before the judge and
+  the summary. Only the answer text is read, so the timestamp under it does not end up in the answer.
 - New: an "Answer is done" button to the right of "Text" while a step waits for that AI. The
   timeout dialog has the same button: it takes an answer that arrived after the step failed, and
   only an answer newer than the question, never an earlier one.
