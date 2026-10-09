@@ -112,7 +112,21 @@ export function plannedRolesForPreset(
   const roles = defaultRolesForPreset(mode, presetId, assignments);
   if (!roles) return undefined;
   const graph = workflowGraphs[presetId === 'brainstorm' ? 'brainstorm' : mode];
-  return planGraphRoles(graph, roles, isUsableProvider(states, activeProviders), standbyProvider).roles;
+  const usable = isUsableProvider(states, activeProviders);
+  // A page still opening has not said whether anyone is signed in. Handing its seat to the standby
+  // for those first seconds swapped Claude and Gemini out of a debate at every startup. It keeps
+  // the seat, so the mode waits for it; the run-time preflight still substitutes a provider that
+  // is really unavailable. A provider never opened (webview 'none') is also 'unknown' and gets no
+  // such grace, or the mode would wait for it forever.
+  // notes: a page that loads but never reports (a broken engine) also stays 'unknown' and keeps
+  //        the mode waiting instead of falling back to the standby. Bound the grace by
+  //        lastStatusAt if that ever shows up.
+  const usableOrOpening = (provider: AIProvider) => {
+    const state = states[provider];
+    const opening = state !== undefined && state.webview !== 'none' && state.login === 'unknown';
+    return usable(provider) || (opening && activeProviders?.includes(provider) !== false);
+  };
+  return planGraphRoles(graph, roles, usableOrOpening, standbyProvider).roles;
 }
 
 export function seatedProvidersForPreset(

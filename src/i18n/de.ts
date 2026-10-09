@@ -224,6 +224,7 @@ export const de: Record<I18nKey, string> = {
   'workflowRole.roundtable.phase5': 'Abschlusssynthese',
   'stepTimeout.waiting': 'Warten auf {provider}: {seconds} s',
   'stepTimeout.takeAnswer': 'Antwort ist fertig',
+  'stepTimeout.lateAnswerMissing': 'Die Seite enthält keine Antwort, die neuer als diese Anfrage ist. Warten Sie, bis sie fertig ist, und drücken Sie dann „Antwort ist fertig“.',
   'stepTimeout.title': 'Zeitüberschreitung im Schritt',
   'stepTimeout.description': '{provider} hat diesen Workflow-Schritt nicht abgeschlossen.',
   'stepTimeout.providerErrorTitle': 'Anbieterfehler im Schritt',

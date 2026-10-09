@@ -703,6 +703,62 @@ describe('workflow engine', () => {
     await expect(step).resolves.toEqual({ response: 'reserved retry final', turn: 42 });
   });
 
+  it('takes an answer that landed after the step failed, without sending the prompt again', async () => {
+    vi.mocked(host.provider.send).mockImplementationOnce(async (provider) => {
+      publishBridgeMessage(done(provider, '[Error: claude produced no response text]'));
+    });
+    vi.mocked(host.provider.evalWithCallback).mockImplementation(async (_provider, js) =>
+      js.includes('takeLate') ? JSON.stringify('late con argument') : '[]',
+    );
+
+    const step = runStep('claude', 'argue the con side', 7);
+    await vi.waitFor(() => expect(host.provider.send).toHaveBeenCalledTimes(1));
+    chooseStepTimeoutAction('take');
+
+    await expect(step).resolves.toEqual({ response: 'late con argument', turn: 7 });
+    expect(host.provider.send).toHaveBeenCalledTimes(1);
+  });
+
+  it('pauses instead of ending the run when "answer is done" was pressed before any text appeared', async () => {
+    const events: StepTimeoutEvent[] = [];
+    const unsubscribe = onStepTimeoutEvent((event) => events.push(event));
+    vi.mocked(host.provider.send).mockImplementationOnce(async (provider) => {
+      publishBridgeMessage(done(provider, '[Error: claude captured an empty response (cached:0, nodes:0, nothing scanned)]'));
+    });
+    vi.mocked(host.provider.evalWithCallback).mockImplementation(async (_provider, js) =>
+      js.includes('takeLate') ? JSON.stringify('con argument once it finished') : '[]',
+    );
+
+    const step = runStep('claude', 'argue the con side', 7);
+    await vi.waitFor(() => expect(events.some((event) => event.timedOut)).toBe(true));
+    expect(events.find((event) => event.timedOut)).toMatchObject({ failureKind: 'timeout' });
+    chooseStepTimeoutAction('take');
+    unsubscribe();
+
+    await expect(step).resolves.toEqual({ response: 'con argument once it finished', turn: 7 });
+  });
+
+  it('asks again instead of passing anything downstream when no late answer is on the page', async () => {
+    const events: StepTimeoutEvent[] = [];
+    const unsubscribe = onStepTimeoutEvent((event) => events.push(event));
+    vi.mocked(host.provider.send).mockImplementationOnce(async (provider) => {
+      publishBridgeMessage(done(provider, '[Error: claude produced no response text]'));
+    });
+    vi.mocked(host.provider.evalWithCallback).mockImplementation(async (_provider, js) =>
+      js.includes('takeLate') ? JSON.stringify('') : '[]',
+    );
+
+    const step = runStep('claude', 'argue the con side', 7);
+    await vi.waitFor(() => expect(host.provider.send).toHaveBeenCalledTimes(1));
+    chooseStepTimeoutAction('take');
+    await vi.waitFor(() => expect(events.some((event) => event.timedOut && event.lateAnswerMissing)).toBe(true));
+    chooseStepTimeoutAction('skip');
+    unsubscribe();
+
+    await expect(step).resolves.toEqual({ response: SKIP_RESPONSE, turn: -1 });
+    expect(host.provider.send).toHaveBeenCalledTimes(1);
+  });
+
   it('reactivates a reserved turn so cancellation tears down a provider-error retry', async () => {
     vi.mocked(host.provider.send).mockImplementationOnce(async (provider) => {
       publishBridgeMessage(done(provider, '[Error: provider rate limited]'));

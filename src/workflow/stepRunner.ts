@@ -1,7 +1,15 @@
 import type { AIProvider } from '../../shared/types';
 import { resetProviderPullState } from '../bridge/pull';
-import { abortWorkflow, checkAborted, getInFlightProviders, onWorkflowAbort, stopProvider } from './cancel';
 import {
+  abortWorkflow,
+  checkAborted,
+  getInFlightProviders,
+  onWorkflowAbort,
+  stopProvider,
+  takeLateProviderResponse,
+} from './cancel';
+import {
+  isNoResponseTextError,
   isProviderPageReloadedError,
   isRetryableSendRejection,
   providerResponseError,
@@ -55,10 +63,18 @@ export async function runStep(
       throw responseError;
     } catch (error) {
       checkAborted();
-      if (error instanceof ProviderResponseError && options.recoverProviderErrors !== true) throw error;
-      const failureKind = error instanceof ProviderResponseError ? 'provider-error' : 'timeout';
+      const providerError = error instanceof ProviderResponseError && !isNoResponseTextError(error);
+      if (providerError && options.recoverProviderErrors !== true) throw error;
+      const failureKind = providerError ? 'provider-error' : 'timeout';
       const recoveryDetail = isProviderPageReloadedError(error) ? 'provider-page-reloaded' : undefined;
-      const action = await awaitStepTimeoutAction(provider, failureKind, recoveryDetail);
+      let action = await awaitStepTimeoutAction(provider, failureKind, recoveryDetail);
+      // The user says the answer arrived after all. Only the page can confirm it, so read it; when
+      // nothing newer than the send is there, ask again rather than pass an old answer downstream.
+      while (action === 'take') {
+        const late = await takeLateProviderResponse(provider);
+        if (late.trim()) return { response: late, turn: reservedTurn ?? -1 };
+        action = await awaitStepTimeoutAction(provider, failureKind, recoveryDetail, true);
+      }
       if (action === 'retry') {
         await stopProvider(provider);
         resetProviderPullState(provider);

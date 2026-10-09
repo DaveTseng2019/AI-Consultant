@@ -6,6 +6,27 @@ The full notes for each version are on [GitHub releases](https://github.com/Dave
 Dates are the release date (UTC). The repo pins `0.0.0` on purpose; the real number is injected by
 the release CI from the tag.
 
+## [v0.0.25](https://github.com/DaveTseng2019/AI-Consultant/releases/tag/v0.0.25) — 2026-10-09
+
+- Fixed: Claude's answers are read again. Claude changed its page, so no answer was ever seen: every
+  Claude step waited the full 10 minutes and failed, and a debate stopped before the judge and the
+  summary. Only the answer text is read, so the timestamp under it no longer ends up in the answer.
+- New: an "Answer is done" button to the right of "Text" while a step waits for that AI. The
+  timeout dialog has the same button: it takes an answer that arrived after the step failed, and
+  only an answer newer than the question, never an earlier one.
+- Changed: when an AI showed no answer text for 10 minutes, or "Answer is done" was pressed before
+  any text appeared, the run now pauses with retry / skip / cancel instead of ending.
+- Fixed: at startup, Claude and Gemini no longer show "sign in" for the first seconds, and a
+  debate no longer hands their roles to Meta AI meanwhile. The card says "Opening…" and the mode
+  waits for them.
+- Changed: maximizing or restoring the window keeps the split between the two columns. The width
+  after a resize is not saved; the next start uses the width you last dragged to.
+- Changed: the process trace shows each AI's logo in place of its name.
+- New: Ctrl+C stops a running workflow when nothing is selected. With text selected it still
+  copies. It only works while focus is in the app's own window, not inside an AI's page.
+- When an AI's answer selectors match nothing, the error now lists the answer-like markup on the
+  page (class names and test ids only, no text), so the next fix can start from the page.
+
 ## [v0.0.24](https://github.com/DaveTseng2019/AI-Consultant/releases/tag/v0.0.24) — 2026-10-01
 
 - Fixed: Grok sign-in and sign-out now finish inside the app. Sign-out used to open an external

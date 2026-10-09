@@ -1,7 +1,7 @@
 import { STEP_TIMEOUT_MS } from './waitForResponse';
 
 export const STEP_COUNTDOWN_MS = 600_000;
-export type StepTimeoutAction = 'retry' | 'skip' | 'cancel';
+export type StepTimeoutAction = 'retry' | 'skip' | 'cancel' | 'take';
 export type StepRecoveryFailureKind = 'timeout' | 'provider-error';
 export type StepRecoveryDetail = 'provider-page-reloaded';
 
@@ -19,6 +19,8 @@ export interface StepTimeoutEvent {
   requestId?: number;
   failureKind?: StepRecoveryFailureKind;
   recoveryDetail?: StepRecoveryDetail;
+  // The user already chose 'take' once and the page held no answer newer than the send.
+  lateAnswerMissing?: boolean;
 }
 
 interface PendingAction {
@@ -26,6 +28,7 @@ interface PendingAction {
   provider: string;
   failureKind: StepRecoveryFailureKind;
   recoveryDetail?: StepRecoveryDetail;
+  lateAnswerMissing: boolean;
   resolve: (action: StepTimeoutAction) => void;
   reject: (error: Error) => void;
 }
@@ -72,11 +75,12 @@ export function awaitStepTimeoutAction(
   provider = 'unknown',
   failureKind: StepRecoveryFailureKind = 'timeout',
   recoveryDetail?: StepRecoveryDetail,
+  lateAnswerMissing = false,
 ): Promise<StepTimeoutAction> {
   const action = consumeStepTimeoutAction();
   if (action) return Promise.resolve(action);
   return new Promise((resolve, reject) => {
-    pendingActions.push({ requestId: nextRequestId, provider, failureKind, recoveryDetail, resolve, reject });
+    pendingActions.push({ requestId: nextRequestId, provider, failureKind, recoveryDetail, lateAnswerMissing, resolve, reject });
     nextRequestId += 1;
     activateNextAction();
   });
@@ -112,6 +116,7 @@ function activateNextAction(): void {
     requestId: activeAction.requestId,
     failureKind: activeAction.failureKind,
     ...(activeAction.recoveryDetail ? { recoveryDetail: activeAction.recoveryDetail } : {}),
+    ...(activeAction.lateAnswerMissing ? { lateAnswerMissing: true } : {}),
   });
 }
 

@@ -13,6 +13,7 @@ import { ProcessTrace } from './ProcessTrace';
 import { ProviderLogo } from './ProviderLogo';
 import type { ProcessTraceState } from './processTraceModel';
 import { StepTimeoutDialog, type StepTimeoutDialogState } from './StepTimeoutDialog';
+import { takeVisibleAnswer } from './timeoutActions';
 
 export type CenterSurface = 'text' | 'native';
 
@@ -174,6 +175,7 @@ export function FocusPane({
           onToggleStageExpanded={onToggleStageExpanded}
           stageCollapsed={stageCollapsed}
           onToggleStageCollapsed={onToggleStageCollapsed}
+          awaitingAnswer={Boolean(stepTimeout && !stepTimeout.timedOut && stepTimeout.provider === centeredProvider)}
         />
       ) : (
         <FirstRunPanel
@@ -303,6 +305,7 @@ function FocusStage({
   onToggleStageExpanded,
   stageCollapsed,
   onToggleStageCollapsed,
+  awaitingAnswer,
 }: {
   provider: AIProvider;
   state: ProviderState;
@@ -326,6 +329,7 @@ function FocusStage({
   onToggleStageExpanded?: () => void;
   stageCollapsed: boolean;
   onToggleStageCollapsed: () => void;
+  awaitingAnswer: boolean;
 }) {
   const { t } = useI18n();
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
@@ -406,6 +410,17 @@ function FocusStage({
               {t('provider.textView')}
             </button>
           )}
+          {/* Next to the page the user is watching: the waiting banner sits in the settings column,
+              out of sight while they judge whether this answer is done. */}
+          {awaitingAnswer ? (
+            <button
+              type="button"
+              className="border border-amber-400 dark:border-amber-700 bg-amber-50 dark:bg-amber-950 px-2 py-1 text-amber-800 dark:text-amber-100 hover:bg-amber-100 dark:hover:bg-amber-900"
+              onClick={() => takeVisibleAnswer(provider)}
+            >
+              {t('stepTimeout.takeAnswer')}
+            </button>
+          ) : null}
           {collapseToggle}
           {onToggleStageExpanded ? (
             <button

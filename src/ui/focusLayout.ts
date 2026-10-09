@@ -32,6 +32,13 @@ export function clampFocusPaneWidth(
   return clamp(Math.round(width), constraints.minFocusPaneWidth, maxWidth);
 }
 
+// Maximizing kept the focus pane at its old pixel width and gave every new pixel to the other
+// column, so the split the user set no longer looked the same. Carry the share across the resize.
+export function scaleFocusPaneWidth(width: number, previousContainerWidth: number, containerWidth: number): number {
+  if (previousContainerWidth <= 0 || containerWidth <= 0) return width;
+  return (width * containerWidth) / previousContainerWidth;
+}
+
 export function focusGridTemplateColumns(
   focusPaneWidth: number,
   constraints = DEFAULT_FOCUS_LAYOUT_CONSTRAINTS,

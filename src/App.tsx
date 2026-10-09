@@ -71,6 +71,7 @@ import {
   driveCenteredProviderToStage as driveCenteredProviderToStageCommand,
   focusGridTemplateColumns,
   nonEmptyRect,
+  scaleFocusPaneWidth,
   throttleWithFrame,
 } from './ui/focusLayout';
 import { isSerialMode } from './ui/modeRoles';
@@ -396,6 +397,7 @@ export default function App() {
   const stageCollapsedRef = useRef(false);
   const pendingRestore = useRef<Set<AIProvider>>(new Set());
   const dragStartFocusPaneWidth = useRef(defaultSettings().focusPaneWidth);
+  const lastLayoutWidthsRef = useRef<{ window: number; container: number } | undefined>(undefined);
   const dragStartSidebarWidth = useRef(defaultSettings().sessionSidebarWidth);
   const activeResponses = useRef(new Map<AIProvider, ActiveProviderResponse>());
   const replayContextSessionRef = useRef<string | undefined>(
@@ -1592,7 +1594,16 @@ export default function App() {
   useEffect(() => {
     const onResize = () => {
       const containerWidth = gridRef.current?.getBoundingClientRect().width ?? window.innerWidth;
-      setFocusPaneWidth((current) => clampFocusPaneWidth(current, containerWidth));
+      // Only a change of window size rescales; this also runs on a timer and when the sidebar moves.
+      const previous = lastLayoutWidthsRef.current;
+      const windowResized = previous !== undefined && previous.window !== window.innerWidth;
+      lastLayoutWidthsRef.current = { window: window.innerWidth, container: containerWidth };
+      setFocusPaneWidth((current) =>
+        clampFocusPaneWidth(
+          windowResized ? scaleFocusPaneWidth(current, previous.container, containerWidth) : current,
+          containerWidth,
+        ),
+      );
       resyncNativeBounds();
     };
     window.addEventListener('resize', onResize);

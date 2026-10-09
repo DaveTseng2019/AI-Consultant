@@ -165,6 +165,23 @@ describe('seatedProvidersForPreset', () => {
     expect(seated).not.toContain('chatgpt');
   });
 
+  // At startup every page is opening and has not reported a session yet. Treating that as signed
+  // out swapped Claude and Gemini to Meta AI in a debate for the first seconds after every launch.
+  it('keeps the seat of a provider whose page is still opening, so the mode waits for it', () => {
+    const opening = states([]);
+    opening.claude = { ...opening.claude, webview: 'loaded', dom: 'ready', login: 'unknown' };
+    const seated = seatedProvidersForPreset('debate', 'debate', DEFAULT_MODE_ROLE_ASSIGNMENTS, opening, undefined, 'meta');
+    expect(seated).toContain('claude');
+    expect(seated).not.toContain('meta');
+  });
+
+  it('still hands the seat to the standby when the provider was never opened', () => {
+    // A never-opened provider is 'unknown' too; waiting for it would block the mode forever.
+    const seated = seatedProvidersForPreset('debate', 'debate', DEFAULT_MODE_ROLE_ASSIGNMENTS, states(['claude']), undefined, 'meta');
+    expect(seated).toContain('meta');
+    expect(seated).not.toContain('claude');
+  });
+
   it('keeps a signed-out provider listed when no standby can take its place', () => {
     expect(seatedProvidersForPreset('debate', 'debate', DEFAULT_MODE_ROLE_ASSIGNMENTS, states(['chatgpt']))).toContain('chatgpt');
   });

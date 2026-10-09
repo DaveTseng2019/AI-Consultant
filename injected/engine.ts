@@ -40,6 +40,20 @@ interface MacEngineState {
   adapterVersion: number;
   stop?: () => void;
   finish?: () => void;
+  takeLate?: () => string;
+}
+
+// The send-time filters a failed wait drops, kept so a reply that lands after the host gave up
+// can still be told apart from the replies that were already on the page.
+interface LateResponseBaseline {
+  responseBaselineEls: Set<Element>;
+  responseBaselineTextCounts: Map<string, number>;
+  pendingPromptText: string;
+  matchingChatGptUserTurnBaseline: number;
+  activeChatGptUserTurnAnchor: Element | null;
+  chatGptPreSendUserTurns: Element[];
+  chatGptUserTurnAnchorLatched: boolean;
+  chatGptResponseGenerationObserved: boolean;
 }
 
 type InputStrategy = (el: Element, text: string, assertCanMutate: ChallengeMutationGuard) => void | Promise<void>;
@@ -267,6 +281,33 @@ export async function retryLookup<T>(lookup: () => T | null | undefined, options
   }
 }
 
+// Sampled 2026-10-09 in the app's Claude webview: no element carries .font-claude-response any
+// more (nodes:0), so every Claude step waited out the full timeout. The answer is now
+// [data-testid="assistant-message"], beside [data-testid="user-message"]. The whole message, not
+// its .standard-markdown, because one answer can hold several markdown blocks and only the last
+// matched element is read; the serializer already drops the action buttons. The seed selectors in
+// adapters/claude.json are frozen (scripts/check-adapters.mjs), so the current markup joins here.
+const CLAUDE_ASSISTANT_MESSAGE_SELECTOR = '[data-testid="assistant-message"]';
+
+export function withCurrentResponseSelectors<T extends { provider: string; responseSelectors: string[] }>(next: T): T {
+  if (next.provider !== 'claude' || next.responseSelectors.includes(CLAUDE_ASSISTANT_MESSAGE_SELECTOR)) return next;
+  return { ...next, responseSelectors: [...next.responseSelectors, CLAUDE_ASSISTANT_MESSAGE_SELECTOR] };
+}
+
+// The assistant-message wrapper also holds the action row, whose relative timestamp ("現在") was
+// captured as the answer's last line on 2026-10-09 although the page shows no such text. Read only
+// the markdown blocks, in order; a message with none (a file card alone) falls back to the wrapper.
+export function claudeMarkdownText(response: Element): string | null {
+  if (response.getAttribute?.('data-testid') !== 'assistant-message') return null;
+  const blocks = Array.from(response.querySelectorAll?.('.standard-markdown') ?? []);
+  const outermost = blocks.filter((block) => !blocks.some((other) => other !== block && other.contains?.(block)));
+  const text = outermost
+    .map((block) => serializeResponseText(block))
+    .filter(Boolean)
+    .join('\n\n');
+  return text || null;
+}
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => {
     globalThis.setTimeout(resolve, ms);
@@ -354,6 +395,7 @@ class InactiveSendOperationError extends Error {
   let lastChunkTime = 0;
   let lastActivatedInput: Element | null = null;
   let chatGptTerminalGate: ChatGptTerminalGateState = emptyChatGptTerminalGate();
+  let lateResponseBaseline: LateResponseBaseline | undefined;
 
   window.__MAC_ENGINE__ = {
     bootId: bridge.bootId,
@@ -362,6 +404,9 @@ class InactiveSendOperationError extends Error {
     // The user can see a finished answer that the detectors have not confirmed yet. finish()
     // ends the wait by reading the response exactly as the normal completion path does.
     finish: () => finishResponse(),
+    // The host already gave up on this turn, but the user says the answer arrived afterwards.
+    // Returns that answer, or '' when the page holds nothing newer than the send-time baseline.
+    takeLate: () => takeLateResponse(),
   };
 
   (window as unknown as { __MAC_REPORT__?: unknown }).__MAC_REPORT__ = {
@@ -440,7 +485,7 @@ class InactiveSendOperationError extends Error {
   function installAdapter(next: AdapterConfig) {
     const state = window.__MAC_ENGINE__ as MacEngineState;
     if (adapter && next.adapterVersion < adapter.adapterVersion) return;
-    adapter = next;
+    adapter = withCurrentResponseSelectors(next);
     state.adapterVersion = next.adapterVersion;
     if (statusInterval !== undefined) window.clearInterval(statusInterval);
     reportStatus();
@@ -590,7 +635,10 @@ class InactiveSendOperationError extends Error {
       bridge.emit({ v: 1, action: 'STATUS_REPORT', payload: { dom: 'unknown', bootId: bridge.bootId } });
       return;
     }
-    let login: 'logged_in' | 'logged_out' | 'blocked' = 'logged_out';
+    // No detector either way means the page has not rendered its composer or its sign-in form yet,
+    // not that nobody is signed in. Reporting 'logged_out' there showed "sign in" for Claude at
+    // every startup and swapped it out of the mode's seats until the next report.
+    let login: 'unknown' | 'logged_in' | 'logged_out' | 'blocked' = 'unknown';
     if (isProviderChallengeActive(adapter.provider)) {
       login = 'blocked';
     } else if (adapter.provider === 'meta' && queryInput(adapter) !== null) {
@@ -838,6 +886,7 @@ class InactiveSendOperationError extends Error {
     lastSeenResponseEl = existingResponses.length > 0 ? existingResponses[existingResponses.length - 1] : null;
     responseBaselineEls = new Set(existingResponses);
     responseBaselineTextCounts = countResponseTextKeys(existingResponses);
+    lateResponseBaseline = undefined;
     responseGeneration += 1;
     activeResponseGeneration = responseGeneration;
     waitingForResponse = true;
@@ -1516,6 +1565,25 @@ class InactiveSendOperationError extends Error {
   // An empty capture looks exactly like a provider that answered nothing, and the facts that decide
   // it -- which filter dropped every candidate -- live only in this frame. Name them in the error so
   // the event log and the run snapshot carry the diagnosis instead of a blank answer.
+  function describeAnswerLikeMarkup(): string {
+    const answerLike = /response|message|assistant|markdown|prose|font-claude|streaming/i;
+    const tally = new Map<string, number>();
+    const note = (token: string) => tally.set(token, (tally.get(token) ?? 0) + 1);
+    for (const el of Array.from(document.querySelectorAll('[class], [data-testid], [data-is-streaming]'))) {
+      for (const token of (el.getAttribute('class') ?? '').split(/\s+/)) {
+        if (token && answerLike.test(token)) note(`.${token}`);
+      }
+      const testId = el.getAttribute('data-testid');
+      if (testId && answerLike.test(testId)) note(`testid=${testId}`);
+      if (el.hasAttribute('data-is-streaming')) note(`streaming=${el.getAttribute('data-is-streaming')}`);
+    }
+    return [...tally]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 20)
+      .map(([token, total]) => `${token}:${total}`)
+      .join(' ');
+  }
+
   function describeEmptyCapture(): string {
     if (!adapter) return 'no adapter';
     const parts = [`cached:${lastResponseText.length}`];
@@ -1544,6 +1612,10 @@ class InactiveSendOperationError extends Error {
     }
     const responseEls = Array.from(document.querySelectorAll(adapter.responseSelectors.join(', ')));
     parts.push(`nodes:${responseEls.length}`);
+    // No node at all means the provider renamed its answer markup. Name the classes and test ids
+    // that look like answer containers so the next selector comes from the page, not a guess.
+    // Structure only: no text leaves the page.
+    if (responseEls.length === 0) parts.push(`page:[${describeAnswerLikeMarkup()}]`);
     const rejected = new Map<string, number>();
     const count = (reason: string) => rejected.set(reason, (rejected.get(reason) ?? 0) + 1);
     for (let index = responseEls.length - 1; index >= 0; index -= 1) {
@@ -1587,7 +1659,7 @@ class InactiveSendOperationError extends Error {
   }
 
   function extractResponseText(response: Element): string | null {
-    const text = serializeResponseText(response);
+    const text = claudeMarkdownText(response) ?? serializeResponseText(response);
     if (text) return text;
     const responseTag = typeof response.tagName === 'string' ? response.tagName.toUpperCase() : '';
     const asset = ['IMG', 'CANVAS', 'VIDEO'].includes(responseTag)
@@ -2118,6 +2190,51 @@ class InactiveSendOperationError extends Error {
     resetChatGptTerminalGate();
   }
 
+  function captureLateResponseBaseline(): LateResponseBaseline {
+    return {
+      responseBaselineEls: new Set(responseBaselineEls),
+      responseBaselineTextCounts: new Map(responseBaselineTextCounts),
+      pendingPromptText,
+      matchingChatGptUserTurnBaseline,
+      activeChatGptUserTurnAnchor,
+      chatGptPreSendUserTurns: [...chatGptPreSendUserTurns],
+      chatGptUserTurnAnchorLatched,
+      chatGptResponseGenerationObserved,
+    };
+  }
+
+  function takeLateResponse(): string {
+    if (!adapter) return '';
+    const live = waitingForResponse;
+    if (!live) {
+      // Put the failed turn's filters back only for this one read, so the idle page state that
+      // native-send and composer checks rely on is exactly what it was before.
+      const saved = lateResponseBaseline;
+      if (!saved) return '';
+      responseBaselineEls = new Set(saved.responseBaselineEls);
+      responseBaselineTextCounts = new Map(saved.responseBaselineTextCounts);
+      pendingPromptText = saved.pendingPromptText;
+      matchingChatGptUserTurnBaseline = saved.matchingChatGptUserTurnBaseline;
+      activeChatGptUserTurnAnchor = saved.activeChatGptUserTurnAnchor;
+      chatGptPreSendUserTurns = [...saved.chatGptPreSendUserTurns];
+      chatGptUserTurnAnchorLatched = saved.chatGptUserTurnAnchorLatched;
+      chatGptResponseGenerationObserved = saved.chatGptResponseGenerationObserved;
+      waitingForResponse = true;
+    }
+    // A failed turn's cached text is whatever was seen before it failed, not the late answer.
+    const fresh = getLatestResponseText();
+    const payload = live ? finalResponseText(lastResponseText, fresh) : (fresh ?? '');
+    if (!payload.trim()) {
+      if (!live) cancelResponseWait();
+      return '';
+    }
+    const sendOperation = activeSendOperation;
+    cancelResponseWait();
+    if (live && sendOperation !== undefined) releaseSendOperation(sendOperation);
+    lateResponseBaseline = undefined;
+    return payload;
+  }
+
   function doneWithError(reason: string, providerHint?: AIProvider, sendOperation?: number) {
     if (sendOperation !== undefined && !isActiveSendOperation(sendOperation)) return;
     const provider = providerHint ?? adapter?.provider;
@@ -2125,6 +2242,7 @@ class InactiveSendOperationError extends Error {
       if (sendOperation !== undefined) releaseSendOperation(sendOperation);
       return;
     }
+    if (waitingForResponse) lateResponseBaseline = captureLateResponseBaseline();
     cancelResponseWait();
     bridge.emit({ v: 1, action: 'RESPONSE_DONE', provider, payload: `[Error: ${reason}]` });
     if (sendOperation !== undefined) releaseSendOperation(sendOperation);

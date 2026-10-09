@@ -14,6 +14,7 @@ export interface StepTimeoutDialogState {
   requestId?: number;
   failureKind?: StepRecoveryFailureKind;
   recoveryDetail?: StepRecoveryDetail;
+  lateAnswerMissing?: boolean;
 }
 
 export function StepTimeoutDialog({
@@ -77,7 +78,13 @@ export function StepTimeoutDialog({
         <p id="step-timeout-description" className="mt-2 text-sm text-zinc-700 dark:text-zinc-300">
           {formatI18n(t(descriptionKey, locale), { provider: providerLabel })}
         </p>
-        <div className="mt-4 flex gap-2">
+        {event.lateAnswerMissing ? (
+          <p className="mt-2 text-sm text-amber-700 dark:text-amber-300">{t('stepTimeout.lateAnswerMissing', locale)}</p>
+        ) : null}
+        <div className="mt-4 flex flex-wrap gap-2">
+          <button type="button" className="border border-amber-300 dark:border-amber-700 px-3 py-2 text-xs hover:bg-amber-100 dark:hover:bg-amber-950" onClick={() => choose('take')}>
+            {t('stepTimeout.takeAnswer', locale)}
+          </button>
           <button type="button" className="border border-emerald-300 dark:border-emerald-700 px-3 py-2 text-xs hover:bg-emerald-100 dark:hover:bg-emerald-950" onClick={() => choose('retry')}>
             {t('stepTimeout.retry', locale)}
           </button>

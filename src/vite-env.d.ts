@@ -26,6 +26,7 @@ declare global {
       adapterVersion: number;
       stop?: () => void;
       finish?: () => void;
+      takeLate?: () => string;
     };
   }
 }

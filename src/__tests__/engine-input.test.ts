@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import chatgptAdapterSeed from '../../adapters/chatgpt.json';
+import claudeAdapterSeed from '../../adapters/claude.json';
 import grokAdapterSeed from '../../adapters/grok.json';
 import type { AIProvider, BridgeMessage } from '../../shared/types';
 
@@ -398,11 +399,12 @@ describe('injected engine input hardening', () => {
     const handler = await installEngine(env);
 
     dispatchAdapter(handler, grokAdapterWithoutTextarea());
+    // A hidden composer is no evidence of a session, and no sign-in form is shown either: unknown.
     expect(env.emitted.at(-1)).toEqual({
       v: 1,
       action: 'STATUS_REPORT',
       provider: 'grok',
-      payload: { dom: 'ready', login: 'logged_out', thinking: false, bootId: 'boot1' },
+      payload: { dom: 'ready', login: 'unknown', thinking: false, bootId: 'boot1' },
     });
 
     send(handler, 'must not enter a hidden textarea');
@@ -415,6 +417,29 @@ describe('injected engine input hardening', () => {
     expect(errorDone(env)?.payload).toBe('[Error: grok input element not found]');
   });
 
+  it('reports unknown, not signed out, while a Claude page has rendered neither composer nor sign-in form', async () => {
+    const env = createEnv({ inputKind: 'textarea' });
+    const handler = await installEngine(env);
+
+    dispatchAdapter(handler, {
+      provider: 'claude',
+      loginDetectors: ['.ProseMirror[contenteditable="true"]'],
+      loggedOutDetectors: ['input[type="email"]'],
+    });
+    // Startup: the page is still hydrating. "Signed out" here put "sign in" on the card and moved
+    // Claude out of the debate's seats until the next report.
+    expect(env.emitted.at(-1)).toMatchObject({ action: 'STATUS_REPORT', payload: { login: 'unknown' } });
+
+    // A real sign-in form is still reported as signed out.
+    env.detectorElements.set('input[type="email"]', [new FakeElement(env.document, 'input')]);
+    dispatchAdapter(handler, {
+      provider: 'claude',
+      loginDetectors: ['.ProseMirror[contenteditable="true"]'],
+      loggedOutDetectors: ['input[type="email"]'],
+    });
+    expect(env.emitted.at(-1)).toMatchObject({ action: 'STATUS_REPORT', payload: { login: 'logged_out' } });
+  });
+
   it('ignores a hidden legacy Grok composer as a login detector', async () => {
     const env = createEnv({ inputKind: 'textarea' });
     const hiddenLegacyComposer = new FakeElement(env.document, 'div');
@@ -423,12 +448,12 @@ describe('injected engine input hardening', () => {
     const handler = await installEngine(env);
 
     dispatchAdapter(handler, grokAdapterWithoutTextarea());
-
+    // A hidden composer is no evidence of a session, and no sign-in form is shown either: unknown.
     expect(env.emitted.at(-1)).toEqual({
       v: 1,
       action: 'STATUS_REPORT',
       provider: 'grok',
-      payload: { dom: 'ready', login: 'logged_out', thinking: false, bootId: 'boot1' },
+      payload: { dom: 'ready', login: 'unknown', thinking: false, bootId: 'boot1' },
     });
   });
 
@@ -2029,7 +2054,74 @@ describe('injected engine input hardening', () => {
     // section. The reason string is what names the filter that dropped the text.
     const done = env.emitted.filter((message) => message.action === 'RESPONSE_DONE');
     expect(done).toHaveLength(1);
-    expect(done[0].payload).toBe('[Error: grok captured an empty response (cached:0, nodes:0, nothing scanned)]');
+    expect(done[0].payload).toBe('[Error: grok captured an empty response (cached:0, nodes:0, page:[], nothing scanned)]');
+  });
+
+  it('reads Claude answers from the current assistant-message markup, not only the frozen seed selectors', async () => {
+    const { withCurrentResponseSelectors } = await import('../../injected/engine');
+    // The seed's .font-claude-response matched nothing on Claude's page (sampled 2026-10-09), so
+    // every Claude step waited out the full timeout with the answer already on screen.
+    expect(claudeAdapterSeed.responseSelectors).not.toContain('[data-testid="assistant-message"]');
+    const claude = withCurrentResponseSelectors(claudeAdapterSeed);
+    expect(claude.responseSelectors).toContain('[data-testid="assistant-message"]');
+    expect(claude.responseSelectors).toEqual(expect.arrayContaining(claudeAdapterSeed.responseSelectors));
+    expect(withCurrentResponseSelectors(claude).responseSelectors).toEqual(claude.responseSelectors);
+    // Only Claude changed its markup; the other providers keep exactly their seed.
+    expect(withCurrentResponseSelectors(grokAdapterSeed)).toBe(grokAdapterSeed);
+  });
+
+  it('reads a Claude answer from its markdown blocks, leaving out the action-row timestamp', async () => {
+    const { claudeMarkdownText } = await import('../../injected/engine');
+    const env = createEnv({ inputKind: 'textarea' });
+    const message = new FakeElement(env.document, 'div');
+    message.setAttribute('data-testid', 'assistant-message');
+    const first = new FakeElement(env.document, 'div', 'first block of the answer');
+    first.setAttribute('class', 'standard-markdown');
+    const second = new FakeElement(env.document, 'div', 'second block of the answer');
+    second.setAttribute('class', 'standard-markdown');
+    // The page shows no "現在" under the answer, yet reading the whole wrapper captured it.
+    const actions = new FakeElement(env.document, 'div', '現在');
+    actions.setAttribute('data-testid', 'message-actions');
+    message.appendChild(first);
+    message.appendChild(second);
+    message.appendChild(actions);
+
+    const text = claudeMarkdownText(message as unknown as Element);
+    expect(text).toBe('first block of the answer\n\nsecond block of the answer');
+    expect(text).not.toContain('現在');
+
+    // A message with no markdown block (a file card alone) keeps the wrapper read.
+    const fileOnly = new FakeElement(env.document, 'div', 'report.md');
+    fileOnly.setAttribute('data-testid', 'assistant-message');
+    expect(claudeMarkdownText(fileOnly as unknown as Element)).toBeNull();
+  });
+
+  it('hands over an answer that lands after the no-text timeout, but never one from before the send', async () => {
+    vi.useFakeTimers();
+    const env = createEnv({ inputKind: 'textarea' });
+    const staleAnswer = new FakeElement(env.document, 'div', 'answer to the previous question');
+    env.responses = [staleAnswer];
+    if (env.sendButton) env.sendButton.onClick = () => env.input.setVisibleText('');
+    const handler = await installEngine(env);
+    dispatchAdapter(handler, {
+      timing: { doneDelayMs: 100, chunkDebounceMs: 0, statusIntervalMs: 1_000_000, backupPollMs: 1_000 },
+    });
+
+    send(handler, 'argue the con side');
+    await flushMicrotasks();
+    // A slow provider shows no text for the whole window, so the engine gives the turn up.
+    await vi.advanceTimersByTimeAsync(600_000 + 2_000);
+    const done = env.emitted.filter((message) => message.action === 'RESPONSE_DONE');
+    expect(done.map((message) => message.payload)).toEqual(['[Error: grok produced no response text]']);
+
+    const engine = (window as unknown as { __MAC_ENGINE__?: { takeLate?: () => string } }).__MAC_ENGINE__;
+    // Only the earlier answer is on the page: taking it would feed the wrong text to the judge.
+    expect(engine?.takeLate?.()).toBe('');
+
+    env.responses = [staleAnswer, new FakeElement(env.document, 'div', 'late con argument')];
+    expect(engine?.takeLate?.()).toBe('late con argument');
+    // Taken once; a second press must not hand the same answer to another step.
+    expect(engine?.takeLate?.()).toBe('');
   });
 
   it('keeps Grok Heavy in flight while the live chat-stop-button remains visible', async () => {

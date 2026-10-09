@@ -224,6 +224,7 @@ export const ja: Record<I18nKey, string> = {
   'workflowRole.roundtable.phase5': '最終統合',
   'stepTimeout.waiting': '{provider}を待っています：{seconds}秒',
   'stepTimeout.takeAnswer': '回答は完了',
+  'stepTimeout.lateAnswerMissing': 'ページには今回の送信より新しい回答がありません。回答が終わってから「回答は完了」を押してください。',
   'stepTimeout.title': 'ステップがタイムアウトしました',
   'stepTimeout.description': '{provider}はこのワークフローステップを完了しませんでした。',
   'stepTimeout.providerErrorTitle': 'プロバイダーのステップでエラーが発生しました',

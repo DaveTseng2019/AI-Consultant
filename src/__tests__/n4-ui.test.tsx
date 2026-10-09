@@ -196,7 +196,11 @@ describe('N4 process trace', () => {
     const html = renderToStaticMarkup(<ProcessTrace trace={trace} locale={locale} />);
     expect(html).toContain(t('processTrace.title', locale));
     expect(html).toContain('Debate: con');
-    expect(html).toContain('Pro · ChatGPT');
+    // The logo replaces the visible provider name; the name stays for screen readers only.
+    expect(html).not.toContain('Pro · ChatGPT');
+    expect(html).toContain('<span class="sr-only">ChatGPT</span><span class="shrink-0 font-medium">Pro</span>');
+    expect(html).toContain('<span class="sr-only">Claude</span><span class="shrink-0 font-medium">Con</span>');
+    expect(html.match(/<img /g)).toHaveLength(2);
     expect(html).toContain(t('processTrace.done', locale));
     expect(html).toContain(t('processTrace.active', locale));
   });
@@ -222,8 +226,11 @@ describe('N4 process trace', () => {
 
     const html = renderToStaticMarkup(<ProcessTrace trace={trace} locale={locale} />);
     expect(html).toContain(t('processTrace.fanout', locale));
-    expect(html).toContain(`ChatGPT ${t('processTrace.response', locale)}`);
-    expect(html).toContain(`Gemini ${t('processTrace.response', locale)}`);
+    const responseText = t('processTrace.response', locale);
+    expect(html).toContain(`<span class="sr-only">ChatGPT</span><span class="shrink-0 font-medium">${responseText}</span>`);
+    expect(html).toContain(`<span class="sr-only">Gemini</span><span class="shrink-0 font-medium">${responseText}</span>`);
+    // The aggregate row names no single provider, so it keeps its text and gets no logo.
+    expect(html.match(/<img /g)).toHaveLength(2);
   });
 
   it('starts Brainstorm with serial role rows instead of a misleading free fan-out row', () => {

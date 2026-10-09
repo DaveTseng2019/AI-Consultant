@@ -2,9 +2,9 @@
 
 # Compatibility and manual test matrix
 
-> Last reviewed: 2026-10-01. The newest real-device records are `v0.0.2` on Windows, `v0.0.17` on
+> Last reviewed: 2026-10-09. The newest real-device records are `v0.0.2` on Windows, `v0.0.17` on
 > Linux, the single-provider check on `v0.0.19`, the Meta AI and startup-restore checks on
-> `v0.0.23`, and the Grok sign-in / sign-out check on `v0.0.24`; the versions in between were not
+> `v0.0.23`, the Grok sign-in / sign-out check on `v0.0.24`, and the Claude debate check on `v0.0.25`; the versions in between were not
 > re-run item by item.
 >
 > This document records **evidence actually observed**, not guarantees. Provider DOM and sign-in
@@ -100,6 +100,30 @@ product-behaviour list below that is not named here.
 > repository's table carries a Grok entry as well. Without the fix Grok never completes at all. The
 > row above is the result after that fix.
 
+### v0.0.25 Claude answers and the debate (2026-10-09)
+
+This version reads Claude's answers from its new page markup and adds a way to take an answer that
+arrived late. Checked by hand by the maintainer.
+
+Environment: Windows 11 Pro `10.0.26200`, **the development build (`pnpm tauri dev`)**, not the CI
+artifacts attached to the release.
+
+| Item | Result |
+|---|---|
+| Claude's con step in a debate finishes on its own, then judge and summary run | **Pass** (development build, 2 runs). Before the fix the step waited 10 minutes and failed |
+| Claude's captured answer ends at its real last sentence | **Pass** (development build). Before the fix it ended with the timestamp "現在" |
+| "Answer is done" in the header while the step waits | **Pass** (development build) |
+| "Answer is done" pressed before any text: the run pauses instead of ending | **Pass** (development build) |
+| Taking an answer that arrived after the step failed | **Automated tests only.** On the real page only the "no newer answer" branch was seen |
+| Claude and Gemini show "Opening…" at startup and keep their debate roles | **Automated tests only** |
+| The column split is kept when the window is maximized and restored | **Automated tests only** |
+| Ctrl+C stops a running workflow | **Automated tests only** |
+| macOS and Linux | **Not tested** for this version |
+
+What the page showed (2026-10-09, from the engine's own probe): no element carried
+`.font-claude-response`; the answer was `[data-testid="assistant-message"]` with its text in
+`.standard-markdown`, beside `[data-testid="user-message"]`.
+
 ### v0.0.24 Grok sign-in and sign-out (2026-10-01)
 
 This version lets Grok finish sign-in and sign-out inside the app, and ports an upstream fix for
@@ -184,7 +208,7 @@ This requirement only affects source development; users of a packaged build need
 | Provider | Bundled adapter | Automated coverage | Real-device evidence |
 |---|---:|---|---|
 | ChatGPT | v9 | Structure, logged-out precedence, completion markers, ProseMirror composer | Signed in and ready on the v0.0.2 packaged build; long question answered in full on v0.0.23 (local build) |
-| Claude | v4 | Structure, sign-in page detection, explicit Google SSO scope | Signed in and ready on the v0.0.2 packaged build |
+| Claude | v4 | Structure, sign-in page detection, explicit Google SSO scope, current answer markup added in the engine | Signed in and ready on the v0.0.2 packaged build; v0.0.25 development build answered a debate step |
 | Gemini | v2 | Structure, bounded navigation and blocked state for Google `/sorry` | Signed in and ready on the v0.0.2 packaged build; live-page capture works |
 | Grok | v9 | Structure, challenge-first deferred takeover, watchdog recovery, DOM changes refused during a challenge | Signed in and ready on the v0.0.2 packaged build |
 | Meta AI | v3 | Structure, narrow seed contract, usable-composer login, gated composer stays logged out | Signed in and answered on v0.0.23 (local build) |

@@ -21,6 +21,7 @@ import {
   type PastedImage,
 } from './pastedImages';
 import { formatInsertedFilesPrompt, TEXT_FILE_EXTENSIONS, type FileLike } from './fileInsert';
+import { currentSelectionText, isStopShortcut } from './stopShortcut';
 import type { Locale } from '../i18n/resolve';
 import { t } from '../i18n/t';
 
@@ -60,6 +61,19 @@ export function InputBar({
     textarea.style.height = 'auto';
     textarea.style.height = `${Math.min(textarea.scrollHeight, 120)}px`;
   }, [text]);
+
+  // notes: only hears keys pressed in the app's own window. When focus is inside a provider's
+  //        native webview the key goes to that page; forwarding it needs a Rust-side hook.
+  useEffect(() => {
+    if (!isProcessing) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (!isStopShortcut(event, currentSelectionText())) return;
+      event.preventDefault();
+      onCancel();
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isProcessing, onCancel]);
 
   const commitAttachmentChips = (chips: AttachmentChip[]) => {
     attachmentChipsRef.current = chips;

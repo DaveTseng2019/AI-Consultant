@@ -39,6 +39,16 @@ export function providerResponseError(provider: AIProvider, response: string): P
   return new ProviderResponseError(provider, trimmed, match[1].trim());
 }
 
+// The page had no answer text yet: the engine gave up after the host's inactivity window, or the
+// user pressed "answer is done" too early. The provider may still answer afterwards, so this is a
+// slow step, not a broken one.
+export function isNoResponseTextError(error: ProviderResponseError): boolean {
+  return (
+    error.message === `${error.provider} produced no response text` ||
+    error.message.startsWith(`${error.provider} captured an empty response`)
+  );
+}
+
 export function isRetryableSendRejection(error: ProviderResponseError): boolean {
   return error.message.toLowerCase() === `${error.provider} ${SEND_NOT_ACCEPTED_SUFFIX}`;
 }

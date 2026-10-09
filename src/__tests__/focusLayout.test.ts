@@ -10,6 +10,7 @@ import {
   driveCenteredProviderToStage,
   focusGridTemplateColumns,
   nonEmptyRect,
+  scaleFocusPaneWidth,
   throttleWithFrame,
 } from '../ui/focusLayout';
 import { applyPresentationTransitionCommand, waitForPresentationTargetBounds, type PresentationCommandHost } from '../ui/presentationCommands';
@@ -28,6 +29,20 @@ function commandHost(): PresentationCommandHost {
     show: vi.fn().mockResolvedValue(undefined),
   };
 }
+
+describe('focus pane split across a window resize', () => {
+  // Maximizing kept the pane at its pixel width and gave every new pixel to the other column, so
+  // the split the user had set looked different after the window grew.
+  it('keeps the share of the container when the window is maximized and restored', () => {
+    const maximized = clampFocusPaneWidth(scaleFocusPaneWidth(600, 1200, 1800), 1800);
+    expect(maximized).toBe(900);
+    expect(clampFocusPaneWidth(scaleFocusPaneWidth(maximized, 1800, 1200), 1200)).toBe(600);
+  });
+
+  it('leaves the width alone when there is no earlier measurement to scale from', () => {
+    expect(scaleFocusPaneWidth(600, 0, 1800)).toBe(600);
+  });
+});
 
 describe('focus layout helpers', () => {
   it('clamps focus pane width while preserving control-pane minimum space', () => {

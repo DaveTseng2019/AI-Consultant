@@ -51,7 +51,7 @@ response block, how to tell that generation is running, and the sign-in / sign-o
 
 | Order | State | Meaning |
 |---|---|---|
-| 1 | Opening… | The webview is being created |
+| 1 | Opening… | The webview is being created, or the page has not said yet whether anyone is signed in (the first seconds after start) |
 | 2 | Open | There is no webview yet (this is the word on the card) |
 | 3 | Needs repair | The adapter's selectors do not match the page |
 | 4 | Connection problem | The bridge is degraded |

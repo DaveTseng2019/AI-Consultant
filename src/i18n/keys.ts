@@ -204,6 +204,7 @@ export const I18N_KEYS = [
   'workflowRole.roundtable.phase5',
   'stepTimeout.waiting',
   'stepTimeout.takeAnswer',
+  'stepTimeout.lateAnswerMissing',
   'stepTimeout.title',
   'stepTimeout.description',
   'stepTimeout.providerErrorTitle',

@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
+import { AI_PROVIDERS } from '../../shared/constants';
 import type { Locale } from '../i18n/resolve';
 import { t } from '../i18n/t';
 import { ModalDialog } from './ModalDialog';
 import { MarkdownText } from './MarkdownText';
 import type { ProcessTraceState, ProcessTraceStep, ProcessTraceStepStatus } from './processTraceModel';
+import { ProviderLogo } from './ProviderLogo';
 
 export function ProcessTrace({
   trace,
@@ -59,9 +61,9 @@ export function ProcessTrace({
                     <span className={`h-2 w-2 rounded-full ${statusDotClass(step.status)}`} />
                   </span>
                   <span className={`truncate text-xs font-medium uppercase ${statusClass(step.status)}`}>{statusLabel(step.status, locale)}</span>
-                  <span className="min-w-0 truncate text-zinc-800 dark:text-zinc-200">
-                    <span className="font-medium">{step.label}</span>
-                    {step.detail ? <span className="text-zinc-500 dark:text-zinc-400"> — {step.detail}</span> : null}
+                  <span className="flex min-w-0 items-center gap-1.5 truncate text-zinc-800 dark:text-zinc-200">
+                    <StepLabel step={step} />
+                    {step.detail ? <span className="min-w-0 truncate text-zinc-500 dark:text-zinc-400">— {step.detail}</span> : null}
                   </span>
                 </button>
               </li>
@@ -81,7 +83,7 @@ export function ProcessTrace({
           <div className="flex items-start justify-between gap-4 border-b border-zinc-200 pb-3 dark:border-zinc-800">
             <div>
               <h2 id="process-trace-detail-title" className="flex items-center gap-2 text-base font-semibold text-zinc-900 dark:text-zinc-100">
-                <span>{detailStep.label}</span>
+                <StepLabel step={detailStep} />
               </h2>
               <div className={`mt-1 text-xs uppercase ${statusClass(detailStep.status)}`}>{statusLabel(detailStep.status, locale)}</div>
             </div>
@@ -94,6 +96,19 @@ export function ProcessTrace({
           </div>
         </ModalDialog>
       ) : null}
+    </>
+  );
+}
+
+// The logo stands in for the provider name. The name stays for screen readers, because the logo
+// image is decorative.
+function StepLabel({ step }: { step: ProcessTraceStep }) {
+  if (!step.provider || !step.shortLabel) return <span className="font-medium">{step.label}</span>;
+  return (
+    <>
+      <ProviderLogo provider={step.provider} />
+      <span className="sr-only">{AI_PROVIDERS[step.provider].name}</span>
+      <span className="shrink-0 font-medium">{step.shortLabel}</span>
     </>
   );
 }

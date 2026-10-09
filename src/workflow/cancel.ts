@@ -50,3 +50,18 @@ export async function finishProviderResponse(provider: AIProvider): Promise<void
     "window.__MAC_ENGINE__ && typeof window.__MAC_ENGINE__.finish === 'function' && window.__MAC_ENGINE__.finish();",
   ).catch(() => undefined);
 }
+
+/** Read an answer that landed after the step already failed. '' when the page has nothing new. */
+export async function takeLateProviderResponse(provider: AIProvider): Promise<string> {
+  try {
+    const raw = await host.provider.evalWithCallback(
+      provider,
+      "window.__MAC_ENGINE__ && typeof window.__MAC_ENGINE__.takeLate === 'function' ? window.__MAC_ENGINE__.takeLate() : ''",
+    );
+    // WebView2 hands back the result JSON-encoded once; the answer itself is a plain string.
+    const text = JSON.parse(raw) as unknown;
+    return typeof text === 'string' ? text : '';
+  } catch {
+    return '';
+  }
+}

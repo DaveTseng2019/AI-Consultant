@@ -432,6 +432,26 @@ fn trace_download(provider: &str, event: &str, detail: &str) {
 #[cfg(not(debug_assertions))]
 fn trace_download(_provider: &str, _event: &str, _detail: &str) {}
 
+/// An empty capture names the filter that dropped every candidate, but only inside an error the
+/// control pane keeps in memory. Debug builds print each provider error and each late-answer read
+/// as they cross the bridge; release builds carry none of this.
+#[cfg(debug_assertions)]
+fn trace_response(provider: &str, js: &str, result: &str) {
+    if js.contains("takeLate") {
+        eprintln!(
+            "[response-trace] {provider} takeLate chars={}",
+            result.chars().count()
+        );
+    }
+    if let Some(start) = result.find("[Error:") {
+        let detail: String = result[start..].chars().take(1500).collect();
+        eprintln!("[response-trace] {provider} {detail}");
+    }
+}
+
+#[cfg(not(debug_assertions))]
+fn trace_response(_provider: &str, _js: &str, _result: &str) {}
+
 /// A file the provider saved is its real answer whenever it is text: Claude answers a long
 /// request by writing a document instead of typing it, and the conversation then holds only a
 /// viewer panel. Reading the bytes back is the ground truth that panel only approximates.
@@ -1695,10 +1715,12 @@ async fn eval_provider_with_callback(
             }
         })
         .map_err(|error| error.to_string())?;
-    tokio::time::timeout(Duration::from_secs(5), receiver)
+    let result = tokio::time::timeout(Duration::from_secs(5), receiver)
         .await
         .map_err(|_| "eval_with_callback timed out".to_string())?
-        .map_err(|_| "eval_with_callback response channel closed".to_string())
+        .map_err(|_| "eval_with_callback response channel closed".to_string())?;
+    trace_response(provider, js, &result);
+    Ok(result)
 }
 
 #[tauri::command]

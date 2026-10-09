@@ -9,6 +9,8 @@ export interface ProcessTraceStep {
   id: string;
   kind: 'fanout' | 'response' | 'role';
   label: string;
+  // label without the provider name. The row shows the provider's logo in place of the name.
+  shortLabel?: string;
   detail?: string;
   content?: string;
   provider?: AIProvider;
@@ -101,6 +103,7 @@ function addRoleStep(
     role,
     turn,
     label: `${displayRole} · ${providerName}`,
+    shortLabel: displayRole,
     detail: role && label && role !== label ? role : undefined,
     status: 'active',
   };
@@ -151,6 +154,7 @@ function responseStep(provider: AIProvider, status: ProcessTraceStepStatus, loca
     kind: 'response',
     provider,
     label: `${AI_PROVIDERS[provider].name} ${t('processTrace.response', locale)}`,
+    shortLabel: t('processTrace.response', locale),
     detail: content ? oneLinePreview(content) : t('processTrace.waitingForResponse', locale),
     content: content || undefined,
     status,
