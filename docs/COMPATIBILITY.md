@@ -117,6 +117,7 @@ artifacts attached to the release.
 | Taking an answer that arrived after the step failed | **Automated tests only.** On the real page only the "no newer answer" branch was seen |
 | Claude and Gemini show "Opening…" at startup and keep their debate roles | **Automated tests only** |
 | The column split is kept when the window is maximized and restored | **Automated tests only** |
+| The window opens centred and fully inside the work area | **Pass** (development build, 1920×1032 work area: margins 312 / 312 / 96 / 97). A screen smaller than the default size: **automated tests only** |
 | Ctrl+C stops a running workflow | **Automated tests only** |
 | macOS and Linux | **Not tested** for this version |
 

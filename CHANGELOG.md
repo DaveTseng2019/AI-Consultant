@@ -19,6 +19,8 @@ the release CI from the tag.
 - Fixed: at startup, Claude and Gemini no longer show "sign in" for the first seconds, and a
   debate no longer hands their roles to Meta AI meanwhile. The card says "Opening…" and the mode
   waits for them.
+- Fixed: the window opens fully inside the screen's usable area, centred. On a screen smaller than
+  the default size the window shrinks to fit, so the composer at the bottom stays reachable.
 - Changed: maximizing or restoring the window keeps the split between the two columns.
 - Changed: the process trace shows each AI's logo in place of its name.
 - New: Ctrl+C stops a running workflow when nothing is selected. With text selected it still

@@ -4,6 +4,7 @@ mod session_checkpoint;
 mod settings;
 mod snapshots;
 mod webviews;
+mod window_fit;
 
 pub fn run() {
     let mut builder = tauri::Builder::default();
@@ -31,6 +32,22 @@ pub fn run() {
         // The feature-frozen edition intentionally uses GitHub Releases instead of a self-updater.
         .setup(|app| {
             use tauri::Manager;
+            if let Some(window) = app.get_webview_window("main") {
+                let floor = app
+                    .config()
+                    .app
+                    .windows
+                    .iter()
+                    .find(|config| config.label == "main")
+                    .map(|config| {
+                        (
+                            config.min_width.unwrap_or(0.0),
+                            config.min_height.unwrap_or(0.0),
+                        )
+                    })
+                    .unwrap_or((0.0, 0.0));
+                window_fit::fit_main_window(&window, floor);
+            }
             if settings::start_maximized_preference(app.handle()) {
                 if let Some(window) = app.get_webview_window("main") {
                     let _ = window.maximize();
