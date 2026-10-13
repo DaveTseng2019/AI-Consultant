@@ -27,7 +27,7 @@ import {
 
   type ModeRoleAssignments,
 } from './modeRoleAssignment';
-import { compareVersions, fetchLatestRelease, isLocalBuild, selfUpdateLane, type SelfUpdateLane } from './updateCheck';
+import { autoUpdateToggleLocked, compareVersions, fetchLatestRelease, isLocalBuild, selfUpdateLane, type SelfUpdateLane } from './updateCheck';
 import { host } from '../host';
 import {
   filterEventLogByProvider,
@@ -1117,12 +1117,13 @@ export function SettingsModal({
                     </span>
                   </label>
                   {/* Only a portable folder or an installed copy has an in-app install, and only a
-                      check can find something to install, so the box is live only when both hold. */}
+                      check can find something to install, so turning it on needs both. Turning it
+                      off never does. */}
                   <label className="flex items-start gap-3 text-xs text-zinc-600 dark:text-zinc-400 has-[:disabled]:opacity-50">
                     <input
                       type="checkbox"
                       checked={draft.autoUpdateOnStartup}
-                      disabled={(!draft.portable && !draft.installed) || !draft.checkUpdatesOnStartup}
+                      disabled={autoUpdateToggleLocked(draft)}
                       onChange={(event) => void persistDraftFieldImmediately('autoUpdateOnStartup', event.target.checked)}
                       className="mt-0.5 h-4 w-4 shrink-0 accent-sky-700"
                     />

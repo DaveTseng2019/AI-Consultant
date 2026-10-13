@@ -111,6 +111,19 @@ export function selfUpdateLane(
   return undefined;
 }
 
+/** Whether the "Install updates automatically" box refuses a click. It only blocks turning the
+ *  option on: settings are shared by every build, so a box ticked on one build can show up on a
+ *  build that cannot use it, and it must still be possible to clear it there. */
+export function autoUpdateToggleLocked(settings: {
+  portable: boolean;
+  installed: boolean;
+  checkUpdatesOnStartup: boolean;
+  autoUpdateOnStartup: boolean;
+}): boolean {
+  if (settings.autoUpdateOnStartup) return false;
+  return (!settings.portable && !settings.installed) || !settings.checkUpdatesOnStartup;
+}
+
 export async function fetchLatestRelease(repo = DEFAULT_RELEASE_REPO, signal?: AbortSignal): Promise<LatestRelease | null> {
   if (signal?.aborted || !isReleaseRepo(repo)) return null;
 

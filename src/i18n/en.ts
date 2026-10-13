@@ -344,7 +344,7 @@ export const en: Record<I18nKey, string> = {
   'settings.checkUpdatesOnStartup': 'Check for updates at startup',
   'settings.checkUpdatesOnStartupDescription': 'When enabled, the app asks GitHub for the newest release every time it starts. A notice appears when a newer version exists.',
   'settings.autoUpdateOnStartup': 'Install updates automatically',
-  'settings.autoUpdateOnStartupDescription': 'Windows only, for the installed and the portable version. When the startup check finds a newer version, the app downloads and installs it. You confirm once before it closes.',
+  'settings.autoUpdateOnStartupDescription': 'Windows only, for the installed and the portable version. Automatic install is not built for macOS and Linux because there is no test setup to verify it on; update those versions from the download page. When the startup check finds a newer version, the app downloads and installs it. You confirm once before it closes.',
   'updateNotice.open': 'Open update settings',
   'updateNotice.dismiss': 'Dismiss',
   'settings.portableUpdateConfirm': 'The app will close, download the new portable build, and reopen itself. Continue?',

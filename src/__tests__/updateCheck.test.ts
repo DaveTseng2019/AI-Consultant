@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { compareVersions, fetchLatestRelease, isLocalBuild, selfUpdateLane } from '../ui/updateCheck';
+import { compareVersions, fetchLatestRelease, autoUpdateToggleLocked, isLocalBuild, selfUpdateLane } from '../ui/updateCheck';
 
 describe('local build detection', () => {
   it('recognises the pinned placeholder version only', () => {
@@ -110,5 +110,22 @@ describe('selfUpdateLane', () => {
     expect(selfUpdateLane({ portable: false, installed: false }, release)).toBeUndefined();
     expect(selfUpdateLane({ portable: true, installed: false }, { installerAssetUrl: release.installerAssetUrl })).toBeUndefined();
     expect(selfUpdateLane({ portable: false, installed: true }, { portableAssetUrl: release.portableAssetUrl })).toBeUndefined();
+  });
+});
+
+describe('autoUpdateToggleLocked', () => {
+  const unsupported = { portable: false, installed: false, checkUpdatesOnStartup: true };
+
+  // The settings file is shared by every build. A box ticked on an installed copy shows up ticked on
+  // a dev build or a Mac, and a locked ticked box is one the user can never clear.
+  it('never locks a ticked box, even where the option cannot work', () => {
+    expect(autoUpdateToggleLocked({ ...unsupported, autoUpdateOnStartup: true })).toBe(false);
+    expect(autoUpdateToggleLocked({ portable: true, installed: false, checkUpdatesOnStartup: false, autoUpdateOnStartup: true })).toBe(false);
+  });
+
+  it('refuses to turn it on without an install lane or without the startup check', () => {
+    expect(autoUpdateToggleLocked({ ...unsupported, autoUpdateOnStartup: false })).toBe(true);
+    expect(autoUpdateToggleLocked({ portable: false, installed: true, checkUpdatesOnStartup: false, autoUpdateOnStartup: false })).toBe(true);
+    expect(autoUpdateToggleLocked({ portable: false, installed: true, checkUpdatesOnStartup: true, autoUpdateOnStartup: false })).toBe(false);
   });
 });

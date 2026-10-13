@@ -334,7 +334,7 @@ export const zhTW: Record<I18nKey, string> = {
   'settings.checkUpdatesOnStartup': '啟動時檢查新版本',
   'settings.checkUpdatesOnStartupDescription': '開啟後，程式每次啟動都會向 GitHub 查詢最新版本。有新版本時，主畫面會顯示通知。',
   'settings.autoUpdateOnStartup': '自動更新',
-  'settings.autoUpdateOnStartupDescription': '只有 Windows 的安裝版與可攜版能使用。啟動時檢查到新版本，程式會自動下載並安裝。程式關閉前會請你確認一次。',
+  'settings.autoUpdateOnStartupDescription': '只有 Windows 的安裝版與可攜版能使用。macOS 與 Linux 版因為沒有相關的測試環境可以驗證，所以沒有實作自動安裝，請從下載頁更新。啟動時檢查到新版本，程式會自動下載並安裝。程式關閉前會請你確認一次。',
   'updateNotice.open': '開啟更新設定',
   'updateNotice.dismiss': '關閉',
   'settings.portableUpdateConfirm': '程式會關閉、下載新版可攜檔並自動重新開啟。要繼續嗎？',

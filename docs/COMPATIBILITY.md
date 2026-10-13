@@ -120,6 +120,7 @@ both setups had the version temporarily set to `0.0.1`:
 | After a restart, the main screen shows the new-version notice | **Passed** (development build, installed) |
 | "Open update settings" opens the Updates tab and runs the check | **Passed** (development build, installed) |
 | On a development build (neither installed nor portable), "Install updates automatically" is greyed out | **Passed** (development build, code from before the installer lane) |
+| On a build that cannot use it, a ticked "Install updates automatically" can still be cleared, then greys out | **Passed** (development build). Every build shares the settings file, so a box ticked on another build shows up this way |
 | On an installed copy, "download and update" on the Updates tab | **Passed** (installed). The exe reported `0.0.26` afterwards and reopened. This run found the script waiting until the app closed; fixed |
 | Automatic update at startup on an installed copy | **Passed** (installed, after the fix). About 6 seconds from the confirmation to the reopened app; the script exited at once and left no temporary files |
 | A silent install is not blocked by the language selector | **Passed** (`/S`). The `/P` passive runs in the two rows above showed no language selector either |

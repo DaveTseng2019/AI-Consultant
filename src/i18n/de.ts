@@ -346,7 +346,7 @@ export const de: Record<I18nKey, string> = {
   'settings.checkUpdatesOnStartup': 'Beim Start nach Updates suchen',
   'settings.checkUpdatesOnStartupDescription': 'Bei Aktivierung fragt die App bei jedem Start GitHub nach der neuesten Version. Gibt es eine neuere, erscheint ein Hinweis.',
   'settings.autoUpdateOnStartup': 'Updates automatisch installieren',
-  'settings.autoUpdateOnStartupDescription': 'Nur unter Windows, für die installierte und die portable Version. Findet die Prüfung beim Start eine neuere Version, lädt die App sie herunter und installiert sie. Vor dem Beenden fragt sie einmal nach.',
+  'settings.autoUpdateOnStartupDescription': 'Nur unter Windows, für die installierte und die portable Version. Für macOS und Linux ist die automatische Installation nicht umgesetzt, weil es keine Testumgebung gibt, um sie zu prüfen; aktualisiere diese Versionen über die Download-Seite. Findet die Prüfung beim Start eine neuere Version, lädt die App sie herunter und installiert sie. Vor dem Beenden fragt sie einmal nach.',
   'updateNotice.open': 'Update-Einstellungen öffnen',
   'updateNotice.dismiss': 'Schließen',
   'settings.portableUpdateConfirm': 'Die App wird beendet, lädt die neue portable Version herunter und startet sich neu. Fortfahren?',

@@ -346,7 +346,7 @@ export const ja: Record<I18nKey, string> = {
   'settings.checkUpdatesOnStartup': '起動時にアップデートを確認',
   'settings.checkUpdatesOnStartupDescription': '有効にすると、起動のたびに GitHub で最新リリースを確認します。新しいバージョンがあると通知が表示されます。',
   'settings.autoUpdateOnStartup': '自動的に更新する',
-  'settings.autoUpdateOnStartupDescription': 'Windows のインストール版とポータブル版のみ。起動時の確認で新しいバージョンが見つかると、ダウンロードしてインストールします。終了する前に一度確認します。',
+  'settings.autoUpdateOnStartupDescription': 'Windows のインストール版とポータブル版のみ。macOS 版と Linux 版は検証できるテスト環境がないため、自動インストールを実装していません。ダウンロードページから更新してください。起動時の確認で新しいバージョンが見つかると、ダウンロードしてインストールします。終了する前に一度確認します。',
   'updateNotice.open': '更新設定を開く',
   'updateNotice.dismiss': '閉じる',
   'settings.portableUpdateConfirm': 'アプリを終了し、新しいポータブル版をダウンロードして再起動します。続けますか？',
