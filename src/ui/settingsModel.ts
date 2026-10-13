@@ -86,6 +86,10 @@ export interface AppSettings {
   openProviders: AIProvider[];
   adapterBaseUrl: string;
   updaterChannel: string;
+  /** Ask GitHub for the newest release once at launch and show a notice when it is newer. */
+  checkUpdatesOnStartup: boolean;
+  /** Portable builds only: when the startup check finds a newer release, start installing it. */
+  autoUpdateOnStartup: boolean;
   portable: boolean;
   telemetry: 'none';
   snapshotPersistence: boolean;
@@ -139,6 +143,8 @@ export function defaultSettings(): AppSettings {
     openProviders: [],
     adapterBaseUrl: '',
     updaterChannel: 'stable',
+    checkUpdatesOnStartup: false,
+    autoUpdateOnStartup: false,
     portable: false,
     telemetry: 'none',
     snapshotPersistence: false,
@@ -297,6 +303,8 @@ export function normalizeSettings(value: unknown): AppSettings {
     openProviders: Array.from(new Set(providerList(input.openProviders))),
     adapterBaseUrl: stringValue(input.adapterBaseUrl, defaults.adapterBaseUrl),
     updaterChannel: stringValue(input.updaterChannel, defaults.updaterChannel),
+    checkUpdatesOnStartup: input.checkUpdatesOnStartup === true,
+    autoUpdateOnStartup: input.autoUpdateOnStartup === true,
     portable: input.portable === true,
     telemetry: 'none',
     snapshotPersistence: input.snapshotPersistence === true,

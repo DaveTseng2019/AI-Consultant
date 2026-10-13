@@ -96,6 +96,7 @@ export function SettingsModal({
   providerStates,
   activeModeRoleSettings,
   providerSelectionDisabled = false,
+  initialTab = 'general',
   onClose,
   onSaved,
 }: {
@@ -106,6 +107,8 @@ export function SettingsModal({
   providerStates: Record<AIProvider, ProviderState>;
   activeModeRoleSettings?: keyof ModeRoleAssignments;
   providerSelectionDisabled?: boolean;
+  /** The tab shown on opening. 'updates' also runs the check, for the startup notice's button. */
+  initialTab?: SettingsTab;
   onClose: () => void;
   onSaved: (settings: AppSettings) => void;
 }) {
@@ -144,8 +147,8 @@ export function SettingsModal({
 
   const [activeTabChoice, setActiveTab] = useState<SettingsTab>('general');
   useEffect(() => {
-    if (open) setActiveTab('general');
-  }, [open]);
+    if (open) setActiveTab(initialTab);
+  }, [initialTab, open]);
   // Custom actions only exist where the run can be handed to them; the tab goes with the section.
   const customActionsShown = draft ? !draft.snapshotPersistence || draft.snapshotRedactionTier === 'full-local' : false;
   const visibleTabs = SETTINGS_TABS.filter((tab) => tab.id !== 'customActions' || customActionsShown);
@@ -234,6 +237,12 @@ export function SettingsModal({
       updateCheckAbortRef.current?.abort();
     };
   }, [open]);
+
+  // Declared after the opening effect so it runs after that one has reset the check to idle.
+  useEffect(() => {
+    if (open && initialTab === 'updates') void checkForUpdates();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialTab, open]);
 
   useEffect(
     () => () => {
@@ -1094,6 +1103,33 @@ export function SettingsModal({
                       <span className="text-xs text-red-700 dark:text-red-300">{updateCheck.message}</span>
                     ) : null}
                   </div>
+                  <label className="flex items-start gap-3 text-xs text-zinc-600 dark:text-zinc-400">
+                    <input
+                      type="checkbox"
+                      checked={draft.checkUpdatesOnStartup}
+                      onChange={(event) => void persistDraftFieldImmediately('checkUpdatesOnStartup', event.target.checked)}
+                      className="mt-0.5 h-4 w-4 shrink-0 accent-sky-700"
+                    />
+                    <span>
+                      <span className="block font-medium text-zinc-700 dark:text-zinc-300">{t('settings.checkUpdatesOnStartup')}</span>
+                      <span className="mt-1 block leading-relaxed">{t('settings.checkUpdatesOnStartupDescription')}</span>
+                    </span>
+                  </label>
+                  {/* Only a portable build can replace itself, and only a check can find something
+                      to install, so the box is live only when both hold. */}
+                  <label className="flex items-start gap-3 text-xs text-zinc-600 dark:text-zinc-400 has-[:disabled]:opacity-50">
+                    <input
+                      type="checkbox"
+                      checked={draft.autoUpdateOnStartup}
+                      disabled={!draft.portable || !draft.checkUpdatesOnStartup}
+                      onChange={(event) => void persistDraftFieldImmediately('autoUpdateOnStartup', event.target.checked)}
+                      className="mt-0.5 h-4 w-4 shrink-0 accent-sky-700"
+                    />
+                    <span>
+                      <span className="block font-medium text-zinc-700 dark:text-zinc-300">{t('settings.autoUpdateOnStartup')}</span>
+                      <span className="mt-1 block leading-relaxed">{t('settings.autoUpdateOnStartupDescription')}</span>
+                    </span>
+                  </label>
               </section>
             </div>
             <div role="tabpanel" id="settings-panel-advanced" aria-labelledby="settings-tab-advanced" hidden={activeTab !== 'advanced'} className="space-y-5">
@@ -1186,7 +1222,7 @@ type DebugBundleExportState =
 // to them takes effect only on Save. Everything else in this dialog is saved as soon as it changes.
 const SAVE_GATED_FIELDS = ['snapshotPersistence', 'snapshotRedactionTier', 'customActions', 'adapterBaseUrl'] as const satisfies readonly (keyof AppSettings)[];
 
-type SettingsTab =
+export type SettingsTab =
   | 'general'
   | 'appearance'
   | 'modeRoles'

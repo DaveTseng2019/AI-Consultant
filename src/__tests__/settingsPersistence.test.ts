@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { applyStandbyProviderToLiveSettings } from '../ui/SettingsModal';
 import { createSettingsPersistence } from '../ui/settingsPersistence';
-import { defaultSettings, type AppSettings } from '../ui/settingsModel';
+import { defaultSettings, normalizeSettings, type AppSettings } from '../ui/settingsModel';
 
 function deferred<T>() {
   let resolve!: (value: T | PromiseLike<T>) => void;
@@ -136,5 +136,25 @@ describe('settings persistence', () => {
     await update;
     await expect(load).resolves.toMatchObject({ fontSize: 18 });
     expect(store.get).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('checkUpdatesOnStartup', () => {
+  // The startup check sends a request to GitHub, so it must stay off until the user turns it on.
+  it('is off for a new or older settings file and for anything but a literal true', () => {
+    expect(defaultSettings().checkUpdatesOnStartup).toBe(false);
+    expect(normalizeSettings({}).checkUpdatesOnStartup).toBe(false);
+    expect(normalizeSettings({ checkUpdatesOnStartup: 'true' }).checkUpdatesOnStartup).toBe(false);
+    expect(normalizeSettings({ checkUpdatesOnStartup: true }).checkUpdatesOnStartup).toBe(true);
+  });
+});
+
+describe('autoUpdateOnStartup', () => {
+  // It closes the app and replaces its files, so nothing short of the user's own literal true turns it on.
+  it('is off for a new or older settings file and for anything but a literal true', () => {
+    expect(defaultSettings().autoUpdateOnStartup).toBe(false);
+    expect(normalizeSettings({}).autoUpdateOnStartup).toBe(false);
+    expect(normalizeSettings({ autoUpdateOnStartup: 1 }).autoUpdateOnStartup).toBe(false);
+    expect(normalizeSettings({ autoUpdateOnStartup: true }).autoUpdateOnStartup).toBe(true);
   });
 });

@@ -5,6 +5,13 @@
 每個版本的完整說明在 [GitHub releases](https://github.com/DaveTseng2019/AI-Consultant/releases)。日期是發佈日（UTC）。
 版號在 repo 裡永遠釘死 `0.0.0`，真正的號碼由發佈 CI 從 tag 注入。
 
+## [v0.0.26](https://github.com/DaveTseng2019/AI-Consultant/releases/tag/v0.0.26) — 2026-10-13
+
+- 新增：「設定 → 更新」的「啟動時檢查新版本」。勾選後，程式每次啟動都會向 GitHub 查詢最新版本。有新版本時，
+  主畫面會顯示通知。按「開啟更新設定」會直接開到更新分頁並開始檢查。預設不勾選。
+- 新增：可攜版的「自動更新」。同時勾選「啟動時檢查新版本」時，啟動時發現新版本就會自動下載並安裝。
+  程式關閉前會請你確認一次。按取消或安裝失敗時，主畫面會留下通知，失敗時會顯示原因。安裝版不能使用這個選項。
+
 ## [v0.0.25](https://github.com/DaveTseng2019/AI-Consultant/releases/tag/v0.0.25) — 2026-10-09
 
 - 修正：配合 Claude 新的網頁結構讀取回答。Claude 改了網頁結構，原本的讀取方式找不到回答，所以每個 Claude 步驟都等滿 10 分鐘後失敗，

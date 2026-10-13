@@ -2,9 +2,9 @@
 
 # Compatibility and manual test matrix
 
-> Last reviewed: 2026-10-09. The newest real-device records are `v0.0.2` on Windows, `v0.0.17` on
+> Last reviewed: 2026-10-13. The newest real-device records are `v0.0.2` on Windows, `v0.0.17` on
 > Linux, the single-provider check on `v0.0.19`, the Meta AI and startup-restore checks on
-> `v0.0.23`, the Grok sign-in / sign-out check on `v0.0.24`, and the Claude debate check on `v0.0.25`; the versions in between were not
+> `v0.0.23`, the Grok sign-in / sign-out check on `v0.0.24`, the Claude debate check on `v0.0.25`, and the startup update check on `v0.0.26`; the versions in between were not
 > re-run item by item.
 >
 > This document records **evidence actually observed**, not guarantees. Provider DOM and sign-in
@@ -99,6 +99,25 @@ product-behaviour list below that is not named here.
 > check to read ChatGPT's turn markup while still gating on a per-provider table, and this
 > repository's table carries a Grok entry as well. Without the fix Grok never completes at all. The
 > row above is the result after that fix.
+
+### v0.0.26 Startup update check and automatic update (2026-10-13)
+
+This version adds "Check for updates at startup" and, for the portable version, "Install updates
+automatically". The maintainer checked it by hand.
+
+Environment: Windows 11 Pro `10.0.26200`, **a development build (`pnpm tauri dev`) with the version
+temporarily set to `0.0.1`**. A local build reports `0.0.0` and skips the check, so the version had
+to change for the check to run. The newest release on GitHub was `v0.0.25` at the time.
+
+| Item | Result |
+|---|---|
+| Ticking "Check for updates at startup" writes it to the settings file | **Passed** (development build) |
+| After a restart, the main screen shows "New version v0.0.25 available" | **Passed** (development build) |
+| "Open update settings" opens the Updates tab and runs the check | **Passed** (development build) |
+| "Install updates automatically" is greyed out on a non-portable build | **Passed** (development build) |
+| A portable build downloads and installs at startup | **Not tested**. A local build has no `PORTABLE` marker. Planned for the update from the `v0.0.26` portable build to the next version |
+| Each option turns on only when stored as a literal `true` | **Automated tests only** |
+| macOS and Linux | **Not tested** in this version |
 
 ### v0.0.25 Claude answers and the debate (2026-10-09)
 

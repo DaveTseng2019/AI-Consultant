@@ -6,6 +6,16 @@ The full notes for each version are on [GitHub releases](https://github.com/Dave
 Dates are the release date (UTC). The repo pins `0.0.0` on purpose; the real number is injected by
 the release CI from the tag.
 
+## [v0.0.26](https://github.com/DaveTseng2019/AI-Consultant/releases/tag/v0.0.26) — 2026-10-13
+
+- Added: "Check for updates at startup" in Settings > Updates. When it is on, the app asks GitHub
+  for the newest release every time it starts. If a newer version exists, a notice appears on the
+  main screen. "Open update settings" opens the Updates tab and runs the check. It is off by default.
+- Added: "Install updates automatically" for the portable version. With the startup check also on,
+  the app downloads and installs a newer version when it finds one at startup. You confirm once
+  before it closes. If you cancel or the install fails, the notice stays on the main screen, with
+  the reason when it fails. The installed version cannot use this option.
+
 ## [v0.0.25](https://github.com/DaveTseng2019/AI-Consultant/releases/tag/v0.0.25) — 2026-10-09
 
 - Fixed: Claude's answers are read from its new page markup. The old way of reading found no answer:

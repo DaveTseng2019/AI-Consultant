@@ -23,6 +23,9 @@ Portable notes:
   "download and update": the app closes, replaces this folder with that release, and reopens
   itself. Nothing to unzip by hand. If it fails, it reopens the build you have now and shows
   update-log.txt, written next to the .exe.
+- To skip those steps, turn on "Check for updates at startup" and "Install updates
+  automatically" in Settings > Updates. The app then starts the update at launch when a newer
+  release exists. It still asks you once before it closes.
   Releases are also listed at:
   https://github.com/DaveTseng2019/AI-Consultant/releases/latest
 - The update writes into the folder the .exe is in, whatever that folder is called. It never

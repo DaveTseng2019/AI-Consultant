@@ -99,7 +99,8 @@ import { buildPreflightDialogModel } from './ui/preflightModel';
 import { preflightFromResult, type PreflightSubject } from './ui/preflightFromResult';
 import { processingAfterSend, processingAfterSettle, processingAfterWorkflowStatus } from './ui/processing';
 import { Resizer } from './ui/Resizer';
-import { SettingsModal } from './ui/SettingsModal';
+import { SettingsModal, type SettingsTab } from './ui/SettingsModal';
+import { compareVersions, fetchLatestRelease, isLocalBuild } from './ui/updateCheck';
 import {
   activeProvidersForStandby,
   defaultSettings,
@@ -333,6 +334,8 @@ export default function App() {
   const [preflight, setPreflight] = useState<{ mode: PreflightSubject; result: PreflightResult } | undefined>();
   const [stepTimeout, setStepTimeout] = useState<StepTimeoutDialogState | undefined>();
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsTab, setSettingsTab] = useState<SettingsTab>();
+  const [startupUpdate, setStartupUpdate] = useState<{ tagName: string; error?: string }>();
   const [shareNotice, setShareNotice] = useState<{ kind: 'ok' | 'info' | 'error'; text: string } | undefined>();
   const [sessionCheckpointNotice, setSessionCheckpointNotice] = useState<StartupSessionCheckpointNotice | undefined>();
   const [sessionCheckpointReplayBusy, setSessionCheckpointReplayBusy] = useState(false);
@@ -1927,6 +1930,33 @@ export default function App() {
       .catch(() => undefined);
   }, [activeProviders, activeSessionId, cancelWorkflow, isProcessing, messages, mode, presetId, sessions]);
 
+  // Once per launch, on the setting as loaded. A failed request stays silent: the manual check in
+  // Settings is where a network error gets reported.
+  const startupUpdateCheckedRef = useRef(false);
+  useEffect(() => {
+    if (!settingsLoaded || startupUpdateCheckedRef.current) return;
+    startupUpdateCheckedRef.current = true;
+    if (!appSettings.checkUpdatesOnStartup) return;
+    void (async () => {
+      const currentVersion = await host.app.version().catch(() => '');
+      if (!currentVersion || isLocalBuild(currentVersion)) return;
+      const latest = await fetchLatestRelease();
+      if (!latest || !compareVersions(currentVersion, latest.tagName)) return;
+      // The notice goes up either way: it stays if the user cancels the install's confirm dialog,
+      // and an install that fails has to say so rather than look like nothing was found.
+      setStartupUpdate({ tagName: latest.tagName });
+      if (!appSettings.portable || !appSettings.autoUpdateOnStartup || !latest.portableAssetUrl) return;
+      try {
+        await host.app.portableUpdate(latest.portableAssetUrl, translateKey('settings.portableUpdateConfirm', localeRef.current));
+      } catch (reason) {
+        setStartupUpdate({
+          tagName: latest.tagName,
+          error: `${translateKey('settings.portableUpdateFailed', localeRef.current)} ${reason instanceof Error ? reason.message : String(reason)}`,
+        });
+      }
+    })();
+  }, [appSettings.autoUpdateOnStartup, appSettings.checkUpdatesOnStartup, appSettings.portable, settingsLoaded]);
+
   const autoNewConversationAppliedRef = useRef(false);
   useEffect(() => {
     if (!settingsLoaded || autoNewConversationAppliedRef.current) return;
@@ -2678,6 +2708,34 @@ export default function App() {
               locale={locale}
             />
           ) : null}
+          {startupUpdate ? (
+            <div role={startupUpdate.error ? 'alert' : 'status'} className="mt-3 flex flex-wrap items-center justify-between gap-2 border border-sky-300 dark:border-sky-900 bg-sky-50 dark:bg-sky-950 px-3 py-2 text-xs text-sky-800 dark:text-sky-200">
+              <span>
+                {translate('settings.newVersionAvailable').replace('{version}', startupUpdate.tagName)}
+                {startupUpdate.error ? <span className="ml-2 text-red-700 dark:text-red-300">{startupUpdate.error}</span> : null}
+              </span>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  className="border border-sky-400 dark:border-sky-700 px-2 py-1 hover:bg-sky-100 dark:hover:bg-sky-900"
+                  onClick={() => {
+                    setStartupUpdate(undefined);
+                    setSettingsTab('updates');
+                    setSettingsOpen(true);
+                  }}
+                >
+                  {translate('updateNotice.open')}
+                </button>
+                <button
+                  type="button"
+                  className="border border-sky-400 dark:border-sky-700 px-2 py-1 hover:bg-sky-100 dark:hover:bg-sky-900"
+                  onClick={() => setStartupUpdate(undefined)}
+                >
+                  {translate('updateNotice.dismiss')}
+                </button>
+              </div>
+            </div>
+          ) : null}
           {shareNotice ? (
             <div
               role={shareNotice.kind === 'error' ? 'alert' : 'status'}
@@ -2756,7 +2814,11 @@ export default function App() {
         providerStates={states}
         providerSelectionDisabled={isProcessing}
         activeModeRoleSettings={presetId === 'brainstorm' ? 'roundtable' : mode === 'free' ? undefined : mode}
-        onClose={() => setSettingsOpen(false)}
+        initialTab={settingsTab}
+        onClose={() => {
+          setSettingsOpen(false);
+          setSettingsTab(undefined);
+        }}
         onSaved={applySavedSettings}
       />
       {reportPreview ? (
