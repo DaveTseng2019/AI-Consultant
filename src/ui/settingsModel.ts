@@ -91,6 +91,8 @@ export interface AppSettings {
   /** Portable builds only: when the startup check finds a newer release, start installing it. */
   autoUpdateOnStartup: boolean;
   portable: boolean;
+  /** Set by Rust at read time: the NSIS installer put this copy in place. Never persisted. */
+  installed: boolean;
   telemetry: 'none';
   snapshotPersistence: boolean;
   snapshotRedactionTier: SnapshotRedactionTier;
@@ -146,6 +148,7 @@ export function defaultSettings(): AppSettings {
     checkUpdatesOnStartup: false,
     autoUpdateOnStartup: false,
     portable: false,
+    installed: false,
     telemetry: 'none',
     snapshotPersistence: false,
     snapshotRedactionTier: 'metadata-only',
@@ -306,6 +309,7 @@ export function normalizeSettings(value: unknown): AppSettings {
     checkUpdatesOnStartup: input.checkUpdatesOnStartup === true,
     autoUpdateOnStartup: input.autoUpdateOnStartup === true,
     portable: input.portable === true,
+    installed: input.installed === true,
     telemetry: 'none',
     snapshotPersistence: input.snapshotPersistence === true,
     snapshotRedactionTier: snapshotRedactionTier(input.snapshotRedactionTier, defaults.snapshotRedactionTier),

@@ -326,6 +326,7 @@ export const I18N_KEYS = [
   'updateNotice.open',
   'updateNotice.dismiss',
   'settings.portableUpdateConfirm',
+  'settings.installerUpdateConfirm',
   'settings.portableUpdateFailed',
   'settings.downloadPageFailed',
   'settings.externalLinkFailed',

@@ -50,6 +50,16 @@ fn portable_marker_exists() -> bool {
         .is_some_and(|path| path.exists())
 }
 
+/// A copy the NSIS installer put in place: the installer writes `uninstall.exe` beside the exe.
+/// Only Windows has that installer; a dmg, an AppImage or a bare local build has no such file.
+fn installer_marker_exists() -> bool {
+    cfg!(windows)
+        && std::env::current_exe()
+            .ok()
+            .and_then(|path| path.parent().map(|parent| parent.join("uninstall.exe")))
+            .is_some_and(|path| path.exists())
+}
+
 /// What to print as the version. The repo pins 0.0.0 and only CI injects a real one from the tag,
 /// so on a locally built exe the package version says nothing about which build is in hand.
 /// build-local.mjs stamps `describe` beside the exe for exactly this, and it wins when present.
@@ -91,6 +101,7 @@ fn serialized_settings(settings: &Value) -> Result<Vec<u8>, String> {
     let mut persisted = settings.clone();
     if let Value::Object(map) = &mut persisted {
         map.remove("portable");
+        map.remove("installed");
     }
 
     serde_json::to_vec_pretty(&persisted).map_err(|error| error.to_string())
@@ -530,6 +541,10 @@ pub async fn settings_get(app: AppHandle) -> Result<serde_json::Value, String> {
             "portable".to_string(),
             Value::Bool(portable_marker_exists()),
         );
+        map.insert(
+            "installed".to_string(),
+            Value::Bool(installer_marker_exists()),
+        );
     }
     Ok(settings)
 }
@@ -923,10 +938,61 @@ try {
 }
 "#;
 
+/// The self-update for installed builds: run the next release's NSIS installer over this one.
+/// The installer refuses to run while the app is up, so this waits for the app to exit first.
+/// `/P /R /UPDATE` is what tauri-plugin-updater passes: a progress window with no questions, the
+/// app started again on success, and no uninstall of the previous version first.
+///
+/// The log goes to %TEMP%, not the install folder, so a failed run leaves nothing for the
+/// uninstaller to miss. Same ASCII-only rule as the portable script.
+#[cfg(windows)]
+const INSTALLER_UPDATE_SCRIPT: &str = r#"param([int]$AppPid, [string]$Url, [string]$App)
+$ErrorActionPreference = 'Stop'
+$ProgressPreference = 'SilentlyContinue'
+$log = Join-Path $env:TEMP 'ai-consultant-update-log.txt'
+function Write-Step($message) {
+  "{0} {1}" -f (Get-Date -Format s), $message | Add-Content -LiteralPath $log -Encoding UTF8
+}
+try {
+  Write-Step "waiting for pid $AppPid to exit"
+  try { Wait-Process -Id $AppPid -Timeout 120 } catch {}
+  $work = Join-Path $env:TEMP "ai-consultant-update-$AppPid"
+  if (Test-Path -LiteralPath $work) { Remove-Item -LiteralPath $work -Recurse -Force }
+  New-Item -ItemType Directory -Path $work | Out-Null
+  $setup = Join-Path $work 'setup.exe'
+  Write-Step "downloading $Url"
+  Invoke-WebRequest -Uri $Url -OutFile $setup
+  Write-Step "running the installer"
+  # Not Start-Process -Wait: that also waits for every descendant, and /R makes the installer start
+  # the app, so the script would sit there until the user closed the new build.
+  $info = New-Object System.Diagnostics.ProcessStartInfo
+  $info.FileName = $setup
+  $info.Arguments = '/P /R /UPDATE'
+  $info.UseShellExecute = $false
+  $run = [System.Diagnostics.Process]::Start($info)
+  $run.WaitForExit()
+  if ($run.ExitCode -ne 0) { throw "the installer exited with code $($run.ExitCode)" }
+  Remove-Item -LiteralPath $work -Recurse -Force -ErrorAction SilentlyContinue
+  Write-Step "done"
+} catch {
+  # The app is already gone by now, so a silent failure would look like the update worked. Start
+  # whatever build is installed and push the log in the user's face.
+  Write-Step ("failed: " + $_.Exception.Message)
+  Start-Process -FilePath $App
+  Start-Process -FilePath notepad.exe -ArgumentList $log
+}
+"#;
+
 /// Release assets only. The URL reaches us from the GitHub API response, but this is what the app
 /// is about to download and run as itself, so it gets checked here rather than trusted.
 fn is_release_asset_url(url: &str) -> bool {
     url.starts_with("https://github.com/") && url.contains("/releases/download/")
+}
+
+/// The installer lane runs what it downloads as an installer, so on top of being a release asset
+/// it has to be the NSIS setup exe, not the portable zip or any other file on the release.
+fn is_release_installer_url(url: &str) -> bool {
+    is_release_asset_url(url) && url.ends_with("-setup.exe")
 }
 
 /// Download the portable zip, unpack it over this folder, and come back up on the new build.
@@ -976,18 +1042,93 @@ pub async fn portable_update_start(
     Ok(())
 }
 
+/// Download the release's NSIS installer and run it over this install. Returns only on refusal --
+/// on success the app exits and the script takes over.
+#[tauri::command]
+pub async fn installer_update_start(
+    app: AppHandle,
+    webview: tauri::Webview,
+    url: String,
+    confirm: String,
+) -> Result<(), String> {
+    use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
+
+    crate::webviews::ensure_control_webview(&webview)?;
+    if !installer_marker_exists() {
+        return Err("this build was not installed by the installer".to_string());
+    }
+    if !is_release_installer_url(&url) {
+        return Err("only a GitHub release installer may be run".to_string());
+    }
+    let exe = std::env::current_exe().map_err(|error| error.to_string())?;
+
+    let (tx, rx) = tokio::sync::oneshot::channel();
+    app.dialog()
+        .message(confirm)
+        .kind(MessageDialogKind::Warning)
+        .buttons(MessageDialogButtons::OkCancel)
+        .show(move |approved| {
+            let _ = tx.send(approved);
+        });
+    if !rx.await.map_err(|error| error.to_string())? {
+        return Ok(());
+    }
+
+    start_installer_update(&url, &exe)?;
+    app.exit(0);
+    Ok(())
+}
+
+#[cfg(windows)]
+fn start_installer_update(url: &str, exe: &Path) -> Result<(), String> {
+    let script = std::env::temp_dir().join(format!(
+        "ai-consultant-installer-update-{}.ps1",
+        std::process::id()
+    ));
+    std::fs::write(&script, INSTALLER_UPDATE_SCRIPT).map_err(|error| error.to_string())?;
+    spawn_update_script(&script, |command| {
+        command
+            .args(["-AppPid", &std::process::id().to_string()])
+            .args(["-Url", url])
+            .arg("-App")
+            .arg(exe);
+    })
+}
+
+#[cfg(not(windows))]
+fn start_installer_update(_url: &str, _exe: &Path) -> Result<(), String> {
+    Err("the installer updater runs on Windows only".to_string())
+}
+
 #[cfg(windows)]
 fn start_portable_update(url: &str, dest: &Path, exe_name: &str) -> Result<(), String> {
-    use std::os::windows::process::CommandExt;
-    const CREATE_NO_WINDOW: u32 = 0x0800_0000;
-
     let script =
         std::env::temp_dir().join(format!("ai-consultant-update-{}.ps1", std::process::id()));
     std::fs::write(&script, PORTABLE_UPDATE_SCRIPT).map_err(|error| error.to_string())?;
+    spawn_update_script(&script, |command| {
+        command
+            .args(["-AppPid", &std::process::id().to_string()])
+            .args(["-Url", url])
+            .arg("-Dest")
+            .arg(dest)
+            .args(["-Exe", exe_name]);
+    })
+}
+
+/// Start an update script detached and windowless, on pwsh when it is there, else Windows
+/// PowerShell 5.1. `add_args` supplies the script's own parameters.
+#[cfg(windows)]
+fn spawn_update_script(
+    script: &Path,
+    add_args: impl Fn(&mut std::process::Command),
+) -> Result<(), String> {
+    use std::os::windows::process::CommandExt;
+    const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
     let mut missing = None;
     for shell in ["pwsh.exe", "powershell.exe"] {
-        let attempt = std::process::Command::new(shell)
+        let mut command = std::process::Command::new(shell);
+        command
             .args([
                 "-NoProfile",
                 "-NonInteractive",
@@ -995,14 +1136,10 @@ fn start_portable_update(url: &str, dest: &Path, exe_name: &str) -> Result<(), S
                 "Bypass",
                 "-File",
             ])
-            .arg(&script)
-            .args(["-AppPid", &std::process::id().to_string()])
-            .args(["-Url", url])
-            .arg("-Dest")
-            .arg(dest)
-            .args(["-Exe", exe_name])
-            .creation_flags(CREATE_NO_WINDOW)
-            .spawn();
+            .arg(script)
+            .creation_flags(CREATE_NO_WINDOW);
+        add_args(&mut command);
+        let attempt = command.spawn();
         match attempt {
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => missing = Some(error),
             Err(error) => return Err(error.to_string()),
@@ -1025,7 +1162,7 @@ fn start_portable_update(_url: &str, _dest: &Path, _exe_name: &str) -> Result<()
 mod tests {
     use super::{
         active_providers_for_settings, build_stamp_from_json, ensure_provider_active_value,
-        is_release_asset_url, normalize_settings_value, read_settings,
+        is_release_asset_url, is_release_installer_url, normalize_settings_value, read_settings,
         read_settings_for_provider_guard, write_atomic_before_replace, write_settings,
         ARCHIVE_LABEL_MAX_CHARS, PROVIDERS,
     };
@@ -1473,6 +1610,20 @@ mod tests {
             .get("focusPaneWidth"),
             Some(&json!(874))
         );
+    }
+
+    /// The installer lane executes the file it downloads, so only the release's setup exe passes.
+    #[test]
+    fn only_a_release_setup_exe_may_be_run_as_installer() {
+        assert!(is_release_installer_url(
+            "https://github.com/DaveTseng2019/AI-Consultant/releases/download/v0.0.26/AI.Consultant_0.0.26_x64-setup.exe"
+        ));
+        assert!(!is_release_installer_url(
+            "https://github.com/DaveTseng2019/AI-Consultant/releases/download/v0.0.26/AI-Consultant-0.0.26-windows-portable.zip"
+        ));
+        assert!(!is_release_installer_url(
+            "https://example.com/releases/download/v0.0.26/AI.Consultant_0.0.26_x64-setup.exe"
+        ));
     }
 
     /// The updater downloads this URL and runs what comes out of it as the app itself, so anything

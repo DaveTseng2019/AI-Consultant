@@ -26,6 +26,7 @@ fn main() {
             "pick_archive_script",
             "open_external_url",
             "portable_update_start",
+            "installer_update_start",
             "snapshot_save",
             "snapshot_list",
             "snapshot_load",

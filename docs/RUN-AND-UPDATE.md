@@ -72,10 +72,18 @@ pnpm test
 ### Update a released version (installed build)
 
 The app's built-in update check compares against the latest GitHub release. In an installed
-build, press "Check for updates" in Settings > Updates. When a newer version exists, a link to the
-download page appears; download the new installer and run it. With "Check for updates at startup"
-on, the app checks at every launch and shows a notice on the main screen when a newer version
-exists.
+Windows build, press "Check for updates" in Settings > Updates, then "download and update" when a
+newer version exists. The app closes; a PowerShell script started by `installer_update_start`
+downloads the release's `x64-setup.exe` and runs it with `/P /R /UPDATE` (the same arguments
+tauri-plugin-updater passes), and the app reopens. On failure it starts the installed build again
+and opens `%TEMP%\ai-consultant-update-log.txt`. macOS and Linux only get the download-page link.
+
+With "Check for updates at startup" on, the app checks at every launch and shows a notice on the
+main screen when a newer version exists. With "Install updates automatically" also on, a Windows
+build starts the update at launch.
+
+The app knows it is an installed copy when `uninstall.exe`, written by the NSIS installer, sits
+next to the exe.
 
 A build you made with `pnpm build:local` always reports `0.0.0`. The check only names the latest
 release and offers no update. Update such a build with `git pull` followed by another

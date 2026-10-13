@@ -81,11 +81,11 @@ profile for each of the five providers.
 ## Where it stands
 
 The version number in the repo is always `0.0.0`; the real one is injected by CI from the
-tag. The app can check whether a newer version exists. An installed build only points you at
-the download page; a portable build replaces itself in place -- it downloads the new
-release, unpacks it over its own folder and reopens. Settings > Updates can make the app check at
-every startup; a portable build can also start the update as soon as it finds one, after you
-confirm.
+tag. The app can check whether a newer version exists. On Windows it updates itself: an
+installed build downloads the new installer and runs it, and a portable build downloads the new
+release and unpacks it over its own folder; both reopen afterwards. On macOS and Linux it only
+points you at the download page. Settings > Updates can make the app check at every startup; on
+Windows it can also start the update as soon as it finds one, after you confirm.
 
 Windows x64 is verified on real hardware. macOS Apple Silicon is only partly verified
 (ad-hoc signature; Grok once got stuck on a Cloudflare check). Linux runs: v0.0.17 was driven in a real

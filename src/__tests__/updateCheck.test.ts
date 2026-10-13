@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { compareVersions, fetchLatestRelease, isLocalBuild } from '../ui/updateCheck';
+import { compareVersions, fetchLatestRelease, isLocalBuild, selfUpdateLane } from '../ui/updateCheck';
 
 describe('local build detection', () => {
   it('recognises the pinned placeholder version only', () => {
@@ -62,7 +62,9 @@ describe('latest release parsing', () => {
     );
   }
 
-  it('picks the portable zip so a portable install is not sent at an installer', async () => {
+  // Each lane runs only its own file: a portable folder is never handed the installer, and the
+  // installer lane is never handed the zip.
+  it('picks the portable zip and the installer separately', async () => {
     stubRelease({
       tag_name: 'v1.2.3',
       html_url: 'https://github.com/owner/repo/releases/tag/v1.2.3',
@@ -76,6 +78,7 @@ describe('latest release parsing', () => {
       tagName: 'v1.2.3',
       htmlUrl: 'https://github.com/owner/repo/releases/tag/v1.2.3',
       portableAssetUrl: 'https://example.com/portable.zip',
+      installerAssetUrl: 'https://example.com/setup.exe',
     });
   });
 
@@ -90,5 +93,22 @@ describe('latest release parsing', () => {
       tagName: 'v1.2.3',
       htmlUrl: 'https://github.com/owner/repo/releases/tag/v1.2.3',
     });
+  });
+});
+
+describe('selfUpdateLane', () => {
+  const release = { portableAssetUrl: 'https://example.com/portable.zip', installerAssetUrl: 'https://example.com/setup.exe' };
+
+  // Unzipping over an installed copy, or running the installer inside a portable folder, would
+  // leave a broken or duplicated app, so each kind of build gets only its own file.
+  it('gives a portable folder the zip and an installed copy the installer', () => {
+    expect(selfUpdateLane({ portable: true, installed: false }, release)).toEqual({ kind: 'portable', url: release.portableAssetUrl });
+    expect(selfUpdateLane({ portable: false, installed: true }, release)).toEqual({ kind: 'installer', url: release.installerAssetUrl });
+  });
+
+  it('leaves only the release page when the build or the release has no matching file', () => {
+    expect(selfUpdateLane({ portable: false, installed: false }, release)).toBeUndefined();
+    expect(selfUpdateLane({ portable: true, installed: false }, { installerAssetUrl: release.installerAssetUrl })).toBeUndefined();
+    expect(selfUpdateLane({ portable: false, installed: true }, { portableAssetUrl: release.portableAssetUrl })).toBeUndefined();
   });
 });

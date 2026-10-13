@@ -59,6 +59,9 @@ export const host = {
         doing anything when the user cancels the confirmation; on approval the app exits instead. */
     portableUpdate: (url: string, confirm: string): Promise<void> =>
       invoke('portable_update_start', { url, confirm }),
+    /** Installed builds only: run the release's NSIS installer over this install. Same contract. */
+    installerUpdate: (url: string, confirm: string): Promise<void> =>
+      invoke('installer_update_start', { url, confirm }),
   },
   window: {
     /** The taskbar shows the window title, so the running step stays readable while minimised. */

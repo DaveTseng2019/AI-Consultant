@@ -100,7 +100,7 @@ import { preflightFromResult, type PreflightSubject } from './ui/preflightFromRe
 import { processingAfterSend, processingAfterSettle, processingAfterWorkflowStatus } from './ui/processing';
 import { Resizer } from './ui/Resizer';
 import { SettingsModal, type SettingsTab } from './ui/SettingsModal';
-import { compareVersions, fetchLatestRelease, isLocalBuild } from './ui/updateCheck';
+import { compareVersions, fetchLatestRelease, isLocalBuild, selfUpdateLane } from './ui/updateCheck';
 import {
   activeProvidersForStandby,
   defaultSettings,
@@ -1945,9 +1945,14 @@ export default function App() {
       // The notice goes up either way: it stays if the user cancels the install's confirm dialog,
       // and an install that fails has to say so rather than look like nothing was found.
       setStartupUpdate({ tagName: latest.tagName });
-      if (!appSettings.portable || !appSettings.autoUpdateOnStartup || !latest.portableAssetUrl) return;
+      const lane = appSettings.autoUpdateOnStartup ? selfUpdateLane(appSettings, latest) : undefined;
+      if (!lane) return;
       try {
-        await host.app.portableUpdate(latest.portableAssetUrl, translateKey('settings.portableUpdateConfirm', localeRef.current));
+        if (lane.kind === 'portable') {
+          await host.app.portableUpdate(lane.url, translateKey('settings.portableUpdateConfirm', localeRef.current));
+        } else {
+          await host.app.installerUpdate(lane.url, translateKey('settings.installerUpdateConfirm', localeRef.current));
+        }
       } catch (reason) {
         setStartupUpdate({
           tagName: latest.tagName,
@@ -1955,7 +1960,7 @@ export default function App() {
         });
       }
     })();
-  }, [appSettings.autoUpdateOnStartup, appSettings.checkUpdatesOnStartup, appSettings.portable, settingsLoaded]);
+  }, [appSettings, settingsLoaded]);
 
   const autoNewConversationAppliedRef = useRef(false);
   useEffect(() => {

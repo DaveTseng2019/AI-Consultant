@@ -101,6 +101,7 @@ pub fn run() {
             settings::pick_archive_script,
             settings::open_external_url,
             settings::portable_update_start,
+            settings::installer_update_start,
             snapshots::snapshot_save,
             snapshots::snapshot_list,
             snapshots::snapshot_load,

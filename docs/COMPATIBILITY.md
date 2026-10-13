@@ -102,21 +102,29 @@ product-behaviour list below that is not named here.
 
 ### v0.0.26 Startup update check and automatic update (2026-10-13)
 
-This version adds "Check for updates at startup" and, for the portable version, "Install updates
-automatically". The maintainer checked it by hand.
+This version adds "Check for updates at startup", an in-app update for the installed Windows
+version, and "Install updates automatically" for the installed and the portable version. The
+maintainer checked it by hand.
 
-Environment: Windows 11 Pro `10.0.26200`, **a development build (`pnpm tauri dev`) with the version
-temporarily set to `0.0.1`**. A local build reports `0.0.0` and skips the check, so the version had
-to change for the check to run. The newest release on GitHub was `v0.0.25` at the time.
+Environment: Windows 11 Pro `10.0.26200`. A local build reports `0.0.0` and skips the check, so
+both setups had the version temporarily set to `0.0.1`:
+
+- **A development build (`pnpm tauri dev`)** for the notice and the settings page. The newest
+  release on GitHub was `v0.0.25` at the time.
+- **A locally packed NSIS installer**, installed with `/S` into `%LOCALAPPDATA%\AI Consultant` and
+  then updated to the first published `v0.0.26` installer on GitHub.
 
 | Item | Result |
 |---|---|
 | Ticking "Check for updates at startup" writes it to the settings file | **Passed** (development build) |
-| After a restart, the main screen shows "New version v0.0.25 available" | **Passed** (development build) |
-| "Open update settings" opens the Updates tab and runs the check | **Passed** (development build) |
-| "Install updates automatically" is greyed out on a non-portable build | **Passed** (development build) |
+| After a restart, the main screen shows the new-version notice | **Passed** (development build, installed) |
+| "Open update settings" opens the Updates tab and runs the check | **Passed** (development build, installed) |
+| On a development build (neither installed nor portable), "Install updates automatically" is greyed out | **Passed** (development build, code from before the installer lane) |
+| On an installed copy, "download and update" on the Updates tab | **Passed** (installed). The exe reported `0.0.26` afterwards and reopened. This run found the script waiting until the app closed; fixed |
+| Automatic update at startup on an installed copy | **Passed** (installed, after the fix). About 6 seconds from the confirmation to the reopened app; the script exited at once and left no temporary files |
+| A silent install is not blocked by the language selector | **Passed** (`/S`). The `/P` passive runs in the two rows above showed no language selector either |
 | A portable build downloads and installs at startup | **Not tested**. A local build has no `PORTABLE` marker. Planned for the update from the `v0.0.26` portable build to the next version |
-| Each option turns on only when stored as a literal `true` | **Automated tests only** |
+| Each option turns on only when stored as a literal `true`; each kind of build gets only its own file | **Automated tests only** |
 | macOS and Linux | **Not tested** in this version |
 
 ### v0.0.25 Claude answers and the debate (2026-10-09)

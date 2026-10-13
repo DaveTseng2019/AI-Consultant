@@ -27,7 +27,7 @@ import {
 
   type ModeRoleAssignments,
 } from './modeRoleAssignment';
-import { compareVersions, fetchLatestRelease, isLocalBuild } from './updateCheck';
+import { compareVersions, fetchLatestRelease, isLocalBuild, selfUpdateLane, type SelfUpdateLane } from './updateCheck';
 import { host } from '../host';
 import {
   filterEventLogByProvider,
@@ -52,7 +52,7 @@ type UpdateCheckState =
   | { status: 'checking' }
   | { status: 'up-to-date'; version: string }
   | { status: 'local-build'; tagName: string }
-  | { status: 'available'; tagName: string; htmlUrl: string; portableAssetUrl?: string }
+  | { status: 'available'; tagName: string; htmlUrl: string; portableAssetUrl?: string; installerAssetUrl?: string }
   | { status: 'unavailable' }
   | { status: 'error'; message: string };
 
@@ -521,16 +521,13 @@ export function SettingsModal({
     }
   };
 
-  // The portable lane installs; every other lane can only be pointed at the release page. A failure
-  // has to land back in this panel: the update runs after the app exits, so a swallowed error here
-  // would look exactly like a successful update that changed nothing.
-  const startUpdate = async (portableAssetUrl: string | undefined, htmlUrl: string) => {
-    if (!draft?.portable || !portableAssetUrl) {
-      await host.app.openExternal(htmlUrl);
-      return;
-    }
+  // The portable and installer lanes install; everything else only gets the release page link. A
+  // failure has to land back in this panel: the update runs after the app exits, so a swallowed
+  // error here would look exactly like a successful update that changed nothing.
+  const startUpdate = async (lane: SelfUpdateLane) => {
     try {
-      await host.app.portableUpdate(portableAssetUrl, t('settings.portableUpdateConfirm'));
+      if (lane.kind === 'portable') await host.app.portableUpdate(lane.url, t('settings.portableUpdateConfirm'));
+      else await host.app.installerUpdate(lane.url, t('settings.installerUpdateConfirm'));
     } catch (reason) {
       setUpdateCheck({
         status: 'error',
@@ -572,6 +569,7 @@ export function SettingsModal({
           tagName: latest.tagName,
           htmlUrl: latest.htmlUrl,
           ...(latest.portableAssetUrl ? { portableAssetUrl: latest.portableAssetUrl } : {}),
+          ...(latest.installerAssetUrl ? { installerAssetUrl: latest.installerAssetUrl } : {}),
         });
       } else {
         setUpdateCheck({ status: 'up-to-date', version: currentVersion });
@@ -586,6 +584,9 @@ export function SettingsModal({
       if (updateCheckAbortRef.current === controller) updateCheckAbortRef.current = undefined;
     }
   };
+
+  // Picked at render, not at check time: the check can finish before the settings have loaded.
+  const updateLane = updateCheck.status === 'available' && draft ? selfUpdateLane(draft, updateCheck) : undefined;
 
   return (
     <ModalDialog
@@ -1080,14 +1081,14 @@ export function SettingsModal({
                     {updateCheck.status === 'available' ? (
                       <span className="text-xs text-sky-700 dark:text-sky-300">
                         {t('settings.newVersionAvailable').replace('{version}', updateCheck.tagName)} {'->'}{' '}
-                        {/* A portable install replaces itself by unzipping, so it does that itself
-                            rather than sending the user to a page and a manual copy over this folder.
-                            Anything else goes to the release page, which lists the installer. */}
-                        {draft.portable && updateCheck.portableAssetUrl ? (
+                        {/* A portable folder unzips the release over itself and an installed copy runs
+                            the release's installer, rather than sending the user to a page. A dmg, an
+                            AppImage or a bare exe goes to the release page. */}
+                        {updateLane ? (
                           <button
                             type="button"
                             className="underline hover:text-sky-800 dark:hover:text-sky-200"
-                            onClick={() => void startUpdate(updateCheck.portableAssetUrl, updateCheck.htmlUrl)}
+                            onClick={() => void startUpdate(updateLane)}
                           >
                             {t('settings.installPortableUpdate')}
                           </button>
@@ -1115,13 +1116,13 @@ export function SettingsModal({
                       <span className="mt-1 block leading-relaxed">{t('settings.checkUpdatesOnStartupDescription')}</span>
                     </span>
                   </label>
-                  {/* Only a portable build can replace itself, and only a check can find something
-                      to install, so the box is live only when both hold. */}
+                  {/* Only a portable folder or an installed copy has an in-app install, and only a
+                      check can find something to install, so the box is live only when both hold. */}
                   <label className="flex items-start gap-3 text-xs text-zinc-600 dark:text-zinc-400 has-[:disabled]:opacity-50">
                     <input
                       type="checkbox"
                       checked={draft.autoUpdateOnStartup}
-                      disabled={!draft.portable || !draft.checkUpdatesOnStartup}
+                      disabled={(!draft.portable && !draft.installed) || !draft.checkUpdatesOnStartup}
                       onChange={(event) => void persistDraftFieldImmediately('autoUpdateOnStartup', event.target.checked)}
                       className="mt-0.5 h-4 w-4 shrink-0 accent-sky-700"
                     />

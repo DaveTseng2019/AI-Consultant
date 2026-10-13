@@ -67,8 +67,14 @@ pnpm test
 
 ### 更新正式版本（安裝版）
 
-app 內建的更新檢查會比對 GitHub 最新 release。安裝版在「設定 → 更新」按「檢查更新」，有新版時會出現下載頁連結，
-下載新的安裝檔執行即可。勾選「啟動時檢查新版本」後，app 每次啟動都會自動檢查，有新版時主畫面會顯示通知。
+app 內建的更新檢查會比對 GitHub 最新 release。Windows 安裝版在「設定 → 更新」按「檢查更新」，有新版時按「下載並自動更新」：
+app 會關閉，由 `installer_update_start` 啟動的 PowerShell 腳本下載 release 的 `x64-setup.exe`，用 `/P /R /UPDATE` 執行
+（與 tauri-plugin-updater 相同的參數），裝完重新開啟。失敗時會開回已安裝的版本，並開啟 `%TEMP%\ai-consultant-update-log.txt`。
+macOS 與 Linux 只會出現下載頁連結。
+
+勾選「啟動時檢查新版本」後，app 每次啟動都會自動檢查，有新版時主畫面會顯示通知。再勾「自動更新」，Windows 版會在啟動時直接開始更新。
+
+app 判斷自己是不是安裝版的方法：exe 旁邊有 NSIS 安裝檔寫入的 `uninstall.exe`。
 
 自己用 `pnpm build:local` 建的版本號固定是 `0.0.0`，檢查只會列出最新 release，不會提供更新。
 這種版本的更新方式是 `git pull` 之後重新 `pnpm build:local`。

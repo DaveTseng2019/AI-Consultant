@@ -11,10 +11,14 @@ the release CI from the tag.
 - Added: "Check for updates at startup" in Settings > Updates. When it is on, the app asks GitHub
   for the newest release every time it starts. If a newer version exists, a notice appears on the
   main screen. "Open update settings" opens the Updates tab and runs the check. It is off by default.
-- Added: "Install updates automatically" for the portable version. With the startup check also on,
-  the app downloads and installs a newer version when it finds one at startup. You confirm once
-  before it closes. If you cancel or the install fails, the notice stays on the main screen, with
-  the reason when it fails. The installed version cannot use this option.
+- Added: the installed Windows version updates from inside the app. When a newer version exists,
+  the Updates tab offers "download and update": the app closes, downloads the new installer, runs
+  it, and reopens. If the install fails, the installed build starts again and shows the update log.
+- Added: "Install updates automatically", for both the installed and the portable Windows version.
+  With the startup check also on, the app downloads and installs a newer version when it finds one
+  at startup. You confirm once before it closes. If you cancel or the install fails, the notice
+  stays on the main screen, with the reason when it fails. The macOS and Linux versions cannot use
+  this option.
 
 ## [v0.0.25](https://github.com/DaveTseng2019/AI-Consultant/releases/tag/v0.0.25) — 2026-10-09
 

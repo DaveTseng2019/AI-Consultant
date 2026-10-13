@@ -16,9 +16,12 @@ export interface LatestRelease {
   htmlUrl: string;
   /** Direct link to the Windows portable zip, on a release that ships one. */
   portableAssetUrl?: string;
+  /** Direct link to the Windows NSIS installer, on a release that ships one. */
+  installerAssetUrl?: string;
 }
 
 const PORTABLE_ASSET_SUFFIX = '-windows-portable.zip';
+const INSTALLER_ASSET_SUFFIX = '_x64-setup.exe';
 
 interface ParsedVersion {
   major: number;
@@ -60,13 +63,13 @@ function httpsUrl(value: unknown): string | undefined {
   }
 }
 
-function portableAssetUrl(assets: unknown): string | undefined {
+function assetUrl(assets: unknown, suffix: string): string | undefined {
   if (!Array.isArray(assets)) return undefined;
 
   for (const asset of assets) {
     if (!asset || typeof asset !== 'object') continue;
     const { name, browser_download_url: downloadUrl } = asset as Record<string, unknown>;
-    if (typeof name !== 'string' || !name.endsWith(PORTABLE_ASSET_SUFFIX)) continue;
+    if (typeof name !== 'string' || !name.endsWith(suffix)) continue;
     const url = httpsUrl(downloadUrl);
     if (url) return url;
   }
@@ -81,8 +84,31 @@ function releaseFromJson(value: unknown): LatestRelease | null {
   const htmlUrl = httpsUrl(release.html_url);
   if (!htmlUrl) return null;
 
-  const portable = portableAssetUrl(release.assets);
-  return { tagName: release.tag_name, htmlUrl, ...(portable ? { portableAssetUrl: portable } : {}) };
+  const portable = assetUrl(release.assets, PORTABLE_ASSET_SUFFIX);
+  const installer = assetUrl(release.assets, INSTALLER_ASSET_SUFFIX);
+  return {
+    tagName: release.tag_name,
+    htmlUrl,
+    ...(portable ? { portableAssetUrl: portable } : {}),
+    ...(installer ? { installerAssetUrl: installer } : {}),
+  };
+}
+
+export interface SelfUpdateLane {
+  kind: 'portable' | 'installer';
+  url: string;
+}
+
+/** The in-app install this build can do with this release, or undefined when only the release
+ *  page is left. A portable folder takes the zip; a copy the installer put in place takes the
+ *  installer. Anything else -- a dmg, an AppImage, a bare exe -- has no lane. */
+export function selfUpdateLane(
+  build: { portable: boolean; installed: boolean },
+  release: Pick<LatestRelease, 'portableAssetUrl' | 'installerAssetUrl'>,
+): SelfUpdateLane | undefined {
+  if (build.portable) return release.portableAssetUrl ? { kind: 'portable', url: release.portableAssetUrl } : undefined;
+  if (build.installed) return release.installerAssetUrl ? { kind: 'installer', url: release.installerAssetUrl } : undefined;
+  return undefined;
 }
 
 export async function fetchLatestRelease(repo = DEFAULT_RELEASE_REPO, signal?: AbortSignal): Promise<LatestRelease | null> {

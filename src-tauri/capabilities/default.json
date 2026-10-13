@@ -33,6 +33,7 @@
     "allow-pick-archive-script",
     "allow-open-external-url",
     "allow-portable-update-start",
+    "allow-installer-update-start",
     "allow-snapshot-save",
     "allow-snapshot-list",
     "allow-snapshot-load",

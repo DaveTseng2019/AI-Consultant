@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-installer-update-start"
+description = "Enables the installer_update_start command without any pre-configured scope."
+commands.allow = ["installer_update_start"]
+
+[[permission]]
+identifier = "deny-installer-update-start"
+description = "Denies the installer_update_start command without any pre-configured scope."
+commands.deny = ["installer_update_start"]
