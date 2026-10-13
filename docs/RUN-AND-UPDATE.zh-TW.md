@@ -67,8 +67,13 @@ pnpm test
 
 ### 更新正式版本（安裝版）
 
-app 內建的更新檢查會比對 GitHub 最新 release，但本專案沒有發佈任何 release，所以那條路在這裡沒有作用。
-更新的方式就是 `git pull` 之後重新 `pnpm build:local`；本機設定與 provider 登入 profile 存在 app data，重建不受影響。
+app 內建的更新檢查會比對 GitHub 最新 release。安裝版在「設定 → 更新」按「檢查更新」，有新版時會出現下載頁連結，
+下載新的安裝檔執行即可。勾選「啟動時檢查新版本」後，app 每次啟動都會自動檢查，有新版時主畫面會顯示通知。
+
+自己用 `pnpm build:local` 建的版本號固定是 `0.0.0`，檢查只會列出最新 release，不會提供更新。
+這種版本的更新方式是 `git pull` 之後重新 `pnpm build:local`。
+
+兩種方式都不會動到本機設定與 provider 登入 profile，它們存在 app data。
 
 ## 產生執行檔
 

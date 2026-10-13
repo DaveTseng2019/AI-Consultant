@@ -71,10 +71,17 @@ pnpm test
 
 ### Update a released version (installed build)
 
-The app's built-in update check compares against the latest GitHub release, but this project
-publishes no releases, so that path does nothing here. Updating means `git pull` followed by
-another `pnpm build:local`; local settings and provider login profiles live in app data and are
-unaffected by a rebuild.
+The app's built-in update check compares against the latest GitHub release. In an installed
+build, press "Check for updates" in Settings > Updates. When a newer version exists, a link to the
+download page appears; download the new installer and run it. With "Check for updates at startup"
+on, the app checks at every launch and shows a notice on the main screen when a newer version
+exists.
+
+A build you made with `pnpm build:local` always reports `0.0.0`. The check only names the latest
+release and offers no update. Update such a build with `git pull` followed by another
+`pnpm build:local`.
+
+Neither way touches local settings or provider login profiles; they live in app data.
 
 ## Producing an executable
 
