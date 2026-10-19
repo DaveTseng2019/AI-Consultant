@@ -2,7 +2,7 @@
 
 # Compatibility and manual test matrix
 
-> Last reviewed: 2026-10-13. The newest real-device records are `v0.0.2` on Windows, `v0.0.17` on
+> Last reviewed: 2026-10-20. The newest real-device records are `v0.0.2` on Windows, `v0.0.17` on
 > Linux, the single-provider check on `v0.0.19`, the Meta AI and startup-restore checks on
 > `v0.0.23`, the Grok sign-in / sign-out check on `v0.0.24`, the Claude debate check on `v0.0.25`, and the startup update check on `v0.0.26`; the versions in between were not
 > re-run item by item.
@@ -99,6 +99,19 @@ product-behaviour list below that is not named here.
 > check to read ChatGPT's turn markup while still gating on a per-provider table, and this
 > repository's table carries a Grok entry as well. Without the fix Grok never completes at all. The
 > row above is the result after that fix.
+
+### v0.0.27 ChatGPT send confirmation, Claude's new layout, security updates (2026-10-20)
+
+This version ports two fixes from the original project (ChatGPT send confirmation, Claude adapter
+v5) and the dependency security updates. **It was not tested on a real device.**
+
+| Item | Result |
+|---|---|
+| With no user message drawn by ChatGPT, an answer already on screen still confirms the send | **Automated tests only** (the original project's 8 regression and negative cases pass on this engine) |
+| An answer in Claude's new (CDS) layout is read, without the user message or status text | **Automated tests only** (3 tests). The original project's new-layout fixture is synthetic |
+| Which element is read when the new layout and this project's `[data-testid="assistant-message"]` are both on the page | **Not tested** |
+| A real signed-in question and answer on ChatGPT and Claude | **Not tested** |
+| Automatic update from the `v0.0.26` portable build to this version | **Not tested** |
 
 ### v0.0.26 Startup update check and automatic update (2026-10-13)
 
@@ -237,7 +250,7 @@ This requirement only affects source development; users of a packaged build need
 | Provider | Bundled adapter | Automated coverage | Real-device evidence |
 |---|---:|---|---|
 | ChatGPT | v9 | Structure, logged-out precedence, completion markers, ProseMirror composer | Signed in and ready on the v0.0.2 packaged build; long question answered in full on v0.0.23 (local build) |
-| Claude | v4 | Structure, sign-in page detection, explicit Google SSO scope, current answer markup added in the engine | Signed in and ready on the v0.0.2 packaged build; v0.0.25 development build answered a debate step |
+| Claude | v5 | Structure, sign-in page detection, explicit Google SSO scope, current answer markup added in the engine, v5 CDS answer markup | Signed in and ready on the v0.0.2 packaged build; v0.0.25 development build answered a debate step |
 | Gemini | v2 | Structure, bounded navigation and blocked state for Google `/sorry` | Signed in and ready on the v0.0.2 packaged build; live-page capture works |
 | Grok | v9 | Structure, challenge-first deferred takeover, watchdog recovery, DOM changes refused during a challenge | Signed in and ready on the v0.0.2 packaged build |
 | Meta AI | v3 | Structure, narrow seed contract, usable-composer login, gated composer stays logged out | Signed in and answered on v0.0.23 (local build) |

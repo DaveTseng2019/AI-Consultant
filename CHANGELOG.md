@@ -6,6 +6,16 @@ The full notes for each version are on [GitHub releases](https://github.com/Dave
 Dates are the release date (UTC). The repo pins `0.0.0` on purpose; the real number is injected by
 the release CI from the tag.
 
+## [v0.0.27](https://github.com/DaveTseng2019/AI-Consultant/releases/tag/v0.0.27) — 2026-10-19
+
+- Fixed: ChatGPT could show its answer while the app reported "composer cleared before a matching
+  user turn appeared" and failed the step. ChatGPT sometimes does not draw the message just sent;
+  a new answer from this turn now also confirms the send.
+- Fixed: after Claude changed its page layout, the app could miss the answer and wait until the
+  step timed out. Both the new and the old layout are recognized now.
+- Changed: the TLS component and several build packages were updated to fix known security issues.
+- Both fixes have automated tests only; they were not tried on the real, signed-in sites.
+
 ## [v0.0.26](https://github.com/DaveTseng2019/AI-Consultant/releases/tag/v0.0.26) — 2026-10-13
 
 - Added: "Check for updates at startup" in Settings > Updates. When it is on, the app asks GitHub

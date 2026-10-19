@@ -5,6 +5,14 @@
 每個版本的完整說明在 [GitHub releases](https://github.com/DaveTseng2019/AI-Consultant/releases)。日期是發佈日（UTC）。
 版號在 repo 裡永遠釘死 `0.0.0`，真正的號碼由發佈 CI 從 tag 注入。
 
+## [v0.0.27](https://github.com/DaveTseng2019/AI-Consultant/releases/tag/v0.0.27) — 2026-10-19
+
+- 修正：ChatGPT 已經回答，程式卻顯示「composer cleared before a matching user turn appeared」並判定失敗。
+  ChatGPT 有時不畫出剛送出的訊息；現在收到這一輪的新回答也算送出成功。
+- 修正：Claude 改版面之後可能抓不到回答，要等到逾時。現在新舊版面的回答都認得。
+- 改變：更新加密連線（TLS）元件與幾個建置套件，修補已知安全問題。
+- 以上兩項修正只有自動化測試，還沒有登入實際網站測試。
+
 ## [v0.0.26](https://github.com/DaveTseng2019/AI-Consultant/releases/tag/v0.0.26) — 2026-10-13
 
 - 新增：「設定 → 更新」的「啟動時檢查新版本」。勾選後，程式每次啟動都會向 GitHub 查詢最新版本。有新版本時，
