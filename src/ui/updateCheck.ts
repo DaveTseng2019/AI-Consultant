@@ -111,6 +111,41 @@ export function selfUpdateLane(
   return undefined;
 }
 
+/** A version as the user reads it: the tag form, with its leading "v". The package version has none. */
+export function displayVersion(version: string): string {
+  const trimmed = version.trim();
+  return /^\d/.test(trimmed) ? `v${trimmed}` : trimmed;
+}
+
+/** Whether the user chose "Skip this version" for this release. "v1.2.3" and "1.2.3" are the same. */
+export function isSkippedVersion(skipped: string, tagName: string): boolean {
+  const normalize = (value: string) => value.trim().replace(/^v/i, '');
+  return normalize(skipped) !== '' && normalize(skipped) === normalize(tagName);
+}
+
+type UpdatePromptKey =
+  | 'settings.portableUpdateConfirm'
+  | 'settings.installerUpdateConfirm'
+  | 'settings.updateInstallNow'
+  | 'settings.updateSkipVersion'
+  | 'settings.updateLater';
+
+/** The native confirmation for one lane: both versions in the message, and the three answers. */
+export function updatePrompt(
+  lane: SelfUpdateLane,
+  currentVersion: string,
+  latestTag: string,
+  t: (key: UpdatePromptKey) => string,
+): { message: string; install: string; skip: string; later: string } {
+  const template = t(lane.kind === 'portable' ? 'settings.portableUpdateConfirm' : 'settings.installerUpdateConfirm');
+  return {
+    message: template.replace('{current}', displayVersion(currentVersion)).replace('{latest}', displayVersion(latestTag)),
+    install: t('settings.updateInstallNow'),
+    skip: t('settings.updateSkipVersion'),
+    later: t('settings.updateLater'),
+  };
+}
+
 /** Whether the "Install updates automatically" box refuses a click. It only blocks turning the
  *  option on: settings are shared by every build, so a box ticked on one build can show up on a
  *  build that cannot use it, and it must still be possible to clear it there. */

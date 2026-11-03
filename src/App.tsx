@@ -100,7 +100,14 @@ import { preflightFromResult, type PreflightSubject } from './ui/preflightFromRe
 import { processingAfterSend, processingAfterSettle, processingAfterWorkflowStatus } from './ui/processing';
 import { Resizer } from './ui/Resizer';
 import { SettingsModal, type SettingsTab } from './ui/SettingsModal';
-import { compareVersions, fetchLatestRelease, isLocalBuild, selfUpdateLane } from './ui/updateCheck';
+import {
+  compareVersions,
+  fetchLatestRelease,
+  isLocalBuild,
+  isSkippedVersion,
+  selfUpdateLane,
+  updatePrompt,
+} from './ui/updateCheck';
 import {
   activeProvidersForStandby,
   defaultSettings,
@@ -815,6 +822,12 @@ export default function App() {
     setLanguage(next.language);
     await host.settings.set(next);
   }, [setLanguage]);
+
+  // "Skip this version", from the startup notice or the install dialog. The notice goes away with it.
+  const skipUpdateVersion = useCallback(async (tagName: string) => {
+    setStartupUpdate(undefined);
+    await persistSettingsPatch({ skippedUpdateVersion: tagName });
+  }, [persistSettingsPatch]);
 
   useEffect(() => {
     // Before settings load, activeProviders is the default lineup, where Meta is the standby.
@@ -1942,17 +1955,20 @@ export default function App() {
       if (!currentVersion || isLocalBuild(currentVersion)) return;
       const latest = await fetchLatestRelease();
       if (!latest || !compareVersions(currentVersion, latest.tagName)) return;
-      // The notice goes up either way: it stays if the user cancels the install's confirm dialog,
+      // "Skip this version" silences only this tag; the next release is offered as usual.
+      if (isSkippedVersion(appSettings.skippedUpdateVersion, latest.tagName)) return;
+      // The notice goes up either way: it stays if the user picks "Later" in the install's dialog,
       // and an install that fails has to say so rather than look like nothing was found.
       setStartupUpdate({ tagName: latest.tagName });
       const lane = appSettings.autoUpdateOnStartup ? selfUpdateLane(appSettings, latest) : undefined;
       if (!lane) return;
       try {
-        if (lane.kind === 'portable') {
-          await host.app.portableUpdate(lane.url, translateKey('settings.portableUpdateConfirm', localeRef.current));
-        } else {
-          await host.app.installerUpdate(lane.url, translateKey('settings.installerUpdateConfirm', localeRef.current));
-        }
+        const prompt = updatePrompt(lane, currentVersion, latest.tagName, (key) => translateKey(key, localeRef.current));
+        const answer =
+          lane.kind === 'portable'
+            ? await host.app.portableUpdate(lane.url, prompt)
+            : await host.app.installerUpdate(lane.url, prompt);
+        if (answer === 'skip') await skipUpdateVersion(latest.tagName);
       } catch (reason) {
         setStartupUpdate({
           tagName: latest.tagName,
@@ -1960,7 +1976,7 @@ export default function App() {
         });
       }
     })();
-  }, [appSettings, settingsLoaded]);
+  }, [appSettings, settingsLoaded, skipUpdateVersion]);
 
   const autoNewConversationAppliedRef = useRef(false);
   useEffect(() => {
@@ -2730,6 +2746,13 @@ export default function App() {
                   }}
                 >
                   {translate('updateNotice.open')}
+                </button>
+                <button
+                  type="button"
+                  className="border border-sky-400 dark:border-sky-700 px-2 py-1 hover:bg-sky-100 dark:hover:bg-sky-900"
+                  onClick={() => void skipUpdateVersion(startupUpdate.tagName)}
+                >
+                  {translate('updateNotice.skip')}
                 </button>
                 <button
                   type="button"

@@ -27,7 +27,15 @@ import {
 
   type ModeRoleAssignments,
 } from './modeRoleAssignment';
-import { autoUpdateToggleLocked, compareVersions, fetchLatestRelease, isLocalBuild, selfUpdateLane, type SelfUpdateLane } from './updateCheck';
+import {
+  autoUpdateToggleLocked,
+  compareVersions,
+  fetchLatestRelease,
+  isLocalBuild,
+  selfUpdateLane,
+  updatePrompt,
+  type SelfUpdateLane,
+} from './updateCheck';
 import { host } from '../host';
 import {
   filterEventLogByProvider,
@@ -53,6 +61,7 @@ type UpdateCheckState =
   | { status: 'up-to-date'; version: string }
   | { status: 'local-build'; tagName: string }
   | { status: 'available'; tagName: string; htmlUrl: string; portableAssetUrl?: string; installerAssetUrl?: string }
+  | { status: 'skipped'; tagName: string }
   | { status: 'unavailable' }
   | { status: 'error'; message: string };
 
@@ -524,10 +533,17 @@ export function SettingsModal({
   // The portable and installer lanes install; everything else only gets the release page link. A
   // failure has to land back in this panel: the update runs after the app exits, so a swallowed
   // error here would look exactly like a successful update that changed nothing.
-  const startUpdate = async (lane: SelfUpdateLane) => {
+  const startUpdate = async (lane: SelfUpdateLane, tagName: string) => {
     try {
-      if (lane.kind === 'portable') await host.app.portableUpdate(lane.url, t('settings.portableUpdateConfirm'));
-      else await host.app.installerUpdate(lane.url, t('settings.installerUpdateConfirm'));
+      const prompt = updatePrompt(lane, await host.app.version(), tagName, t);
+      const answer =
+        lane.kind === 'portable'
+          ? await host.app.portableUpdate(lane.url, prompt)
+          : await host.app.installerUpdate(lane.url, prompt);
+      if (answer === 'skip') {
+        await persistDraftFieldImmediately('skippedUpdateVersion', tagName);
+        setUpdateCheck({ status: 'skipped', tagName });
+      }
     } catch (reason) {
       setUpdateCheck({
         status: 'error',
@@ -1088,7 +1104,7 @@ export function SettingsModal({
                           <button
                             type="button"
                             className="underline hover:text-sky-800 dark:hover:text-sky-200"
-                            onClick={() => void startUpdate(updateLane)}
+                            onClick={() => void startUpdate(updateLane, updateCheck.tagName)}
                           >
                             {t('settings.installPortableUpdate')}
                           </button>
@@ -1096,6 +1112,9 @@ export function SettingsModal({
                           <DownloadPageLink key={updateCheck.htmlUrl} url={updateCheck.htmlUrl} />
                         )}
                       </span>
+                    ) : null}
+                    {updateCheck.status === 'skipped' ? (
+                      <span className="text-xs text-zinc-600 dark:text-zinc-400">{t('settings.updateSkipped').replace('{version}', updateCheck.tagName)}</span>
                     ) : null}
                     {updateCheck.status === 'unavailable' ? (
                       <span className="text-xs text-amber-700 dark:text-amber-300">{t('settings.releasesUnavailable')}</span>

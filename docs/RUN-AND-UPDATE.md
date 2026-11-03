@@ -78,9 +78,18 @@ downloads the release's `x64-setup.exe` and runs it with `/P /R /UPDATE` (the sa
 tauri-plugin-updater passes), and the app reopens. On failure it starts the installed build again
 and opens `%TEMP%\ai-consultant-update-log.txt`. macOS and Linux only get the download-page link.
 
+Before the update starts, a confirmation window shows the current and the new version, with three
+buttons:
+- "Update now": update as above.
+- "Skip this version": do not install this release. The startup check stops offering it; a newer
+  release is offered as usual. Stored as `skippedUpdateVersion` in the settings.
+- "Later" (or closing the window): do not install now; the next launch offers it again.
+
+A manual check in Settings > Updates still lists a skipped version, so it can be installed later.
+
 With "Check for updates at startup" on, the app checks at every launch and shows a notice on the
-main screen when a newer version exists. With "Install updates automatically" also on, a Windows
-build starts the update at launch.
+main screen when a newer version exists. The notice also has "Skip this version". With "Install
+updates automatically" also on, a Windows build opens the confirmation window above at launch.
 
 The app knows it is an installed copy when `uninstall.exe`, written by the NSIS installer, sits
 next to the exe.

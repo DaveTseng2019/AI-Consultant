@@ -122,6 +122,7 @@ This version ports #135–#141 from the original project. **It was not tested on
 | A page reload or a late callback from the previous turn does not change the current turn's state | **Automated tests only** (the original project's `pullLifecycle` tests pass here) |
 | A new answer redraws only the message that changed | **Automated tests only**. The actual speed-up was **not measured** |
 | Exported diagnostic logs hide `apikey` | **Automated tests only** |
+| The update confirmation shows both versions and three buttons (Update now / Skip this version / Later) | **Automated tests only** (button mapping, version text, skip matching). Whether the native Windows dialog shows the custom button labels is **not confirmed on a real device**: that needs a release newer than this one |
 | In-app update still works with the updater plugin's archive extraction turned off | **Not tested**. This project's update runs NSIS and `Expand-Archive` and never calls the plugin (judged from the code) |
 | A real signed-in question and answer on each AI | **Not tested** |
 

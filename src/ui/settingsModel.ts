@@ -90,6 +90,9 @@ export interface AppSettings {
   checkUpdatesOnStartup: boolean;
   /** Portable builds only: when the startup check finds a newer release, start installing it. */
   autoUpdateOnStartup: boolean;
+  /** The release tag the user chose "Skip this version" for; the startup check stays quiet about
+   *  it. A newer release replaces nothing here but is offered normally. Empty when none. */
+  skippedUpdateVersion: string;
   portable: boolean;
   /** Set by Rust at read time: the NSIS installer put this copy in place. Never persisted. */
   installed: boolean;
@@ -147,6 +150,7 @@ export function defaultSettings(): AppSettings {
     updaterChannel: 'stable',
     checkUpdatesOnStartup: false,
     autoUpdateOnStartup: false,
+    skippedUpdateVersion: '',
     portable: false,
     installed: false,
     telemetry: 'none',
@@ -308,6 +312,7 @@ export function normalizeSettings(value: unknown): AppSettings {
     updaterChannel: stringValue(input.updaterChannel, defaults.updaterChannel),
     checkUpdatesOnStartup: input.checkUpdatesOnStartup === true,
     autoUpdateOnStartup: input.autoUpdateOnStartup === true,
+    skippedUpdateVersion: stringValue(input.skippedUpdateVersion, defaults.skippedUpdateVersion).trim(),
     portable: input.portable === true,
     installed: input.installed === true,
     telemetry: 'none',

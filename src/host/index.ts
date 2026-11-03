@@ -15,6 +15,17 @@ export interface StoredSnapshotInfo {
   question?: string;
 }
 
+/** The native update confirmation, already translated: the message and its three buttons. */
+export interface UpdatePrompt {
+  message: string;
+  install: string;
+  skip: string;
+  later: string;
+}
+
+/** What the user chose instead of installing. The window's close button counts as 'later'. */
+export type UpdateDecline = 'skip' | 'later';
+
 export interface NavBlockedPayload {
   provider: string;
   host: string;
@@ -55,13 +66,14 @@ export const host = {
     /** What to show the user: the local build stamp when there is one, else the package version. */
     versionLabel: (): Promise<string> => invoke('app_version_label'),
     openExternal: (url: string): Promise<void> => invoke('open_external_url', { url }),
-    /** Portable builds only: swap this folder for the release zip and relaunch. Resolves without
-        doing anything when the user cancels the confirmation; on approval the app exits instead. */
-    portableUpdate: (url: string, confirm: string): Promise<void> =>
-      invoke('portable_update_start', { url, confirm }),
+    /** Portable builds only: swap this folder for the release zip and relaunch. Resolves with the
+        user's answer when they do not install ('skip' = never offer this version again, 'later' =
+        ask next time); on approval the app exits instead. */
+    portableUpdate: (url: string, prompt: UpdatePrompt): Promise<UpdateDecline> =>
+      invoke('portable_update_start', { url, prompt }),
     /** Installed builds only: run the release's NSIS installer over this install. Same contract. */
-    installerUpdate: (url: string, confirm: string): Promise<void> =>
-      invoke('installer_update_start', { url, confirm }),
+    installerUpdate: (url: string, prompt: UpdatePrompt): Promise<UpdateDecline> =>
+      invoke('installer_update_start', { url, prompt }),
   },
   window: {
     /** The taskbar shows the window title, so the running step stays readable while minimised. */

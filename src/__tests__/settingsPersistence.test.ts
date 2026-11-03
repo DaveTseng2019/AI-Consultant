@@ -158,3 +158,12 @@ describe('autoUpdateOnStartup', () => {
     expect(normalizeSettings({ autoUpdateOnStartup: true }).autoUpdateOnStartup).toBe(true);
   });
 });
+
+describe('skippedUpdateVersion', () => {
+  it('is empty for a new or older settings file and keeps a stored tag', () => {
+    expect(defaultSettings().skippedUpdateVersion).toBe('');
+    expect(normalizeSettings({}).skippedUpdateVersion).toBe('');
+    expect(normalizeSettings({ skippedUpdateVersion: 29 }).skippedUpdateVersion).toBe('');
+    expect(normalizeSettings({ skippedUpdateVersion: ' v0.0.29 ' }).skippedUpdateVersion).toBe('v0.0.29');
+  });
+});

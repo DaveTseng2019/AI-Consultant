@@ -995,17 +995,79 @@ fn is_release_installer_url(url: &str) -> bool {
     is_release_asset_url(url) && url.ends_with("-setup.exe")
 }
 
+/// The update confirmation, already translated by the frontend (the i18n table lives there).
+#[derive(Debug, Clone, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdatePrompt {
+    message: String,
+    install: String,
+    skip: String,
+    later: String,
+}
+
+/// What the user picked when they did not install. "skip" means never offer this version again;
+/// "later" (also the window's close button) means ask again next time.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum UpdateChoice {
+    Install,
+    Skip,
+    Later,
+}
+
+impl UpdateChoice {
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::Install => "install",
+            Self::Skip => "skip",
+            Self::Later => "later",
+        }
+    }
+}
+
+/// rfd reports a custom button by its label on Windows and macOS, and as Yes/No/Cancel on Linux.
+fn update_choice(
+    result: &tauri_plugin_dialog::MessageDialogResult,
+    prompt: &UpdatePrompt,
+) -> UpdateChoice {
+    use tauri_plugin_dialog::MessageDialogResult;
+    match result {
+        MessageDialogResult::Yes => UpdateChoice::Install,
+        MessageDialogResult::No => UpdateChoice::Skip,
+        MessageDialogResult::Custom(label) if *label == prompt.install => UpdateChoice::Install,
+        MessageDialogResult::Custom(label) if *label == prompt.skip => UpdateChoice::Skip,
+        _ => UpdateChoice::Later,
+    }
+}
+
+async fn ask_update(app: &AppHandle, prompt: &UpdatePrompt) -> Result<UpdateChoice, String> {
+    use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
+
+    let (tx, rx) = tokio::sync::oneshot::channel();
+    let answer = prompt.clone();
+    app.dialog()
+        .message(prompt.message.clone())
+        .kind(MessageDialogKind::Info)
+        .buttons(MessageDialogButtons::YesNoCancelCustom(
+            prompt.install.clone(),
+            prompt.skip.clone(),
+            prompt.later.clone(),
+        ))
+        .show_with_result(move |result| {
+            let _ = tx.send(update_choice(&result, &answer));
+        });
+    rx.await.map_err(|error| error.to_string())
+}
+
 /// Download the portable zip, unpack it over this folder, and come back up on the new build.
-/// Returns only on refusal -- on success the app exits and the script takes over.
+/// Returns only when the user does not install ("skip" or "later") -- on approval the app exits
+/// and the script takes over.
 #[tauri::command]
 pub async fn portable_update_start(
     app: AppHandle,
     webview: tauri::Webview,
     url: String,
-    confirm: String,
-) -> Result<(), String> {
-    use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
-
+    prompt: UpdatePrompt,
+) -> Result<String, String> {
     crate::webviews::ensure_control_webview(&webview)?;
     if !portable_marker_exists() {
         return Err("this build is not portable".to_string());
@@ -1025,34 +1087,25 @@ pub async fn portable_update_start(
         .to_string_lossy()
         .into_owned();
 
-    let (tx, rx) = tokio::sync::oneshot::channel();
-    app.dialog()
-        .message(confirm)
-        .kind(MessageDialogKind::Warning)
-        .buttons(MessageDialogButtons::OkCancel)
-        .show(move |approved| {
-            let _ = tx.send(approved);
-        });
-    if !rx.await.map_err(|error| error.to_string())? {
-        return Ok(());
+    let choice = ask_update(&app, &prompt).await?;
+    if choice != UpdateChoice::Install {
+        return Ok(choice.as_str().to_string());
     }
 
     start_portable_update(&url, &dest, &exe_name)?;
     app.exit(0);
-    Ok(())
+    Ok(choice.as_str().to_string())
 }
 
-/// Download the release's NSIS installer and run it over this install. Returns only on refusal --
-/// on success the app exits and the script takes over.
+/// Download the release's NSIS installer and run it over this install. Same contract as
+/// portable_update_start.
 #[tauri::command]
 pub async fn installer_update_start(
     app: AppHandle,
     webview: tauri::Webview,
     url: String,
-    confirm: String,
-) -> Result<(), String> {
-    use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
-
+    prompt: UpdatePrompt,
+) -> Result<String, String> {
     crate::webviews::ensure_control_webview(&webview)?;
     if !installer_marker_exists() {
         return Err("this build was not installed by the installer".to_string());
@@ -1062,21 +1115,14 @@ pub async fn installer_update_start(
     }
     let exe = std::env::current_exe().map_err(|error| error.to_string())?;
 
-    let (tx, rx) = tokio::sync::oneshot::channel();
-    app.dialog()
-        .message(confirm)
-        .kind(MessageDialogKind::Warning)
-        .buttons(MessageDialogButtons::OkCancel)
-        .show(move |approved| {
-            let _ = tx.send(approved);
-        });
-    if !rx.await.map_err(|error| error.to_string())? {
-        return Ok(());
+    let choice = ask_update(&app, &prompt).await?;
+    if choice != UpdateChoice::Install {
+        return Ok(choice.as_str().to_string());
     }
 
     start_installer_update(&url, &exe)?;
     app.exit(0);
-    Ok(())
+    Ok(choice.as_str().to_string())
 }
 
 #[cfg(windows)]
@@ -1163,12 +1209,57 @@ mod tests {
     use super::{
         active_providers_for_settings, build_stamp_from_json, ensure_provider_active_value,
         is_release_asset_url, is_release_installer_url, normalize_settings_value, read_settings,
-        read_settings_for_provider_guard, write_atomic_before_replace, write_settings,
-        ARCHIVE_LABEL_MAX_CHARS, PROVIDERS,
+        read_settings_for_provider_guard, update_choice, write_atomic_before_replace,
+        write_settings, UpdateChoice, UpdatePrompt, ARCHIVE_LABEL_MAX_CHARS, PROVIDERS,
     };
     use serde_json::{json, Value};
     use std::path::PathBuf;
     use std::sync::atomic::{AtomicUsize, Ordering};
+    use tauri_plugin_dialog::MessageDialogResult;
+
+    fn prompt() -> UpdatePrompt {
+        serde_json::from_value(json!({
+            "message": "m", "install": "Update now", "skip": "Skip this version", "later": "Later"
+        }))
+        .unwrap()
+    }
+
+    #[test]
+    fn update_choice_reads_custom_labels_and_linux_fallbacks() {
+        let p = prompt();
+        let custom = |label: &str| MessageDialogResult::Custom(label.to_string());
+        assert_eq!(
+            update_choice(&custom("Update now"), &p),
+            UpdateChoice::Install
+        );
+        assert_eq!(
+            update_choice(&custom("Skip this version"), &p),
+            UpdateChoice::Skip
+        );
+        assert_eq!(update_choice(&custom("Later"), &p), UpdateChoice::Later);
+        // Linux reports the position, not the label.
+        assert_eq!(
+            update_choice(&MessageDialogResult::Yes, &p),
+            UpdateChoice::Install
+        );
+        assert_eq!(
+            update_choice(&MessageDialogResult::No, &p),
+            UpdateChoice::Skip
+        );
+        // The window's close button never installs and never skips.
+        assert_eq!(
+            update_choice(&MessageDialogResult::Cancel, &p),
+            UpdateChoice::Later
+        );
+        assert_eq!(
+            update_choice(&MessageDialogResult::Ok, &p),
+            UpdateChoice::Later
+        );
+        assert_eq!(
+            update_choice(&custom("something else"), &p),
+            UpdateChoice::Later
+        );
+    }
 
     static NEXT_ID: AtomicUsize = AtomicUsize::new(0);
 

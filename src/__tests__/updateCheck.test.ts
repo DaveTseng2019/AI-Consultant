@@ -1,5 +1,54 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { compareVersions, fetchLatestRelease, autoUpdateToggleLocked, isLocalBuild, selfUpdateLane } from '../ui/updateCheck';
+import {
+  compareVersions,
+  displayVersion,
+  fetchLatestRelease,
+  autoUpdateToggleLocked,
+  isLocalBuild,
+  isSkippedVersion,
+  selfUpdateLane,
+  updatePrompt,
+} from '../ui/updateCheck';
+import { t as translateKey } from '../i18n/t';
+
+describe('update prompt', () => {
+  it('shows both versions in tag form and names the three answers', () => {
+    const prompt = updatePrompt(
+      { kind: 'installer', url: 'https://example.invalid/x_x64-setup.exe' },
+      '0.0.28',
+      'v0.0.29',
+      (key) => translateKey(key, 'zh-TW'),
+    );
+    expect(prompt.message).toContain('目前版本：v0.0.28');
+    expect(prompt.message).toContain('新版本：v0.0.29');
+    expect(prompt.message).toContain('安裝檔');
+    expect(prompt).toMatchObject({ install: '立即更新', skip: '略過這個版本', later: '稍後再說' });
+  });
+
+  it('uses the portable wording for a portable lane, in every language', () => {
+    for (const locale of ['en', 'zh-TW', 'ja', 'de'] as const) {
+      const prompt = updatePrompt({ kind: 'portable', url: 'u' }, '1.0.0', 'v1.1.0', (key) => translateKey(key, locale));
+      expect(prompt.message).toContain('v1.0.0');
+      expect(prompt.message).toContain('v1.1.0');
+      expect(prompt.message).not.toMatch(/\{current\}|\{latest\}/);
+      expect(new Set([prompt.install, prompt.skip, prompt.later]).size).toBe(3);
+    }
+  });
+
+  it('prefixes v only where it is missing', () => {
+    expect(displayVersion('0.0.28')).toBe('v0.0.28');
+    expect(displayVersion('v0.0.29')).toBe('v0.0.29');
+  });
+});
+
+describe('skipped version', () => {
+  it('matches the same release with or without the leading v, and nothing when empty', () => {
+    expect(isSkippedVersion('v0.0.29', 'v0.0.29')).toBe(true);
+    expect(isSkippedVersion('0.0.29', 'v0.0.29')).toBe(true);
+    expect(isSkippedVersion('v0.0.29', 'v0.0.30')).toBe(false);
+    expect(isSkippedVersion('', 'v0.0.29')).toBe(false);
+  });
+});
 
 describe('local build detection', () => {
   it('recognises the pinned placeholder version only', () => {
