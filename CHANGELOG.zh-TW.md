@@ -5,6 +5,15 @@
 每個版本的完整說明在 [GitHub releases](https://github.com/DaveTseng2019/AI-Consultant/releases)。日期是發佈日（UTC）。
 版號在 repo 裡永遠釘死 `0.0.0`，真正的號碼由發佈 CI 從 tag 注入。
 
+## [v0.0.28](https://github.com/DaveTseng2019/AI-Consultant/releases/tag/v0.0.28) — 2026-11-03
+
+- 修正：AI 的頁面重新載入，或上一輪剛結束下一輪就開始時，舊頁面或上一輪的狀態可能算到這一輪，
+  讓已經回答的這一輪顯示「bridge degraded」或抓不到回答。現在每一輪、每一次載入都分開記錄。
+- 改變：新回答進來時只重畫有變動的那則訊息，不再整個對話重畫。
+- 改變：匯出的診斷紀錄也會遮掉 API 金鑰。
+- 改變：更新幾個建置與測試套件修補已知安全問題；關掉更新元件裡沒用到的解壓縮功能。
+- 以上都只有自動化測試，還沒有開著實際網站測試，也沒有量畫面變快多少。
+
 ## [v0.0.27](https://github.com/DaveTseng2019/AI-Consultant/releases/tag/v0.0.27) — 2026-10-19
 
 - 修正：ChatGPT 已經回答，程式卻顯示「composer cleared before a matching user turn appeared」並判定失敗。

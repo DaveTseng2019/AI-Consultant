@@ -2,7 +2,7 @@
 
 # Compatibility and manual test matrix
 
-> Last reviewed: 2026-10-20. The newest real-device records are `v0.0.2` on Windows, `v0.0.17` on
+> Last reviewed: 2026-11-03. The newest real-device records are `v0.0.2` on Windows, `v0.0.17` on
 > Linux, the single-provider check on `v0.0.19`, the Meta AI and startup-restore checks on
 > `v0.0.23`, the Grok sign-in / sign-out check on `v0.0.24`, the Claude debate check on `v0.0.25`, and the startup update check on `v0.0.26`; the versions in between were not
 > re-run item by item.
@@ -112,6 +112,18 @@ v5) and the dependency security updates. **It was not tested on a real device.**
 | Which element is read when the new layout and this project's `[data-testid="assistant-message"]` are both on the page | **Not tested** |
 | A real signed-in question and answer on ChatGPT and Claude | **Not tested** |
 | Automatic update from the `v0.0.26` portable build to this version | **Not tested** |
+
+### v0.0.28 Answers survive page reloads and late callbacks; only the changed message redraws (2026-11-03)
+
+This version ports #135–#141 from the original project. **It was not tested on a real device.**
+
+| Item | Result |
+|---|---|
+| A page reload or a late callback from the previous turn does not change the current turn's state | **Automated tests only** (the original project's `pullLifecycle` tests pass here) |
+| A new answer redraws only the message that changed | **Automated tests only**. The actual speed-up was **not measured** |
+| Exported diagnostic logs hide `apikey` | **Automated tests only** |
+| In-app update still works with the updater plugin's archive extraction turned off | **Not tested**. This project's update runs NSIS and `Expand-Archive` and never calls the plugin (judged from the code) |
+| A real signed-in question and answer on each AI | **Not tested** |
 
 ### v0.0.26 Startup update check and automatic update (2026-10-13)
 

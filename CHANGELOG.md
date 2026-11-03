@@ -6,6 +6,18 @@ The full notes for each version are on [GitHub releases](https://github.com/Dave
 Dates are the release date (UTC). The repo pins `0.0.0` on purpose; the real number is injected by
 the release CI from the tag.
 
+## [v0.0.28](https://github.com/DaveTseng2019/AI-Consultant/releases/tag/v0.0.28) — 2026-11-03
+
+- Fixed: when an AI's page reloaded, or a new turn started right after the previous one, the old
+  page's or previous turn's state could apply to the current turn, so an answered turn showed
+  "bridge degraded" or lost its answer. Each turn and each page load is now tracked separately.
+- Changed: a new answer redraws only the message that changed, not the whole conversation.
+- Changed: exported diagnostic logs also hide API keys.
+- Changed: several build and test packages were updated to fix known security issues; the unused
+  archive extraction in the update component is turned off.
+- All of the above have automated tests only; they were not tried on the real sites, and the
+  speed-up was not measured.
+
 ## [v0.0.27](https://github.com/DaveTseng2019/AI-Consultant/releases/tag/v0.0.27) — 2026-10-19
 
 - Fixed: ChatGPT could show its answer while the app reported "composer cleared before a matching

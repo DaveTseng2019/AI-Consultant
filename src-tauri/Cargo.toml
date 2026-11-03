@@ -19,8 +19,9 @@ tauri-build = { version = "=2.6.3", features = [] }
 
 [dependencies]
 tauri = { version = "=2.11.5", features = ["unstable"] }
-# Inactive compatibility dependency (SPEC §2): no updater is registered.
-# Keep archive extraction disabled; the frozen app only opens GitHub Releases.
+# Inactive compatibility dependency: the plugin is never registered. The in-app
+# update (settings.rs) runs the NSIS setup or Expand-Archive itself, so the
+# plugin's archive extraction stays disabled.
 tauri-plugin-updater = { version = "=2.10.1", default-features = false, features = ["rustls-tls"] }
 tauri-plugin-dialog = "=2.7.1"
 tauri-plugin-opener = "=2.5.4"
