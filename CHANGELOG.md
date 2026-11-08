@@ -6,6 +6,15 @@ The full notes for each version are on [GitHub releases](https://github.com/Dave
 Dates are the release date (UTC). The repo pins `0.0.0` on purpose; the real number is injected by
 the release CI from the tag.
 
+## [v0.0.29](https://github.com/DaveTseng2019/AI-Consultant/releases/tag/v0.0.29) — 2026-11-08
+
+- Changed: the Traditional Chinese interface text is rewritten in plain Chinese instead of mixed
+  English jargon. "持久化 snapshots" is now "把執行紀錄存到硬碟". No feature changed.
+- Changed: the Grok sign-in note no longer says the page always lists four methods; on
+  2026-11-08 it listed five (GitHub was added). All four interface languages are updated.
+- Changed: small performance tweaks ported from the original project.
+- Only automated tests; the new Chinese text has not been checked on screen yet.
+
 ## [v0.0.28](https://github.com/DaveTseng2019/AI-Consultant/releases/tag/v0.0.28) — 2026-11-03
 
 - Fixed: when an AI's page reloaded, or a new turn started right after the previous one, the old

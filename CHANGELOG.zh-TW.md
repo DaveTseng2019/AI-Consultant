@@ -5,6 +5,13 @@
 每個版本的完整說明，請看 [GitHub releases](https://github.com/DaveTseng2019/AI-Consultant/releases)。日期是發佈日（UTC）。
 repo 裡的版號固定是 `0.0.0`。正式的版號由發佈用的 CI 依照 tag 寫入。
 
+## [v0.0.29](https://github.com/DaveTseng2019/AI-Consultant/releases/tag/v0.0.29) — 2026-11-08
+
+- 改變：介面的中文改成白話，不再夾雜英文術語。「持久化 snapshots」改名為「把執行紀錄存到硬碟」。功能沒有改變。
+- 改變：Grok 的登入說明不再寫「一定會列出四種方式」。2026-11-08 實看，登入頁有五種（多了 GitHub）。四種介面語言都已更新。
+- 改變：移植原始專案的幾項小幅效能調整。
+- 以上只有自動化測試，新的中文還沒有在畫面上實際看過。
+
 ## [v0.0.28](https://github.com/DaveTseng2019/AI-Consultant/releases/tag/v0.0.28) — 2026-11-03
 
 - 修正：AI 的頁面重新載入，或上一輪剛結束下一輪就開始時，舊頁面或上一輪的狀態可能算到這一輪，
