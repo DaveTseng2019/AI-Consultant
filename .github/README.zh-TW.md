@@ -100,7 +100,7 @@ Windows 版還可以在找到新版本時直接開始更新，關閉程式前會
 
 下面四件事，app 偵測不到，也就無法幫你處理。第一次使用 Grok 時很容易卡在這裡：
 
-1. **Grok 的登入方式（Google／X／Apple／郵箱）必須先啟用才有效。**
+1. **Grok 的登入方式（例如 Google、X、Apple、GitHub、email）必須先啟用才有效。**
    請到 [x.ai 帳號頁](https://accounts.x.ai/account) 的「登入方法」查看。你啟用（連接）過哪幾種，就只能用那幾種登入原本的帳號。
    每個人啟用的方式不同。所以「用 Google 登不進去」，不一定是 app 的問題。
 2. **用 X 登入時，中間會多出一頁 X 的授權畫面**（`xAI Single Sign-On wants to access…`）。

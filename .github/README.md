@@ -100,8 +100,8 @@ Report a vulnerability through the private form in GitHub Security, not a public
 
 Four things about Grok are invisible to the app, and all four catch first-time users:
 
-1. **The sign-in page always lists all four methods (Google, X, Apple, email), which does not
-   mean all four work.** Only the ones you enabled under Sign-in methods on your
+1. **The sign-in page lists several methods (for example Google, X, Apple, GitHub, email), which
+   does not mean all of them work.** Only the ones you enabled under Sign-in methods on your
    [x.ai account page](https://accounts.x.ai/account) reach the account you already have.
    Everyone enables a different set, so "Google will not let me in" is not an app fault.
 2. **Signing in with X detours through an authorization page of X's own**

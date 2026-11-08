@@ -136,7 +136,7 @@ export const zhTW: Record<I18nKey, string> = {
   'provider.centerReady': '準備好了，請在下方輸入訊息。',
   'provider.checking': '正在確認這個 AI 的登入狀態…',
   'provider.signInPrompt': '請先登入這個 AI，再開始對話。',
-  'provider.grokSignInNotes': 'Grok 的登入頁一定會列出 Google、X、Apple、郵箱四個按鈕，但只有你在 x.ai 帳號頁「登入方法」啟用過的方式，才能登入你原本的帳號。登入或註冊後，Grok 會先在對話裡問一次你的出生年份，請切到真實頁面回答，之後的回答才會正常。登入後，如果卡片很久都停在「開啟中…」，表示這一頁還沒回報登入狀態，不代表你沒有登入。請按上方的「前往登入」，或關掉 app 再重新開啟，通常就會變成「就緒」。',
+  'provider.grokSignInNotes': 'Grok 的登入頁會列出多種登入方式（例如 Google、X、Apple、GitHub、email），但只有你在 x.ai 帳號頁「登入方法」啟用過的方式，才能登入你原本的帳號。登入或註冊後，Grok 會先在對話裡問一次你的出生年份，請切到真實頁面回答，之後的回答才會正常。登入後，如果卡片很久都停在「開啟中…」，表示這一頁還沒回報登入狀態，不代表你沒有登入。請按上方的「前往登入」，或關掉 app 再重新開啟，通常就會變成「就緒」。',
   'provider.grokAccountPage': '開啟 x.ai 帳號頁',
   'provider.loginFailed': '無法前往登入，請再試一次。',
   'provider.open': '開啟',

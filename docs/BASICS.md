@@ -86,8 +86,9 @@ after the login, by which time there is no screen left to say it on. Point 2 is 
 because it is X's own screen and only reaches people who choose to sign in with X.
 
 1. **Which sign-in methods work is decided by your x.ai account page.** The sign-in page
-   (`accounts.x.ai/sign-in`, observed 2026-08-31) **always lists all four buttons** — Google, X,
-   Apple, email. A button being there does not mean it works: only the methods you have enabled
+   (`accounts.x.ai/sign-in`) **lists several sign-in buttons**. Observed 2026-08-31: four —
+   Google, X, Apple, email. Observed 2026-11-08: five — Google, X, Apple, GitHub, email. The set
+   changes, so do not rely on a fixed list. A button being there does not mean it works: only the methods you have enabled
    (connected) under "Sign-in methods" at `accounts.x.ai/account` reach your existing account.
    Everyone enables a different set, so "Google will not let me in" is not a bug in this app.
 2. **Signing in with X adds one more authorisation page from X.** Observed 2026-08-31: the screen

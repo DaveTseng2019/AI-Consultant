@@ -146,7 +146,7 @@ export const en: Record<I18nKey, string> = {
   'provider.centerReady': 'Ready — type a message below.',
   'provider.checking': 'Checking this AI session…',
   'provider.signInPrompt': 'Sign in to this AI to start chatting.',
-  'provider.grokSignInNotes': 'The Grok sign-in page always lists all four methods -- Google, X, Apple, email -- but only the ones you enabled under Sign-in methods on your x.ai account page will reach the account you already have. Also, right after you sign in or register, Grok asks for your birth year inside the chat -- answer it on the real page, or the answers you get back are that question. And if the card sits at Opening... long after you signed in, that means the page has not reported a sign-in state yet, not that you are signed out; press Sign in above or close and reopen the app, which usually settles it into ready.',
+  'provider.grokSignInNotes': 'The Grok sign-in page lists several methods (for example Google, X, Apple, GitHub, email), but only the ones you enabled under Sign-in methods on your x.ai account page will reach the account you already have. Also, right after you sign in or register, Grok asks for your birth year inside the chat -- answer it on the real page, or the answers you get back are that question. And if the card sits at Opening... long after you signed in, that means the page has not reported a sign-in state yet, not that you are signed out; press Sign in above or close and reopen the app, which usually settles it into ready.',
   'provider.grokAccountPage': 'Open the x.ai account page',
   'provider.loginFailed': 'Could not go to sign-in. Try again.',
   'provider.open': 'Open',
