@@ -305,7 +305,7 @@ Grok 的 Cloudflare challenge：單一原子化的 driver 會在改變 provider 
    `README-portable.txt` 也要連到最新的 GitHub Release。回應語言設為 Auto 時，確認英文問題得到
    英文、正體中文問題得到正體中文，與介面語言無關；再驗一次固定語言的選擇。特別確認 Grok 是
    回答問題，而不是把內部的 `<response-language-policy>` 區塊照抄出來。
-8. 只有在失敗時才匯出經過清理的 debug bundle；絕不附上機密或原始的 provider 頁面內容。
+8. 只有在失敗時才匯出經過清理的 debug bundle（設定裡的「匯出診斷資料」）；絕不附上機密或原始的 provider 頁面內容。
 
 ## 回報方式
 

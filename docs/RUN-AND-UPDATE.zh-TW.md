@@ -185,7 +185,7 @@ snapshot 存的是 graph id、graph 版本、角色→provider 對應、原始�
 ### 兩個來源
 
 - **重播上次執行**：記憶體裡的 `getLastSnapshot()`，重啟就沒了。
-- **已儲存 snapshots**：要開 durable snapshots 才會落地；清單依建立時間新→舊排序，每筆可重播或刪除。
+- **已儲存的執行紀錄**：要在設定開啟「把執行紀錄存到硬碟」（durable snapshots）才會存成檔案；清單依建立時間新→舊排序，每筆可重播或刪除。
 
 另有第三個入口：啟動時若偵測到 session checkpoint，`SessionCheckpointNotice` 會提供對應 snapshot 的「重播」按鈕。
 
