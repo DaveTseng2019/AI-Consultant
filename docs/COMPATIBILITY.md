@@ -126,19 +126,28 @@ This version ports #135–#141 from the original project. **It was not tested on
 | In-app update still works with the updater plugin's archive extraction turned off | **Not tested**. This project's update runs NSIS and `Expand-Archive` and never calls the plugin (judged from the code) |
 | A real signed-in question and answer on each AI | **Not tested** |
 
-### v0.0.30 Claude and Meta AI send a Safari user agent on macOS (2026-11-26)
+### v0.0.30 macOS: Safari user agent and iframe navigation (2026-11-26)
 
 On macOS, Claude and Meta AI now send a Safari User-Agent (the default WKWebView one has no
 `Version/` or `Safari/` tokens; the inferred cause, not verified, is that both sites reject it as an unsupported browser). This includes
 the popup that Claude's Google sign-in runs in. Windows and Linux keep their stock user agent.
-**It was not tested on a real macOS device.** A user reported on 2026-11-26 that these two could
-not sign in; this release waits for their report.
+
+The app also now uses a vendored copy of wry (`src-tauri/vendor/wry`). On macOS, wry 0.55.1 hands
+iframe navigations to the navigation handler as well, while WebView2 hands over only main-frame
+navigations. The app's domain allowlist therefore cancelled the iframes `sentinel.openai.com`
+(ChatGPT) and `newassets.hcaptcha.com` (Claude) and opened them in the system browser. The
+vendored copy allows iframe navigations directly on macOS. Evidence: reading the wry source and the
+WebView2 documentation, and the macOS diagnostic file in upstream issue #152
+(`nav-blocked sentinel.openai.com`, `newassets.hcaptcha.com`). Not a reproduction on a Mac.
+
+**Neither fix was tested on a real macOS device.** A user reported on 2026-11-26 that these
+providers could not sign in; this release waits for their report.
 
 | Item | Result |
 |---|---|
 | macOS: Claude and Meta AI show a Safari user agent, including Claude's sign-in popup | **Not verified on macOS** (waiting for the user's report). Windows ran automated tests only: the override applies to those two providers on macOS only |
-| Windows and Linux behaviour is unchanged | **Automated tests only** (the override returns nothing for every provider on those two systems) |
-| ChatGPT staying on "Opening" on macOS | **Not fixed** in this version |
+| macOS: iframe navigations are no longer cancelled by the allowlist (ChatGPT sentinel, Claude hCaptcha) | **Not verified on macOS.** CI compiles on macOS and passes `cargo test` and clippy (run 45790920582) |
+| Windows and Linux behaviour is unchanged | **Automated tests only** (the user-agent override returns nothing for every provider on those two systems; WebView2 already fires only for the main frame) |
 
 ### v0.0.26 Startup update check and automatic update (2026-10-13)
 

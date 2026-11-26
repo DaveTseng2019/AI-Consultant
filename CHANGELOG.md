@@ -11,8 +11,10 @@ the release CI from the tag.
 - Fixed: on macOS, the Claude and Meta AI panes showed "unrecognized browser" and could not sign
   in. On a Mac they now present themselves as a regular Safari browser, including in Claude's
   Google sign-in popup. Windows and Linux are unchanged.
+- Fixed: on macOS, ChatGPT stayed on "Opening" and Claude's human check would not load. The app
+  treated the verification frames embedded in a page as page navigations, cancelled them and
+  opened them in the system browser. Embedded frames now load as usual, the same as on Windows.
 - Only automated tests and builds on Windows; sign-in has not been confirmed on a real Mac.
-  ChatGPT staying on "Opening" on macOS is a separate problem and is not fixed here.
 
 ## [v0.0.29](https://github.com/DaveTseng2019/AI-Consultant/releases/tag/v0.0.29) — 2026-11-08
 

@@ -115,18 +115,25 @@ repo 的 `0.0.0`），**不是 CI 掛在 release 上的那個 `.AppImage`**。
 | updater 外掛關掉解壓縮之後，app 內更新仍可用 | **未測試**。本專案的更新走 NSIS 與 `Expand-Archive`，不呼叫這個外掛（讀程式碼判斷） |
 | 登入後在各家 AI 實際問答 | **未測試** |
 
-### v0.0.30 macOS 上 Claude 與 Meta AI 改送 Safari User-Agent（2026-11-26）
+### v0.0.30 macOS：Safari User-Agent 與 iframe 導覽（2026-11-26）
 
 在 macOS 上，Claude 與 Meta AI 現在會送 Safari 的 User-Agent（WKWebView 預設的那一串沒有
 `Version/`、`Safari/`；推測兩個網站因此把它當成不支援的瀏覽器而拒絕，尚未證實），包含 Claude 的 Google 登入
-彈出視窗。Windows 與 Linux 維持原本的 User-Agent。**這一版沒有在 macOS 實機測試。**
-2026-11-26 使用者回報這兩家無法登入；這一版等使用者的回報。
+彈出視窗。Windows 與 Linux 維持原本的 User-Agent。
+
+app 也改用 vendored 的 wry（`src-tauri/vendor/wry`）。macOS 上的 wry 0.55.1 會把 iframe 的導覽也交給
+navigation handler，WebView2 只交主頁的導覽。app 的網域白名單因此把 `sentinel.openai.com`（ChatGPT）
+與 `newassets.hcaptcha.com`（Claude）這兩個 iframe 取消，並改在系統瀏覽器打開。vendored 的版本讓
+macOS 上的 iframe 導覽直接放行。依據：讀 wry 原始碼與 WebView2 官方文件，以及上游 issue #152 的
+macOS 診斷檔（`nav-blocked sentinel.openai.com`、`newassets.hcaptcha.com`）。這不是在 Mac 上重現的結果。
+
+**兩項修正都沒有在 macOS 實機測試。** 2026-11-26 使用者回報這些家無法登入；這一版等使用者的回報。
 
 | 項目 | 結果 |
 |---|---|
 | macOS：Claude 與 Meta AI 送出 Safari User-Agent，包含 Claude 的登入彈出視窗 | **未在 macOS 實機驗證**（等使用者回報）。Windows 只跑過自動化測試：這個覆寫只套用在 macOS 上的這兩家 |
-| Windows 與 Linux 的行為不變 | **僅自動化測試**（在這兩個系統上，每一家都不覆寫） |
-| ChatGPT 在 macOS 上停在「開啟中」 | 這一版**沒有處理** |
+| macOS：iframe 導覽不再被白名單取消（ChatGPT sentinel、Claude hCaptcha） | **未在 macOS 實機驗證**；CI 在 macOS 編譯並通過 cargo test、clippy（run 45790920582） |
+| Windows 與 Linux 的導覽行為不變 | **僅自動化測試**（User-Agent 覆寫在這兩個系統上對每一家都不生效；WebView2 原本就只對主頁觸發） |
 
 ### v0.0.26 啟動時檢查新版本與自動更新（2026-10-13）
 
