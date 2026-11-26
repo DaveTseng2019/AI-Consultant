@@ -129,7 +129,7 @@ This version ports #135–#141 from the original project. **It was not tested on
 ### v0.0.30 Claude and Meta AI send a Safari user agent on macOS (2026-11-26)
 
 On macOS, Claude and Meta AI now send a Safari User-Agent (the default WKWebView one has no
-`Version/` or `Safari/` tokens, and both sites rejected it as an unsupported browser). This includes
+`Version/` or `Safari/` tokens; the inferred cause, not verified, is that both sites reject it as an unsupported browser). This includes
 the popup that Claude's Google sign-in runs in. Windows and Linux keep their stock user agent.
 **It was not tested on a real macOS device.** A user reported on 2026-11-26 that these two could
 not sign in; this release waits for their report.

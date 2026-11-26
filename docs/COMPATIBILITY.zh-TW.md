@@ -118,7 +118,7 @@ repo 的 `0.0.0`），**不是 CI 掛在 release 上的那個 `.AppImage`**。
 ### v0.0.30 macOS 上 Claude 與 Meta AI 改送 Safari User-Agent（2026-11-26）
 
 在 macOS 上，Claude 與 Meta AI 現在會送 Safari 的 User-Agent（WKWebView 預設的那一串沒有
-`Version/`、`Safari/`，兩個網站都把它當成不支援的瀏覽器而拒絕），包含 Claude 的 Google 登入
+`Version/`、`Safari/`；推測兩個網站因此把它當成不支援的瀏覽器而拒絕，尚未證實），包含 Claude 的 Google 登入
 彈出視窗。Windows 與 Linux 維持原本的 User-Agent。**這一版沒有在 macOS 實機測試。**
 2026-11-26 使用者回報這兩家無法登入；這一版等使用者的回報。
 
