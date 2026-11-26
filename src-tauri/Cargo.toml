@@ -43,3 +43,8 @@ windows = "=0.61.3"
 # adds no second gtk to the tree.
 [target.'cfg(target_os = "linux")'.dependencies]
 gtk = "=0.18.2"
+
+# macOS: wry asks the navigation handler about iframe navigations too; the vendored copy only asks
+# about the main frame, like WebView2. See vendor/wry/VENDORED.md.
+[patch.crates-io]
+wry = { path = "vendor/wry" }
