@@ -115,6 +115,19 @@ repo 的 `0.0.0`），**不是 CI 掛在 release 上的那個 `.AppImage`**。
 | updater 外掛關掉解壓縮之後，app 內更新仍可用 | **未測試**。本專案的更新走 NSIS 與 `Expand-Archive`，不呼叫這個外掛（讀程式碼判斷） |
 | 登入後在各家 AI 實際問答 | **未測試** |
 
+### v0.0.30 macOS 上 Claude 與 Meta AI 改送 Safari User-Agent（2026-11-26）
+
+在 macOS 上，Claude 與 Meta AI 現在會送 Safari 的 User-Agent（WKWebView 預設的那一串沒有
+`Version/`、`Safari/`，兩個網站都把它當成不支援的瀏覽器而拒絕），包含 Claude 的 Google 登入
+彈出視窗。Windows 與 Linux 維持原本的 User-Agent。**這一版沒有在 macOS 實機測試。**
+2026-11-26 使用者回報這兩家無法登入；這一版等使用者的回報。
+
+| 項目 | 結果 |
+|---|---|
+| macOS：Claude 與 Meta AI 送出 Safari User-Agent，包含 Claude 的登入彈出視窗 | **未在 macOS 實機驗證**（等使用者回報）。Windows 只跑過自動化測試：這個覆寫只套用在 macOS 上的這兩家 |
+| Windows 與 Linux 的行為不變 | **僅自動化測試**（在這兩個系統上，每一家都不覆寫） |
+| ChatGPT 在 macOS 上停在「開啟中」 | 這一版**沒有處理** |
+
 ### v0.0.26 啟動時檢查新版本與自動更新（2026-10-13）
 
 這一版新增「啟動時檢查新版本」、Windows 安裝版的 app 內更新，以及安裝版與可攜版的「自動更新」。由維護者手動檢查。

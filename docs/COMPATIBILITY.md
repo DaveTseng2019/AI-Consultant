@@ -126,6 +126,20 @@ This version ports #135–#141 from the original project. **It was not tested on
 | In-app update still works with the updater plugin's archive extraction turned off | **Not tested**. This project's update runs NSIS and `Expand-Archive` and never calls the plugin (judged from the code) |
 | A real signed-in question and answer on each AI | **Not tested** |
 
+### v0.0.30 Claude and Meta AI send a Safari user agent on macOS (2026-11-26)
+
+On macOS, Claude and Meta AI now send a Safari User-Agent (the default WKWebView one has no
+`Version/` or `Safari/` tokens, and both sites rejected it as an unsupported browser). This includes
+the popup that Claude's Google sign-in runs in. Windows and Linux keep their stock user agent.
+**It was not tested on a real macOS device.** A user reported on 2026-11-26 that these two could
+not sign in; this release waits for their report.
+
+| Item | Result |
+|---|---|
+| macOS: Claude and Meta AI show a Safari user agent, including Claude's sign-in popup | **Not verified on macOS** (waiting for the user's report). Windows ran automated tests only: the override applies to those two providers on macOS only |
+| Windows and Linux behaviour is unchanged | **Automated tests only** (the override returns nothing for every provider on those two systems) |
+| ChatGPT staying on "Opening" on macOS | **Not fixed** in this version |
+
 ### v0.0.26 Startup update check and automatic update (2026-10-13)
 
 This version adds "Check for updates at startup", an in-app update for the installed Windows
