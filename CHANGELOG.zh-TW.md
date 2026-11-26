@@ -5,6 +5,11 @@
 每個版本的完整說明，請看 [GitHub releases](https://github.com/DaveTseng2019/AI-Consultant/releases)。日期是發佈日（UTC）。
 repo 裡的版號固定是 `0.0.0`。正式的版號由發佈用的 CI 依照 tag 寫入。
 
+## [v0.0.30](https://github.com/DaveTseng2019/AI-Consultant/releases/tag/v0.0.30) — 2026-11-26
+
+- 修正：Mac 版的 Claude 與 Meta AI 窗格會顯示「無法辨識瀏覽器」，不能登入。現在在 Mac 上，它們看到的是一般的 Safari 瀏覽器，Claude 的 Google 登入彈出視窗也一樣。Windows 與 Linux 沒有變化。
+- 以上只在 Windows 上通過自動化測試與建置；Mac 上能不能登入，還沒有在實機確認。ChatGPT 在 Mac 上停在「開啟中」是另一個問題，這一版沒有處理。
+
 ## [v0.0.29](https://github.com/DaveTseng2019/AI-Consultant/releases/tag/v0.0.29) — 2026-11-08
 
 - 改變：介面的中文改成白話，不再夾雜英文術語。「持久化 snapshots」改名為「把執行紀錄存到硬碟」。功能沒有改變。

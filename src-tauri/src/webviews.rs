@@ -30,6 +30,17 @@ const CHALLENGE_SIGNALS_JSON: &str = include_str!(concat!(
     "/../shared/challenge-signals.json"
 ));
 const PROVIDER_BROWSER_ARGS: &str = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --autoplay-policy=no-user-gesture-required --disable-background-timer-throttling --disable-renderer-backgrounding --disable-backgrounding-occluded-windows";
+// notes: hard-coded Safari version. Sites only check that Version/ and Safari/ tokens exist;
+//        bump the Version/ number if a provider starts rejecting it as outdated.
+const MACOS_SAFARI_USER_AGENT: &str = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Safari/605.1.15";
+
+/// macOS WKWebView's default user agent stops at "(KHTML, like Gecko)" with no Version/Safari
+/// tokens, and claude.ai and meta.ai reject it as an unsupported browser. WebView2 (Windows) and
+/// WebKitGTK (Linux) keep their stock user agent.
+fn provider_user_agent_override(provider: &str, target_os: &str) -> Option<&'static str> {
+    (target_os == "macos" && matches!(provider, "claude" | "meta"))
+        .then_some(MACOS_SAFARI_USER_AGENT)
+}
 const NEW_SESSION_READY_TIMEOUT_SECS: u64 = 30;
 const NEW_SESSION_READY_POLL_MS: u64 = 150;
 const IN_PAGE_NEW_CHAT_TIMEOUT_MS: u64 = 3000;
@@ -1297,6 +1308,10 @@ pub async fn provider_open(
     } else {
         builder
     };
+    let builder = match provider_user_agent_override(&provider, std::env::consts::OS) {
+        Some(user_agent) => builder.user_agent(user_agent),
+        None => builder,
+    };
     // Every provider is parked offscreen outside its active pane. Preserve the shipped liveness
     // tuning so provider timers and renderers keep running while hidden.
     let builder = builder
@@ -1508,6 +1523,14 @@ pub async fn provider_open(
                     .on_document_title_changed(|window, title| {
                         let _ = window.set_title(&title);
                     });
+                    // Claude's Google sign-in runs in this popup, so it needs the same user agent.
+                    let builder = match provider_user_agent_override(
+                        &popup_provider,
+                        std::env::consts::OS,
+                    ) {
+                        Some(user_agent) => builder.user_agent(user_agent),
+                        None => builder,
+                    };
                     match builder.build() {
                         Ok(window) => {
                             if let Some(observed_epoch) = recovery_epoch {
@@ -2872,6 +2895,7 @@ mod tests {
         StalenessAction, CHALLENGE_SIGNALS_JSON, GROK_APP_TITLE_UNCONFIRMED_REASON,
         PERMISSION_SHIM_JS, PROVIDER_BROWSER_ARGS,
     };
+    use super::{provider_user_agent_override, MACOS_SAFARI_USER_AGENT};
 
     static GROK_RUNTIME_TEST_LOCK: Mutex<()> = Mutex::new(());
 
@@ -2885,6 +2909,26 @@ mod tests {
         assert!(PROVIDER_BROWSER_ARGS.contains("--disable-renderer-backgrounding"));
         assert!(PROVIDER_BROWSER_ARGS.contains("--disable-backgrounding-occluded-windows"));
         assert!(PROVIDER_BROWSER_ARGS.contains("msSmartScreenProtection"));
+    }
+
+    #[test]
+    fn provider_user_agent_override_only_macos_claude_and_meta() {
+        for provider in ["claude", "meta"] {
+            assert_eq!(
+                provider_user_agent_override(provider, "macos"),
+                Some(MACOS_SAFARI_USER_AGENT)
+            );
+        }
+        for provider in ["chatgpt", "gemini", "grok"] {
+            assert_eq!(provider_user_agent_override(provider, "macos"), None);
+        }
+        for os in ["windows", "linux"] {
+            for provider in ["claude", "meta", "chatgpt", "gemini", "grok"] {
+                assert_eq!(provider_user_agent_override(provider, os), None);
+            }
+        }
+        assert!(MACOS_SAFARI_USER_AGENT.contains("Version/"));
+        assert!(MACOS_SAFARI_USER_AGENT.contains("Safari/"));
     }
 
     #[test]

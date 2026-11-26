@@ -6,6 +6,14 @@ The full notes for each version are on [GitHub releases](https://github.com/Dave
 Dates are the release date (UTC). The repo pins `0.0.0` on purpose; the real number is injected by
 the release CI from the tag.
 
+## [v0.0.30](https://github.com/DaveTseng2019/AI-Consultant/releases/tag/v0.0.30) — 2026-11-26
+
+- Fixed: on macOS, the Claude and Meta AI panes showed "unrecognized browser" and could not sign
+  in. On a Mac they now present themselves as a regular Safari browser, including in Claude's
+  Google sign-in popup. Windows and Linux are unchanged.
+- Only automated tests and builds on Windows; sign-in has not been confirmed on a real Mac.
+  ChatGPT staying on "Opening" on macOS is a separate problem and is not fixed here.
+
 ## [v0.0.29](https://github.com/DaveTseng2019/AI-Consultant/releases/tag/v0.0.29) — 2026-11-08
 
 - Changed: the Traditional Chinese interface text is rewritten in plain Chinese instead of mixed
